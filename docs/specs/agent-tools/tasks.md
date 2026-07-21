@@ -15,7 +15,7 @@ Check a box only after its `verify` command passes.
   accept: numbered output, offset/limit, 2000-line + 2MB truncation markers; permissionFor null in all modes
   verify: pnpm --filter @cox/tools test -- read
 
-- [ ] 3. write tool
+- [x] 3. write tool
   requirements: R8.2
   complexity: 2
   accept: parent dirs created; OUTSIDE PROJECT summary when escaping cwd, prompted even in acceptEdits/yolo per matrix
