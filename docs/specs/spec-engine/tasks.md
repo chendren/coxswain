@@ -64,7 +64,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: valid output → tasks.md written, statuses reset to pending, spec.json tasks populated; invalid output → tasks.rejected.md written, tasks.md and statuses untouched, error event with first parse error; "tasks-reset" event when done tasks existed.
   verify: pnpm --filter @cox/spec test -- -t "R5.5|R4.4"
 
-- [ ] 11. Implement approve() including tasks re-parse
+- [x] 11. Implement approve() including tasks re-parse
   requirements: R3.1, R3.2, R3.3
   complexity: 3
   accept: draft→approved with approvals append + persist + spec_event + awaited onPhaseChange; missing/approved throw unchanged; approve("tasks") re-parses the (possibly hand-edited) file, populates statuses pending, fails actionably on parse errors leaving phase draft.

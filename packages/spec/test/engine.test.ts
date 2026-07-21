@@ -1,8 +1,17 @@
 import * as fs from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vitest";
-import type { AgentEvent } from "@cox/core";
+import type { AgentEvent, HookPayload, SpecPhase } from "@cox/core";
 import { createSpecEngine, type SpecEngineDeps } from "../src/engine.js";
-import { ideaPath, readSpecState, specDir, specJsonPath, tasksPath, writeSpecState } from "../src/state.js";
+import {
+  designPath,
+  ideaPath,
+  readSpecState,
+  requirementsPath,
+  specDir,
+  specJsonPath,
+  tasksPath,
+  writeSpecState,
+} from "../src/state.js";
 import { fakeRunner, tmpProject, VALID_TASKS_MD } from "./helpers.js";
 
 const FIXED_NOW = "2026-01-01T00:00:00.000Z";
@@ -18,15 +27,35 @@ async function setup(overrides: Partial<SpecEngineDeps> = {}) {
   const { cwd, cleanup } = await tmpProject();
   cleanups.push(cleanup);
   const events: AgentEvent[] = [];
+  const phaseChanges: HookPayload[] = [];
   const runner = fakeRunner([]);
   const deps: SpecEngineDeps = {
     cwd,
     runner,
     onEvent: (e) => events.push(e),
+    onPhaseChange: async (p) => {
+      phaseChanges.push(p);
+    },
     now: () => FIXED_NOW,
     ...overrides,
   };
-  return { cwd, events, runner, engine: createSpecEngine(deps) };
+  return { cwd, events, phaseChanges, runner, engine: createSpecEngine(deps) };
+}
+
+/** Writes phase content + marks it "draft" directly on disk, bypassing
+ * generate() (already covered by generate.test.ts). */
+async function makeDraft(
+  cwd: string,
+  name: string,
+  phase: Exclude<SpecPhase, "execution">,
+  fileContent: string,
+) {
+  const dir = specDir(cwd, name);
+  const filePath =
+    phase === "requirements" ? requirementsPath(dir) : phase === "design" ? designPath(dir) : tasksPath(dir);
+  await fs.writeFile(filePath, fileContent, "utf8");
+  const stored = await readSpecState(dir);
+  await writeSpecState(dir, { ...stored, phases: { ...stored.phases, [phase]: "draft" } });
 }
 
 describe("SpecEngine.create", () => {
@@ -139,5 +168,97 @@ describe("SpecEngine.list", () => {
     expect(errorEvents).toHaveLength(1);
     expect(errorEvents[0]?.message).toContain("bad");
     expect(errorEvents[0]?.message).toContain(specJsonPath(specDir(cwd, "bad")));
+  });
+});
+
+describe("SpecEngine.approve", () => {
+  it("R3.1: draft -> approved appends approvals, persists, emits spec_event, and awaits onPhaseChange", async () => {
+    const { cwd, engine, events, phaseChanges } = await setup();
+    await engine.create("widget", "the idea");
+    await makeDraft(cwd, "widget", "requirements", "# Requirements — widget\n- R1.1: ...\n");
+
+    const result = await engine.approve("widget", "requirements");
+
+    expect(result.phases.requirements).toBe("approved");
+    expect(result.approvals).toEqual([{ phase: "requirements", at: FIXED_NOW }]);
+
+    const stored = await readSpecState(specDir(cwd, "widget"));
+    expect(stored.phases.requirements).toBe("approved");
+    expect(stored.approvals).toEqual([{ phase: "requirements", at: FIXED_NOW }]);
+
+    const approvedEvents = events.filter(
+      (e): e is Extract<AgentEvent, { type: "spec_event" }> => e.type === "spec_event" && e.status === "approved",
+    );
+    expect(approvedEvents).toHaveLength(1);
+    expect(approvedEvents[0]).toMatchObject({ specName: "widget", phase: "requirements", status: "approved" });
+
+    expect(phaseChanges).toHaveLength(1);
+    expect(phaseChanges[0]).toMatchObject({
+      event: "SpecPhaseChange",
+      sessionId: "spec:widget",
+      cwd,
+      data: { specName: "widget", phase: "requirements", from: "draft", to: "approved" },
+    });
+  });
+
+  it("R3.2: throws and changes nothing when the phase is still \"missing\"", async () => {
+    const { cwd, engine, events, phaseChanges } = await setup();
+    await engine.create("widget", "the idea");
+
+    await expect(engine.approve("widget", "requirements")).rejects.toThrow(/"missing"/);
+
+    const stored = await readSpecState(specDir(cwd, "widget"));
+    expect(stored.phases.requirements).toBe("missing");
+    expect(stored.approvals).toEqual([]);
+    expect(events).toEqual([]);
+    expect(phaseChanges).toEqual([]);
+  });
+
+  it('R3.2: throws and changes nothing when the phase is already "approved"', async () => {
+    const { cwd, engine, events } = await setup();
+    await engine.create("widget", "the idea");
+    await makeDraft(cwd, "widget", "requirements", "# Requirements — widget\n...\n");
+    await engine.approve("widget", "requirements");
+    events.length = 0;
+
+    await expect(engine.approve("widget", "requirements")).rejects.toThrow(/already.*"approved"/s);
+
+    const stored = await readSpecState(specDir(cwd, "widget"));
+    expect(stored.approvals).toHaveLength(1); // unchanged — still just the first approval
+    expect(events).toEqual([]);
+  });
+
+  it("R3.3: approve(\"tasks\") re-parses tasks.md, picking up hand edits, and resets statuses to pending", async () => {
+    const { cwd, engine } = await setup();
+    await engine.create("widget", "the idea");
+    await makeDraft(cwd, "widget", "tasks", VALID_TASKS_MD);
+    // Simulate spec.json holding stale task data/statuses from a prior
+    // generation — approve must prefer the re-parsed file, not this.
+    const dir = specDir(cwd, "widget");
+    const stale = await readSpecState(dir);
+    await writeSpecState(dir, {
+      ...stale,
+      tasks: [{ id: "1", title: "STALE — should be replaced", requirements: ["R9.9"], complexity: 5, status: "done" }],
+    });
+
+    const result = await engine.approve("widget", "tasks");
+
+    expect(result.phases.tasks).toBe("approved");
+    expect(result.tasks).toEqual([
+      { id: "1", title: "Scaffold the module", requirements: ["R1.1"], complexity: 1, status: "pending" },
+      { id: "2", title: "Implement core logic", requirements: ["R1.2", "R2.1"], complexity: 3, status: "pending" },
+      { id: "3", title: "Wire up integration", requirements: ["R2.2"], complexity: 2, status: "pending" },
+    ]);
+  });
+
+  it("R3.3: a tasks.md that no longer parses fails actionably and leaves the phase draft", async () => {
+    const { cwd, engine } = await setup();
+    await engine.create("widget", "the idea");
+    await makeDraft(cwd, "widget", "tasks", "- [ ] 1. No metadata at all\n");
+
+    await expect(engine.approve("widget", "tasks")).rejects.toThrow(/missing "requirements:"/);
+
+    const stored = await readSpecState(specDir(cwd, "widget"));
+    expect(stored.phases.tasks).toBe("draft");
   });
 });

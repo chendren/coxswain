@@ -19,6 +19,7 @@ import { parseTasks, renderTasks } from "./parser.js";
 import { designPrompt, requirementsPrompt, SPEC_SYSTEM, tasksPrompt } from "./prompts.js";
 import {
   applyDemotionCascade,
+  assertCanApprove,
   assertCanGenerate,
   createInitialState,
   designPath,
@@ -277,7 +278,57 @@ export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
   }
 
   async function approve(name: string, phase: SpecPhase): Promise<SpecState> {
-    throw new Error("not implemented");
+    const state = await mustLoad(name, "approve");
+    assertCanApprove(state, phase); // R3.2 (missing/approved throw) + R2.4-style execution/unknown guard
+    const dir = specDir(cwd, name);
+
+    if (phase === "tasks") {
+      // R3.3: re-parse tasks.md first so hand-edits to the draft are picked
+      // up; fail actionably and leave the phase "draft" (nothing persisted
+      // yet) when it no longer parses.
+      const raw = await readFileOrEmpty(tasksPath(dir));
+      const { tasks, errors } = parseTasks(raw);
+      if (errors.length > 0) {
+        throw new Error(
+          `approve: spec "${name}" phase "tasks" — tasks.md no longer parses: ${errors[0]}`,
+        );
+      }
+      const freshTasks: SpecTask[] = tasks.map((t) => ({ ...t, status: "pending" as const }));
+      const newState: SpecState = {
+        ...state,
+        tasks: freshTasks,
+        phases: { ...state.phases, tasks: "approved" },
+        approvals: [...state.approvals, { phase: "tasks", at: now() }],
+      };
+      await writeSpecState(dir, newState);
+      onEvent({ type: "spec_event", specName: name, phase: "tasks", status: "approved" });
+      if (onPhaseChange) {
+        await onPhaseChange({
+          event: "SpecPhaseChange",
+          sessionId: `spec:${name}`,
+          cwd,
+          data: { specName: name, phase: "tasks", from: "draft", to: "approved" },
+        });
+      }
+      return newState;
+    }
+
+    const newState: SpecState = {
+      ...state,
+      phases: { ...state.phases, [phase]: "approved" },
+      approvals: [...state.approvals, { phase, at: now() }],
+    };
+    await writeSpecState(dir, newState);
+    onEvent({ type: "spec_event", specName: name, phase, status: "approved" }); // R3.1
+    if (onPhaseChange) {
+      await onPhaseChange({
+        event: "SpecPhaseChange",
+        sessionId: `spec:${name}`,
+        cwd,
+        data: { specName: name, phase, from: "draft", to: "approved" },
+      });
+    }
+    return newState;
   }
 
   async function runTask(name: string, taskId?: string): Promise<SpecState> {
