@@ -75,20 +75,54 @@ export function createInitialState(name: string, createdAt: string): SpecState {
 // never overwritten.
 // ---------------------------------------------------------------------------
 
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+async function writeFileAtomic(filePath: string, content: string): Promise<void> {
+  const tmp = `${filePath}.tmp`;
+  await fs.writeFile(tmp, content, "utf8");
+  await fs.rename(tmp, filePath);
+}
+
 export async function readSpecState(dir: string): Promise<SpecState> {
-  throw new Error("not implemented");
+  const p = specJsonPath(dir);
+  let raw: string;
+  try {
+    raw = await fs.readFile(p, "utf8");
+  } catch (err) {
+    throw new Error(`readSpecState: cannot read ${p} — ${errMsg(err)}`);
+  }
+  try {
+    return JSON.parse(raw) as SpecState;
+  } catch (err) {
+    throw new Error(`readSpecState: ${p} is corrupt (invalid JSON) — ${errMsg(err)}`);
+  }
 }
 
 export async function writeSpecState(dir: string, state: SpecState): Promise<void> {
-  throw new Error("not implemented");
+  await fs.mkdir(dir, { recursive: true });
+  await writeFileAtomic(specJsonPath(dir), `${JSON.stringify(state, null, 2)}\n`);
 }
 
 export async function readRuns(dir: string): Promise<RunsState> {
-  throw new Error("not implemented");
+  let raw: string;
+  try {
+    raw = await fs.readFile(runsJsonPath(dir), "utf8");
+  } catch {
+    return {};
+  }
+  try {
+    return JSON.parse(raw) as RunsState;
+  } catch {
+    // runs.json is disposable telemetry (NOTES.md) — corruption resets, never throws.
+    return {};
+  }
 }
 
 export async function writeRuns(dir: string, runs: RunsState): Promise<void> {
-  throw new Error("not implemented");
+  await fs.mkdir(dir, { recursive: true });
+  await writeFileAtomic(runsJsonPath(dir), `${JSON.stringify(runs, null, 2)}\n`);
 }
 
 // ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: src/{engine,state,parser,prompts}.ts exist with typed exports (bodies may throw "not implemented"); test/helpers.ts provides fakeRunner (recording calls), tmpProject via fs.mkdtemp, VALID_TASKS_MD and REQ_FIXTURE_MD fixtures; remove --passWithNoTests from package.json.
   verify: pnpm --filter @cox/spec typecheck
 
-- [ ] 2. Implement spec.json/runs.json persistence with temp-file+rename writes
+- [x] 2. Implement spec.json/runs.json persistence with temp-file+rename writes
   requirements: R1.1, R8.3
   complexity: 2
   accept: state.ts read/write for SpecState and runs.json; writes go .tmp→rename; corrupt spec.json on a mutating path throws with file path and never overwrites; corrupt runs.json resets to {} (it is disposable telemetry, note in NOTES.md).
