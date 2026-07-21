@@ -69,7 +69,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: table test over (event, matcher, toolName): exact-event match; regex applied only on PreToolUse/PostToolUse; "*"/absent match all; matcher ignored on other events; invalid regex → skipped with continue+stderr outcome naming the pattern.
       verify: pnpm --filter @cox/hooks test -- matcher
 
-- [ ] 11. Command execution + exit-code semantics
+- [x] 11. Command execution + exit-code semantics
       requirements: R8.1, R8.2, R8.3, R8.4, R8.5
       complexity: 3
       accept: real /bin/sh spawns (env injected {SHELL:"/bin/sh"}); stdin receives payload JSON (echo-back test with `cat`); exit 0 → continue with stdout JSON object attached and non-Tier tierOverride stripped while other keys survive; exit 2 → block with stderr; exit 3 → continue with stderr; sequential execution order preserved in outcomes.
