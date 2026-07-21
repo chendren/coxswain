@@ -133,19 +133,81 @@ export async function writeRuns(dir: string, runs: RunsState): Promise<void> {
 // Transition guards + demotion cascade (R2, R4) — pure, no I/O.
 // ---------------------------------------------------------------------------
 
+/** Phases generate()/approve() actually operate on. "execution" and any
+ * other string are never valid arguments to either (R2.4). */
+type GeneratablePhase = Exclude<SpecPhase, "execution">;
+
+function isGeneratablePhase(phase: SpecPhase): phase is GeneratablePhase {
+  return phase === "requirements" || phase === "design" || phase === "tasks";
+}
+
+function assertKnownPhase(s: SpecState, op: string, phase: SpecPhase): asserts phase is GeneratablePhase {
+  if (!isGeneratablePhase(phase)) {
+    throw new Error(
+      `${op}: phase "${phase}" of spec "${s.name}" is invalid — only requirements, design, tasks are ` +
+        `valid here (execution is driven by runTask, never by generate/approve)`,
+    );
+  }
+}
+
+/** R2.1–R2.4. requirements has no precondition; design requires requirements
+ * approved; tasks requires design approved; execution/unknown always throws. */
 export function assertCanGenerate(s: SpecState, phase: SpecPhase): void {
-  throw new Error("not implemented");
+  assertKnownPhase(s, "generate", phase);
+  if (phase === "design" && s.phases.requirements !== "approved") {
+    throw new Error(
+      `generate: cannot generate "design" for spec "${s.name}" — phase "requirements" is ` +
+        `"${s.phases.requirements}", must be "approved" first`,
+    );
+  }
+  if (phase === "tasks" && s.phases.design !== "approved") {
+    throw new Error(
+      `generate: cannot generate "tasks" for spec "${s.name}" — phase "design" is ` +
+        `"${s.phases.design}", must be "approved" first`,
+    );
+  }
 }
 
+/** R3.2 (missing/approved throw) lives here too since it's the same shape of
+ * guard as R2's; R2.4 (execution/unknown throws) applies uniformly. */
 export function assertCanApprove(s: SpecState, phase: SpecPhase): void {
-  throw new Error("not implemented");
+  assertKnownPhase(s, "approve", phase);
+  const status = s.phases[phase];
+  if (status === "missing") {
+    throw new Error(`approve: phase "${phase}" of spec "${s.name}" is "missing" — generate it first`);
+  }
+  if (status === "approved") {
+    throw new Error(`approve: phase "${phase}" of spec "${s.name}" is already "approved"`);
+  }
 }
 
-/** R4.2 — downstream cascade only; demoting `regenerated` itself (R4.1) is
- * the caller's job as part of the unconditional "set phase to draft" write. */
+const DOWNSTREAM: Record<GeneratablePhase, GeneratablePhase[]> = {
+  requirements: ["design", "tasks"],
+  design: ["tasks"],
+  tasks: [],
+};
+
+/**
+ * R4.1 + R4.2. Unconditionally sets `regenerated` itself to "draft" (R4.1 —
+ * true whether it was "missing", "draft" already, or "approved"; R5.3 relies
+ * on this for the non-demotion case too) and demotes every downstream phase
+ * that is currently "approved" (R4.2), leaving "draft"/"missing" downstream
+ * phases untouched. `demoted` lists only the downstream phases that actually
+ * flipped — the regenerated phase's own transition is reported by the
+ * caller's "draft" spec_event (R5.3), not a "demoted" one (R4.3).
+ */
 export function applyDemotionCascade(
   s: SpecState,
   regenerated: SpecPhase,
 ): { state: SpecState; demoted: SpecPhase[] } {
-  throw new Error("not implemented");
+  assertKnownPhase(s, "generate", regenerated);
+  const phases = { ...s.phases, [regenerated]: "draft" as const };
+  const demoted: SpecPhase[] = [];
+  for (const downstream of DOWNSTREAM[regenerated]) {
+    if (phases[downstream] === "approved") {
+      phases[downstream] = "draft";
+      demoted.push(downstream);
+    }
+  }
+  return { state: { ...s, phases }, demoted };
 }

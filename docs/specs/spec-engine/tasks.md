@@ -40,7 +40,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: load merges task set from tasks.md with statuses from spec.json (unknown ids → pending); missing spec → null; list skips corrupt spec.json with an error event and continues.
   verify: pnpm --filter @cox/spec test -- -t "R1.4|R1.5|R1.6"
 
-- [ ] 7. Implement transition guards and demotion cascade as pure functions
+- [x] 7. Implement transition guards and demotion cascade as pure functions
   requirements: R2.1, R2.2, R2.3, R2.4, R4.1, R4.2
   complexity: 3
   accept: assertCanGenerate/assertCanApprove/applyDemotionCascade in state.ts, tested directly without filesystem; every illegal transition from the requirements throws with the blocking phase named; cascade demotes only "approved" downstream phases.

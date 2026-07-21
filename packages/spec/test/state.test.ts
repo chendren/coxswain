@@ -1,6 +1,10 @@
 import * as fs from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vitest";
+import type { SpecState } from "@cox/core";
 import {
+  applyDemotionCascade,
+  assertCanApprove,
+  assertCanGenerate,
   createInitialState,
   readRuns,
   readSpecState,
@@ -99,5 +103,125 @@ describe("state persistence", () => {
     await fs.writeFile(runsJsonPath(dir), "not json at all", "utf8");
 
     expect(await readRuns(dir)).toEqual({});
+  });
+});
+
+function stateWith(phases: Partial<SpecState["phases"]>): SpecState {
+  return {
+    ...createInitialState("widget", "2026-01-01T00:00:00.000Z"),
+    phases: { requirements: "missing", design: "missing", tasks: "missing", ...phases },
+  };
+}
+
+describe("assertCanGenerate", () => {
+  it("R2.1: requirements has no precondition on other phases", () => {
+    expect(() => assertCanGenerate(stateWith({}), "requirements")).not.toThrow();
+    expect(() =>
+      assertCanGenerate(stateWith({ requirements: "approved", design: "approved" }), "requirements"),
+    ).not.toThrow();
+  });
+
+  it("R2.2: design throws naming the blocking phase when requirements is not approved", () => {
+    expect(() => assertCanGenerate(stateWith({ requirements: "missing" }), "design")).toThrow(
+      /"requirements".*"missing"/s,
+    );
+    expect(() => assertCanGenerate(stateWith({ requirements: "draft" }), "design")).toThrow(
+      /"requirements".*"draft"/s,
+    );
+  });
+
+  it("R2.2: design proceeds once requirements is approved", () => {
+    expect(() => assertCanGenerate(stateWith({ requirements: "approved" }), "design")).not.toThrow();
+  });
+
+  it("R2.3: tasks throws naming the blocking phase when design is not approved", () => {
+    expect(() =>
+      assertCanGenerate(stateWith({ requirements: "approved", design: "draft" }), "tasks"),
+    ).toThrow(/"design".*"draft"/s);
+  });
+
+  it("R2.3: tasks proceeds once design is approved", () => {
+    expect(() =>
+      assertCanGenerate(stateWith({ requirements: "approved", design: "approved" }), "tasks"),
+    ).not.toThrow();
+  });
+
+  it('R2.4: throws for phase "execution"', () => {
+    expect(() => assertCanGenerate(stateWith({}), "execution")).toThrow(/execution/);
+  });
+
+  it("R2.4: throws for an unknown phase string", () => {
+    expect(() => assertCanGenerate(stateWith({}), "bogus" as never)).toThrow(/bogus/);
+  });
+});
+
+describe("assertCanApprove", () => {
+  it('R3.2: throws when the phase is "missing"', () => {
+    expect(() => assertCanApprove(stateWith({ requirements: "missing" }), "requirements")).toThrow(
+      /"requirements".*"missing"/s,
+    );
+  });
+
+  it('R3.2: throws when the phase is already "approved"', () => {
+    expect(() => assertCanApprove(stateWith({ requirements: "approved" }), "requirements")).toThrow(
+      /"requirements".*already.*"approved"/s,
+    );
+  });
+
+  it('R3.1: proceeds when the phase is "draft"', () => {
+    expect(() => assertCanApprove(stateWith({ requirements: "draft" }), "requirements")).not.toThrow();
+  });
+
+  it('R2.4: throws for phase "execution"', () => {
+    expect(() => assertCanApprove(stateWith({}), "execution")).toThrow(/execution/);
+  });
+});
+
+describe("applyDemotionCascade", () => {
+  it("R4.1: demotes the regenerated phase itself from approved to draft", () => {
+    const { state } = applyDemotionCascade(stateWith({ requirements: "approved" }), "requirements");
+    expect(state.phases.requirements).toBe("draft");
+  });
+
+  it("R4.1: a phase generated for the first time (missing) also lands on draft", () => {
+    const { state, demoted } = applyDemotionCascade(stateWith({ requirements: "missing" }), "requirements");
+    expect(state.phases.requirements).toBe("draft");
+    expect(demoted).toEqual([]);
+  });
+
+  it("R4.2: demotes approved downstream phases (requirements -> design, tasks)", () => {
+    const s = stateWith({ requirements: "approved", design: "approved", tasks: "approved" });
+    const { state, demoted } = applyDemotionCascade(s, "requirements");
+
+    expect(state.phases).toEqual({ requirements: "draft", design: "draft", tasks: "draft" });
+    expect(demoted.sort()).toEqual(["design", "tasks"]);
+  });
+
+  it("R4.2: demotes only tasks when design is regenerated (requirements untouched)", () => {
+    const s = stateWith({ requirements: "approved", design: "approved", tasks: "approved" });
+    const { state, demoted } = applyDemotionCascade(s, "design");
+
+    expect(state.phases.requirements).toBe("approved");
+    expect(state.phases.design).toBe("draft");
+    expect(state.phases.tasks).toBe("draft");
+    expect(demoted).toEqual(["tasks"]);
+  });
+
+  it('R4.2: leaves "draft"/"missing" downstream phases unchanged (only "approved" is demoted)', () => {
+    const s = stateWith({ requirements: "approved", design: "draft", tasks: "missing" });
+    const { state, demoted } = applyDemotionCascade(s, "requirements");
+
+    expect(state.phases.design).toBe("draft");
+    expect(state.phases.tasks).toBe("missing");
+    expect(demoted).toEqual([]);
+  });
+
+  it("R4.2: tasks has no downstream, so regenerating it never demotes anything else", () => {
+    const s = stateWith({ requirements: "approved", design: "approved", tasks: "approved" });
+    const { state, demoted } = applyDemotionCascade(s, "tasks");
+
+    expect(state.phases.requirements).toBe("approved");
+    expect(state.phases.design).toBe("approved");
+    expect(demoted).toEqual([]);
   });
 });
