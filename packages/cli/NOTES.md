@@ -154,3 +154,45 @@ exists) does offer it, gated on `process.stdout.isTTY` with an injectable
 `confirm` fn for tests. `/spec approve` with no explicit phase, and `cox
 spec approve` likewise, load the spec and approve the first
 not-yet-approved phase in `requirements -> design -> tasks` order.
+
+## wire.test.ts (task 16, R13.1)
+
+Calls the real `buildSession` against this worktree's actual (stub)
+packages — every lane is a stub here (tui-cli builds against fixtures by
+design, per docs/03's M1 milestone), so this always takes the
+`NotWiredError` -> `console.log("skipped: ...")` -> trivial-pass branch;
+confirmed by running it (prints `skipped: @cox/providers not wired`). The
+"real" assertion path (event order routing_decision -> model_call_started
+-> model_call_finished -> turn_done, one `.cox/ledger.jsonl` line, a
+snapshot with nonzero usage) is written and typechecks but has never
+executed — and per the dedicated `INTEGRATION-NOTES.md` entry
+(2026-07-21), it's genuinely unclear from the published contracts alone
+how a config is supposed to route `loadDeps` -> `createProviderRegistry`
+to a `MockChatModel` at all (`createMockModel` takes a script directly,
+isn't config-driven; `loadDeps`'s fixed 3-arg signature has no override
+seam for a pre-built registry). Whoever runs M2 will likely need to either
+extend `loadDeps`/`buildSession` with a registry-override parameter or
+have `@cox/providers` recognize a config convention for "use the mock" —
+flagged, not guessed at further.
+
+## Lane status at hand-off (task 16)
+
+All 16 tasks complete; both packages typecheck and test green
+(`pnpm --filter @cox/tui typecheck && pnpm --filter @cox/tui test &&
+pnpm --filter @cox/cli typecheck && pnpm --filter @cox/cli test`). Wired
+for real (work correctly today, no engines needed): `cox models`, `cox
+doctor --offline`, `cox replay <file>`, `--help`/`--version`/arg parsing.
+Wired for real but currently exit 1 with `NotWiredError` until the other
+five lanes land: bare `cox` (TTY only) / `--print`, `explain`/`suggest`,
+`cox spec ...`, `cox steer init`, `cox hook run`, `cox ledger`, `cox
+doctor` (non-offline reachability check only — the rest of doctor's
+checks are engine-free and pass/fail for real). In-session slash commands
+(`/model /context /ledger /budget /spec /steer /hook`) are fully
+implemented in `session.ts` and unit-tested with local fakes, but can only
+be exercised end-to-end once a real session exists (same lane-completeness
+gate). See `INTEGRATION-NOTES.md` for the six cross-lane contract gaps
+found along the way (requestPermission injection, turn_done's missing
+stopReason, routing_decision's missing taskId, LedgerSummary's missing
+per-bucket call counts, spec_event's missing task counts, and the M2
+mock-provider injection question above) — none blocked this lane's own
+work; each has a documented local workaround.

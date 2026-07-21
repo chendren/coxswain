@@ -145,4 +145,26 @@ line, task 8) but is intentionally **not** re-exported from `index.ts` —
 design.md's "Public API (exact)" block lists only `formatTokens`,
 `formatUsd`, `formatDuration`, `budgetBar`. The stub's `PACKAGE` marker
 export was removed once real exports landed (docs/03 DoD: "no extra
-exports beyond what the design lists").
+exports beyond what the design lists"). Final surface: `formatTokens`,
+`formatUsd`, `formatDuration`, `budgetBar`, `startTui` (+ `TuiOptions`/
+`TuiHandle` types), `createPlainRenderer`, `renderLedgerTable` — exactly
+design.md's list.
+
+## Lane status at hand-off (task 16)
+
+All 16 tasks complete; `pnpm --filter @cox/tui typecheck && pnpm --filter
+@cox/tui test` green (108 tests across 8 files). `<App>` covers all 17
+`AgentEvent` variants (task 6), the status line, permission modal, and
+input/slash-grammar/interrupt handling are all real and unit-tested
+against fixture-shaped events and a fully local fake `SessionController` —
+none of it depends on any other lane landing, since `@cox/tui` only ever
+imports `@cox/core` per its own charter. `cox replay
+fixtures/events-sample.jsonl` (real command, task 5) and the two
+`--print`/plain-mode formatting paths (task 11) were smoke-tested for
+real, not just unit-tested. Five cross-lane contract gaps found while
+building the event -> render mapping are logged in
+`INTEGRATION-NOTES.md`: `routing_decision`'s missing `taskId`, `turn_done`'s
+missing `stopReason`, `LedgerSummary`'s missing per-bucket call counts,
+`spec_event`'s missing task counts for `SessionSnapshot.activeSpec`, and
+docs/05's illustrative (not literally reproducible) example numbers —
+each has a documented local workaround here, none blocked this lane.

@@ -193,5 +193,37 @@ The integrator (M2) resolves these and logs any core changes under
   `usage`/`costUsd` in both `LedgerSummary.byTier`'s and `.byModel`'s
   bucket shape.
 
+## 2026-07-21 — tui-cli (task 16, wire.test.ts — how M2 gets a MockChatModel)
+
+- Blocked on: `docs/specs/tui-cli/design.md`'s note for `wire.test.ts` says
+  the M2 assertion runs "using `MockChatModel` via a config pointing
+  providers at the mock adapter (see providers spec pack)" — but
+  providers/design.md's `createMockModel(script, ref?)` takes a script
+  directly (it isn't config-driven at all), and `createProviderRegistry
+  (config, deps?: {adapters?: ProviderAdapter[]})` only documents building
+  "anthropic + one adapter per openaiCompat entry" from config, with no
+  "mock" special case. `deps.ts::loadDeps(cfg, cwd, bus)` — this lane's own
+  fixed signature — has no injection point for a pre-built
+  `ProviderRegistry`/adapter list either, so there is no way, purely from
+  the published contracts, to actually get a `MockChatModel` into a real
+  `buildSession(...)` call without one of: (a) `createProviderRegistry`
+  recognizing a specific config shape as "use the mock", (b) `loadDeps`/
+  `buildSession` gaining a test-only override parameter, or (c) the M2
+  integrator wiring it some other way entirely.
+- Workaround taken: none attempted — deliberately not guessed at further,
+  since this worktree cannot verify any resolution either way (every lane,
+  including this one by design, is a stub here). `test/wire.test.ts`
+  implements exactly the part that *is* verifiable now: `buildSession`
+  throws `NotWiredError` (on `@cox/providers`, checked first), caught and
+  printed as `skipped: @cox/providers not wired`, test passes trivially.
+  The "real" assertion path (event order, one ledger.jsonl line, snapshot
+  totals) is written and typechecks against a best-effort config (all
+  three tiers pointed at `provider: "mock"`) but has never executed.
+- Proposed contract change: either document a config convention
+  `createProviderRegistry` honors for selecting the mock adapter, or add
+  an optional override parameter to `loadDeps`/`buildSession` for
+  injecting a pre-built `ProviderRegistry` — whichever the integrator finds
+  cleaner given how `@cox/providers` actually ends up shaped.
+
 ## Contract changes
 (none yet)

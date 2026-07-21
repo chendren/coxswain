@@ -94,7 +94,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: checks node/config/key-env/.cox-writability/(reachability unless --offline); ✓/✗ lines; exit 1 on any failure; tests cover pass and each failure class with temp dirs + env manipulation (no network — reachability injected as fn).
       verify: pnpm --filter @cox/cli test -- doctor
 
-- [ ] 16. M2 integration test + NOTES.md + green sweep
+- [x] 16. M2 integration test + NOTES.md + green sweep
       requirements: R13.1
       complexity: 3
       accept: wire.test.ts runs full-stack with MockChatModel-config when loadDeps succeeds, else prints "skipped: <NotWired msg>"; asserts event order, parsed ledger line, snapshot totals; packages/{tui,cli}/NOTES.md summarize decisions/deviations (≤1 page); full lane green.
