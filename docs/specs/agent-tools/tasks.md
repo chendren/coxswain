@@ -51,7 +51,7 @@ Check a box only after its `verify` command passes.
   accept: deny-prefix beats allow-prefix; timeout kill + isError; 30k truncation; exit-code line on failure; $SHELL fallback /bin/sh
   verify: pnpm --filter @cox/tools test -- bash
 
-- [ ] 9. permissionFor matrix (all tools × all modes)
+- [x] 9. permissionFor matrix (all tools × all modes)
   requirements: R6.4, R8.2, R8.4
   complexity: 2
   accept: table-driven test mirrors the design matrix exactly, incl. outside-cwd rows and bash prefix rows
