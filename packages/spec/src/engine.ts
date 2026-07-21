@@ -15,7 +15,7 @@ import type {
   SpecState,
   SpecTask,
 } from "@cox/core";
-import { parseTasks } from "./parser.js";
+import { parseTasks, renderTasks } from "./parser.js";
 import { designPrompt, requirementsPrompt, SPEC_SYSTEM, tasksPrompt } from "./prompts.js";
 import {
   applyDemotionCascade,
@@ -29,6 +29,7 @@ import {
   specJsonPath,
   specsRoot,
   tasksPath,
+  tasksRejectedPath,
   writeSpecState,
 } from "./state.js";
 
@@ -203,18 +204,30 @@ export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
     }
 
     const content = stripFence(result.finalText);
-    const filePath =
-      phase === "requirements" ? requirementsPath(dir) : phase === "design" ? designPath(dir) : tasksPath(dir);
+
+    if (phase === "tasks") {
+      return finishTasksGeneration(name, dir, state, content);
+    }
+
+    const filePath = phase === "requirements" ? requirementsPath(dir) : designPath(dir);
     await fs.writeFile(filePath, content, "utf8");
 
     // R4.1/R4.2: sets `phase` itself to "draft" and demotes approved
-    // downstream phases; R4.4 (tasks-specific reset) layers on in task 10.
+    // downstream phases.
     const cascade = applyDemotionCascade(state, phase);
     await writeSpecState(dir, cascade.state);
 
     onEvent({ type: "spec_event", specName: name, phase, status: "draft" }); // R5.3
-    for (const demotedPhase of cascade.demoted) {
-      // R4.3: one spec_event + one awaited onPhaseChange per demoted phase.
+    await emitDemotions(name, dir, cascade.demoted);
+
+    return cascade.state;
+  }
+
+  /** R4.3 — one spec_event + one awaited onPhaseChange per phase demoted by
+   * a regeneration's cascade. Shared by generate()'s requirements/design
+   * path and finishTasksGeneration. */
+  async function emitDemotions(name: string, dir: string, demoted: SpecPhase[]): Promise<void> {
+    for (const demotedPhase of demoted) {
       onEvent({ type: "spec_event", specName: name, phase: demotedPhase, status: "demoted" });
       if (onPhaseChange) {
         await onPhaseChange({
@@ -225,8 +238,42 @@ export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
         });
       }
     }
+  }
 
-    return cascade.state;
+  /** R5.5 (validate before writing; reject to tasks.rejected.md) + R4.4
+   * (fresh task list always resets every status to pending; "tasks-reset"
+   * event when a previously-"done" task's progress is being discarded). */
+  async function finishTasksGeneration(
+    name: string,
+    dir: string,
+    state: SpecState,
+    content: string,
+  ): Promise<SpecState> {
+    const { tasks, errors } = parseTasks(content);
+    if (errors.length > 0) {
+      await fs.writeFile(tasksRejectedPath(dir), content, "utf8");
+      onEvent({
+        type: "error",
+        message: `generate: spec "${name}" phase "tasks" — rejected: ${errors[0]}`,
+      });
+      return state; // tasks.md and all statuses unchanged (R5.5)
+    }
+
+    const hadDone = state.tasks.some((t) => t.status === "done");
+    const freshTasks: SpecTask[] = tasks.map((t) => ({ ...t, status: "pending" as const }));
+    await fs.writeFile(tasksPath(dir), renderTasks(name, freshTasks), "utf8");
+
+    const cascade = applyDemotionCascade(state, "tasks"); // tasks has no downstream (R4.2)
+    const newState: SpecState = { ...cascade.state, tasks: freshTasks };
+    await writeSpecState(dir, newState);
+
+    onEvent({ type: "spec_event", specName: name, phase: "tasks", status: "draft" }); // R5.3
+    if (hadDone) {
+      onEvent({ type: "spec_event", specName: name, phase: "tasks", status: "tasks-reset" }); // R4.4
+    }
+    await emitDemotions(name, dir, cascade.demoted);
+
+    return newState;
   }
 
   async function approve(name: string, phase: SpecPhase): Promise<SpecState> {

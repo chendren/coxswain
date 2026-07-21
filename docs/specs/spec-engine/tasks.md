@@ -58,7 +58,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: correct AgentTask (kind, sessionId "spec:<name>", system=SPEC_SYSTEM, maxTurns per R5.2) asserted via fakeRunner.calls; fence-strip; write + draft + spec_event on end_turn; no write + error event on other stop reasons or blank text; regen demotion cascade fires events and awaits onPhaseChange with from/to.
   verify: pnpm --filter @cox/spec test -- -t "R5.3|R5.4|R4.3"
 
-- [ ] 10. Implement generate("tasks") with validation and rejects
+- [x] 10. Implement generate("tasks") with validation and rejects
   requirements: R5.5, R4.4
   complexity: 3
   accept: valid output → tasks.md written, statuses reset to pending, spec.json tasks populated; invalid output → tasks.rejected.md written, tasks.md and statuses untouched, error event with first parse error; "tasks-reset" event when done tasks existed.
