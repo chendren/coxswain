@@ -9,7 +9,7 @@ Check a box only after its `verify` command passes.
   accept: resolveWithin flags escapes via `..`/absolute paths; registry list/get; invalid inputs raise actionable errors
   verify: pnpm --filter @cox/tools test -- registry
 
-- [ ] 2. read tool
+- [x] 2. read tool
   requirements: R1 (support), R8.1, R9.2
   complexity: 2
   accept: numbered output, offset/limit, 2000-line + 2MB truncation markers; permissionFor null in all modes
