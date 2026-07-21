@@ -10,7 +10,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: all docs/00 commands + global flags registered (handlers may print "not implemented" and exit 1, except --help/--version); invalid -m tier exits 2 listing valid tiers; usage errors exit 2 via exitOverride; test/args.test.ts covers surface + exit codes by invoking the program with argv arrays.
       verify: pnpm --filter @cox/cli typecheck && pnpm --filter @cox/cli test
 
-- [ ] 2. deps.ts NotWiredError boundary
+- [x] 2. deps.ts NotWiredError boundary
       requirements: R8.2
       complexity: 2
       accept: loadDeps dynamic-imports all 8 engine packages, runtime-checks factory presence, throws NotWiredError naming the missing package; the single permitted unknown-cast is commented; a test asserts NotWiredError for current stubs and that main.ts has no static engine imports (grep-style test over source).

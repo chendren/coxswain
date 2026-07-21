@@ -1,0 +1,314 @@
+/**
+ * @cox/cli — the M1-safe NotWired boundary (R8.2).
+ *
+ * `loadDeps` is the ONLY place in this package allowed to import another
+ * `@cox/*` engine package (providers/router/ledger/agent/tools/spec/
+ * steering/hooks) — every other file reaches engines only through the
+ * `EngineDeps` values this function returns. Each package is dynamic-
+ * imported and runtime-checked for its factory before use; while a lane is
+ * still a stub (no factory exported), this throws `NotWiredError` naming
+ * that package so `cox replay`, `cox doctor --offline`, `--help`, and arg
+ * parsing keep working (docs/specs/tui-cli/design.md "deps.ts — the
+ * M1-safe boundary").
+ *
+ * Because `EngineDeps.agent`/`.specs` must be fully-constructed instances
+ * (an `AgentRunner`/`SpecEngine`, not a factory), this function also does
+ * the cross-wiring that docs/specs/tui-cli/design.md's "wire.ts order"
+ * section describes (registry → ledger → router → tools/steering/hooks →
+ * agent → specs), including the `route`/`preToolUse`/`postToolUse`/
+ * phase-hook closures — there is no way to hand back a working `agent`
+ * without having already built them. `wire.ts` builds the remaining
+ * session-level pieces (snapshot store, ledger-writer subscriber,
+ * `SessionController`) on top of what this returns. See
+ * `packages/cli/NOTES.md` for the full explanation of this split and the
+ * factory-signature mismatches against tui-cli's own design.md sketch.
+ */
+import { randomBytes } from "node:crypto";
+import { join } from "node:path";
+import {
+  pricingFor,
+  type AgentEvent,
+  type AgentRunner,
+  type BudgetState,
+  type ChatModel,
+  type CoxConfig,
+  type EventBus,
+  type HookEngine,
+  type HookOutcome,
+  type HookPayload,
+  type Ledger,
+  type PermissionMode,
+  type ProviderRegistry,
+  type Router,
+  type SpecEngine,
+  type SteeringStore,
+  type Tier,
+  type ToolRegistry,
+} from "@cox/core";
+
+export class NotWiredError extends Error {
+  readonly pkg: string;
+  constructor(pkg: string) {
+    super(`${pkg} not wired`);
+    this.name = "NotWiredError";
+    this.pkg = pkg;
+  }
+}
+
+export interface EngineDeps {
+  registry: ProviderRegistry;
+  router: Router;
+  ledger: Ledger;
+  agent: AgentRunner;
+  specs: SpecEngine;
+  steering: SteeringStore;
+  hooks: HookEngine;
+  tools: ToolRegistry;
+}
+
+/**
+ * `loadDeps` additionally stamps a generated session id, because
+ * `@cox/agent`'s real `createAgentRunner` binds `budgetState` as a zero-arg
+ * `() => Promise<BudgetState>` closure (docs/specs/agent-tools/design.md) —
+ * there is no per-call sessionId seam. `wire.ts` reuses this value as
+ * `SessionController.sessionId` so ledger writes, budget checks, and hook
+ * payloads all agree on one session identity. Not part of the `EngineDeps`
+ * shape tui-cli/design.md defines — an documented extra property, same
+ * spirit as `@cox/ledger`'s documented `lastReadSkippedLines`.
+ */
+export interface LoadedDeps extends EngineDeps {
+  sessionId: string;
+}
+
+function newSessionId(): string {
+  return `ses_${randomBytes(4).toString("hex")}`;
+}
+
+// ---------------------------------------------------------------------------
+// Per-package factory shapes, hand-transcribed from each lane's own
+// design.md (docs/specs/<lane>/design.md — read there, not here, for the
+// authoritative signature). Stub packages export none of these yet, so the
+// type TypeScript would otherwise infer from `import("@cox/x")` is just
+// whatever the current stub happens to export (a `PACKAGE` marker string) —
+// unusable. `safeImport` below casts through `unknown` to describe the
+// shape we expect once the lane lands; this is the ONLY place in this
+// package that does so. The runtime `need()` check (not the type system)
+// is what actually guards against stubs.
+// ---------------------------------------------------------------------------
+
+interface ProvidersModule {
+  createProviderRegistry?: (config: CoxConfig) => ProviderRegistry;
+  createFailoverChatModel?: (models: ChatModel[]) => ChatModel;
+}
+
+interface LedgerModule {
+  createLedger?: (deps: {
+    filePath: string;
+    config: CoxConfig;
+    pricing: typeof pricingFor;
+    now: () => string;
+  }) => Ledger;
+}
+
+interface RouterModule {
+  createRouter?: (deps: {
+    config: CoxConfig;
+    ledger: Ledger;
+    classifyModel: () => ChatModel;
+    now: () => string;
+  }) => Router;
+}
+
+interface ToolsModule {
+  createBuiltinTools?: (opts: { cwd: string; config: CoxConfig }) => ToolRegistry;
+}
+
+interface SteeringModule {
+  createSteeringStore?: (deps: { config: CoxConfig }) => SteeringStore;
+}
+
+interface HooksModule {
+  createHookEngine?: (deps: {
+    cwd: string;
+    config: CoxConfig;
+    env?: NodeJS.ProcessEnv;
+  }) => HookEngine;
+}
+
+interface AgentModule {
+  createAgentRunner?: (deps: {
+    router: Router;
+    modelForTier: (t: Tier) => ChatModel;
+    tools: ToolRegistry;
+    permissionMode: PermissionMode;
+    config: CoxConfig;
+    budgetState: () => Promise<BudgetState>;
+    preToolUse?: (p: HookPayload) => Promise<HookOutcome[]>;
+    postToolUse?: (p: HookPayload) => Promise<HookOutcome[]>;
+    now?: () => number;
+  }) => AgentRunner;
+}
+
+interface SpecModule {
+  createSpecEngine?: (deps: {
+    cwd: string;
+    runner: AgentRunner;
+    onEvent: (e: AgentEvent) => void;
+    onPhaseChange?: (p: HookPayload) => Promise<void>;
+    onTaskComplete?: (p: HookPayload) => Promise<void>;
+    now: () => string;
+  }) => SpecEngine;
+}
+
+/** The sole `unknown` cast in this package — see file header comment. */
+async function safeImport<T>(pkg: string, thunk: () => Promise<unknown>): Promise<T> {
+  try {
+    return (await thunk()) as T;
+  } catch {
+    throw new NotWiredError(pkg);
+  }
+}
+
+function need<T>(pkg: string, factory: T | undefined): T {
+  if (typeof factory !== "function") throw new NotWiredError(pkg);
+  return factory;
+}
+
+function mergeTierOverride(outcomes: HookOutcome[]): Tier | undefined {
+  for (let i = outcomes.length - 1; i >= 0; i--) {
+    const tier = outcomes[i]?.output?.tierOverride;
+    if (tier === "scout" || tier === "builder" || tier === "architect") return tier;
+  }
+  return undefined;
+}
+
+export async function loadDeps(
+  cfg: CoxConfig,
+  cwd: string,
+  bus: EventBus,
+): Promise<LoadedDeps> {
+  const now = () => new Date().toISOString();
+  const sessionId = newSessionId();
+
+  // 1. providers — registry + memoized per-tier failover chat models.
+  const providersMod = await safeImport<ProvidersModule>("@cox/providers", () =>
+    import("@cox/providers"),
+  );
+  const createProviderRegistry = need("@cox/providers", providersMod.createProviderRegistry);
+  const createFailoverChatModel = need("@cox/providers", providersMod.createFailoverChatModel);
+  const registry = createProviderRegistry(cfg);
+  const tierModelCache = new Map<Tier, ChatModel>();
+  const tierModel = (tier: Tier): ChatModel => {
+    const cached = tierModelCache.get(tier);
+    if (cached) return cached;
+    const entry = cfg.tiers[tier];
+    const models = [entry.primary, ...entry.fallbacks].map((ref) => registry.getModel(ref));
+    const model = createFailoverChatModel(models);
+    tierModelCache.set(tier, model);
+    return model;
+  };
+
+  // 2. ledger — the router's budget governor reads it.
+  const ledgerMod = await safeImport<LedgerModule>("@cox/ledger", () => import("@cox/ledger"));
+  const createLedger = need("@cox/ledger", ledgerMod.createLedger);
+  const ledger = createLedger({
+    filePath: join(cwd, ".cox", "ledger.jsonl"),
+    config: cfg,
+    pricing: pricingFor,
+    now,
+  });
+
+  // 3. router.
+  const routerMod = await safeImport<RouterModule>("@cox/router", () => import("@cox/router"));
+  const createRouter = need("@cox/router", routerMod.createRouter);
+  const router = createRouter({ config: cfg, ledger, classifyModel: () => tierModel("scout"), now });
+
+  // 4. tools, steering, hooks — siblings, no cross-deps among themselves.
+  const toolsMod = await safeImport<ToolsModule>("@cox/tools", () => import("@cox/tools"));
+  const createBuiltinTools = need("@cox/tools", toolsMod.createBuiltinTools);
+  const tools = createBuiltinTools({ cwd, config: cfg });
+
+  const steeringMod = await safeImport<SteeringModule>("@cox/steering", () =>
+    import("@cox/steering"),
+  );
+  const createSteeringStore = need("@cox/steering", steeringMod.createSteeringStore);
+  const steering = createSteeringStore({ config: cfg });
+
+  const hooksMod = await safeImport<HooksModule>("@cox/hooks", () => import("@cox/hooks"));
+  const createHookEngine = need("@cox/hooks", hooksMod.createHookEngine);
+  const hooks = createHookEngine({ cwd, config: cfg });
+
+  // 5. agent. `@cox/agent`'s createAgentRunner takes a `router: Router`
+  // (the whole interface), not a `route` closure — so the "fire
+  // PreModelCall, merge tierOverride" step from design.md's wire.ts sketch
+  // is implemented here as a Router decorator (INTEGRATION-NOTES.md).
+  // Blocking on PreModelCall is intentionally not implemented: docs/01's
+  // dataflow only documents "[may override tier]" for this hook (unlike
+  // UserPromptSubmit's "[may block]"), and `Router.route`'s return type has
+  // no channel to signal cancellation.
+  const agentMod = await safeImport<AgentModule>("@cox/agent", () => import("@cox/agent"));
+  const createAgentRunner = need("@cox/agent", agentMod.createAgentRunner);
+
+  const routerWithHooks: Router = {
+    async route(input) {
+      const outcomes = await hooks.fire({
+        event: "PreModelCall",
+        sessionId: input.sessionId,
+        cwd,
+        data: { kind: input.kind, tier: input.userOverrideTier },
+      });
+      if (outcomes.length > 0) {
+        bus.emit({ type: "hook_fired", event: "PreModelCall", outcomes });
+      }
+      const tierOverride = mergeTierOverride(outcomes);
+      return router.route(tierOverride ? { ...input, hookOverrideTier: tierOverride } : input);
+    },
+    reconsider(current, input, signals) {
+      return router.reconsider(current, input, signals);
+    },
+  };
+
+  const agent = createAgentRunner({
+    router: routerWithHooks,
+    modelForTier: tierModel,
+    tools,
+    permissionMode: cfg.permissions.mode,
+    config: cfg,
+    budgetState: () => ledger.budgetState(sessionId),
+    preToolUse: (p) => hooks.fire(p),
+    postToolUse: (p) => hooks.fire(p),
+  });
+
+  // 6. specs. Decorates `agent` to prepend steering to the fixed
+  // SPEC_SYSTEM prompt (docs/specs/spec-engine/design.md: "cli wrapping the
+  // runner dep with a decorator... the engine neither knows nor imports
+  // @cox/steering").
+  const specMod = await safeImport<SpecModule>("@cox/spec", () => import("@cox/spec"));
+  const createSpecEngine = need("@cox/spec", specMod.createSpecEngine);
+
+  const runnerWithSteering: AgentRunner = {
+    async run(task, onEvent, signal) {
+      const docs = await steering.loadAll(cwd);
+      const sel = steering.select(docs, [], []);
+      const stableSteering = sel.systemDocs.map((d) => d.body).join("\n\n");
+      const system = stableSteering ? `${stableSteering}\n\n${task.system}` : task.system;
+      return agent.run({ ...task, system }, onEvent, signal);
+    },
+  };
+
+  const fireHookNotification = async (p: HookPayload): Promise<void> => {
+    const outcomes = await hooks.fire(p);
+    if (outcomes.length > 0) bus.emit({ type: "hook_fired", event: p.event, outcomes });
+  };
+
+  const specs = createSpecEngine({
+    cwd,
+    runner: runnerWithSteering,
+    onEvent: (e) => bus.emit(e),
+    onPhaseChange: fireHookNotification,
+    onTaskComplete: fireHookNotification,
+    now,
+  });
+
+  return { registry, router, ledger, agent, specs, steering, hooks, tools, sessionId };
+}
