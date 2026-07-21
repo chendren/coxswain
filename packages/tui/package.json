@@ -7,7 +7,7 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "FORCE_COLOR=1 vitest run"
   },
   "dependencies": {
     "@cox/core": "workspace:*",

@@ -4,3 +4,4 @@
  * + EventBus + getSnapshot, passed in by @cox/cli.
  */
 export { formatTokens, formatUsd, formatDuration, budgetBar } from "./format";
+export { startTui, type TuiOptions, type TuiHandle } from "./app";

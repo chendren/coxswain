@@ -22,7 +22,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: ink/react/ink-testing-library added; tsconfig jsx react-jsx; format.ts implements formatTokens/formatUsd/formatDuration/budgetBar/cachePct per design rules with table-driven tests incl. edge cases (null cost, zero denominators, >1M tokens).
       verify: pnpm --filter @cox/tui typecheck && pnpm --filter @cox/tui test -- format
 
-- [ ] 4. Minimal App + Transcript (text path) 
+- [x] 4. Minimal App + Transcript (text path) 
       requirements: R1.1 (partial), R1.2, R1.6
       complexity: 3
       accept: startTui mounts App; user_prompt, text_delta streaming, agent_message dedupe rule, error, turn_done settle behavior render per mapping table; ink-testing-library test streams deltas then agent_message and asserts single occurrence of the text.
