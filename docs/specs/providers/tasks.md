@@ -86,7 +86,7 @@ paste its output in the commit body. All tests offline, no env vars.
         retry, 429 with retry asserted.
       verify: pnpm --filter @cox/providers test -- -t "R2.1"
 
-- [ ] 11. Failover wrapper
+- [x] 11. Failover wrapper
       requirements: R4.1, R4.2, R4.3
       complexity: 3
       accept: advances on retryable pre-first-event failures; rethrows
