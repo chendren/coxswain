@@ -21,7 +21,7 @@ Check a box only after its `verify` command passes.
   accept: parent dirs created; OUTSIDE PROJECT summary when escaping cwd, prompted even in acceptEdits/yolo per matrix
   verify: pnpm --filter @cox/tools test -- write
 
-- [ ] 4. diff.ts + edit tool
+- [x] 4. diff.ts + edit tool
   requirements: R8.3
   complexity: 3
   accept: exactly-once match enforced with count-naming errors; unified diff in PermissionRequest.detail; multi-line old_string works
