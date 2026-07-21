@@ -7,10 +7,20 @@
   "exports": { ".": "./src/index.ts" },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@cox/core": "workspace:*"
+    "@cox/core": "workspace:*",
+    "@cox/tui": "workspace:*",
+    "@cox/providers": "workspace:*",
+    "@cox/router": "workspace:*",
+    "@cox/ledger": "workspace:*",
+    "@cox/agent": "workspace:*",
+    "@cox/tools": "workspace:*",
+    "@cox/spec": "workspace:*",
+    "@cox/steering": "workspace:*",
+    "@cox/hooks": "workspace:*",
+    "commander": "^12.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0"

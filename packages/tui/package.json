@@ -10,9 +10,13 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@cox/core": "workspace:*"
+    "@cox/core": "workspace:*",
+    "ink": "^5.0.0",
+    "react": "^18.3.0"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "ink-testing-library": "^4.0.0"
   }
 }

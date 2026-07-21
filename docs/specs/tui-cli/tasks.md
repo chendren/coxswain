@@ -4,7 +4,7 @@ Execute top-to-bottom. One commit per task: `ws/tui-cli: task N — <title>`.
 A task is done only when `accept:` holds and `verify:` passes (paste output
 into the commit body). Never edit `packages/core` or other lanes' packages.
 
-- [ ] 1. CLI skeleton: commander program, flags, exit codes
+- [x] 1. CLI skeleton: commander program, flags, exit codes
       requirements: R7.1, R7.2
       complexity: 2
       accept: all docs/00 commands + global flags registered (handlers may print "not implemented" and exit 1, except --help/--version); invalid -m tier exits 2 listing valid tiers; usage errors exit 2 via exitOverride; test/args.test.ts covers surface + exit codes by invoking the program with argv arrays.
