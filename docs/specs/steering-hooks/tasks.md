@@ -57,7 +57,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: user hooks precede project hooks; missing files silent; malformed JSON and unknown-event entries skipped with recorded load warnings; user path resolved from injected env.HOME (tests never read real ~); `yaml`+`picomatch` deps added, `--passWithNoTests` removed.
       verify: pnpm --filter @cox/hooks test -- config
 
-- [ ] 9. Agent hook parsing (.cox/hooks/*.md)
+- [x] 9. Agent hook parsing (.cox/hooks/*.md)
       requirements: R6.1, R6.2, R6.3
       complexity: 2
       accept: name=stem, prompt=trimmed body, tier defaults scout; fileSave requires pattern else skipped+warning; invalid tier skipped+warning; empty body skipped+warning; manual trigger parsed; agentHooks() returns configs without firing anything.

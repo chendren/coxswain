@@ -141,3 +141,127 @@ describe("createHookConfigLoader — hooks.json", () => {
     expect(loader.commandHooks()).toHaveLength(1);
   });
 });
+
+describe("createHookConfigLoader — .cox/hooks/*.md agent hooks", () => {
+  it("R6.1: name is the file stem, prompt is the trimmed body, tier defaults to scout", async () => {
+    const cwd = await makeTmpCwd();
+    const home = await makeTmpHome();
+    await writeTextFile(
+      join(cwd, ".cox", "hooks", "lint-on-save.md"),
+      '---\ntrigger:\n  type: fileSave\n  pattern: "src/**/*.ts"\n---\n\n  Run the linter and fix issues.  \n\n',
+    );
+
+    const loader = createHookConfigLoader({ cwd, env: testEnv({ HOME: home }) });
+    const hooks = loader.agentHookConfigs();
+
+    expect(hooks).toHaveLength(1);
+    expect(hooks[0]).toEqual({
+      name: "lint-on-save",
+      trigger: { type: "fileSave", pattern: "src/**/*.ts" },
+      tier: "scout",
+      prompt: "Run the linter and fix issues.",
+    });
+  });
+
+  it("R6.1: tier is read from front matter when explicitly valid", async () => {
+    const cwd = await makeTmpCwd();
+    const home = await makeTmpHome();
+    await writeTextFile(
+      join(cwd, ".cox", "hooks", "big-refactor.md"),
+      "---\ntrigger: manual\ntier: architect\n---\nDo a big refactor.\n",
+    );
+
+    const loader = createHookConfigLoader({ cwd, env: testEnv({ HOME: home }) });
+
+    expect(loader.agentHookConfigs()[0]?.tier).toBe("architect");
+  });
+
+  it("R6.2: fileSave without a pattern is skipped with a recorded warning", async () => {
+    const cwd = await makeTmpCwd();
+    const home = await makeTmpHome();
+    await writeTextFile(
+      join(cwd, ".cox", "hooks", "broken.md"),
+      "---\ntrigger:\n  type: fileSave\n---\nDo something.\n",
+    );
+
+    const loader = createHookConfigLoader({ cwd, env: testEnv({ HOME: home }) });
+
+    expect(loader.agentHookConfigs()).toEqual([]);
+    expect(loader.drainWarnings().length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("R6.2: an invalid tier is skipped with a recorded warning", async () => {
+    const cwd = await makeTmpCwd();
+    const home = await makeTmpHome();
+    await writeTextFile(
+      join(cwd, ".cox", "hooks", "bad-tier.md"),
+      "---\ntrigger: manual\ntier: overlord\n---\nDo something.\n",
+    );
+
+    const loader = createHookConfigLoader({ cwd, env: testEnv({ HOME: home }) });
+
+    expect(loader.agentHookConfigs()).toEqual([]);
+    expect(loader.drainWarnings().length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("R6.2: an empty body is skipped with a recorded warning", async () => {
+    const cwd = await makeTmpCwd();
+    const home = await makeTmpHome();
+    await writeTextFile(
+      join(cwd, ".cox", "hooks", "empty.md"),
+      "---\ntrigger: manual\n---\n   \n\n",
+    );
+
+    const loader = createHookConfigLoader({ cwd, env: testEnv({ HOME: home }) });
+
+    expect(loader.agentHookConfigs()).toEqual([]);
+    expect(loader.drainWarnings().length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("R6.3: trigger: { type: manual } (nested YAML mapping) is parsed with a manual trigger", async () => {
+    const cwd = await makeTmpCwd();
+    const home = await makeTmpHome();
+    await writeTextFile(
+      join(cwd, ".cox", "hooks", "review.md"),
+      "---\ntrigger:\n  type: manual\n---\nReview the diff.\n",
+    );
+
+    const loader = createHookConfigLoader({ cwd, env: testEnv({ HOME: home }) });
+
+    expect(loader.agentHookConfigs()[0]?.trigger).toEqual({ type: "manual" });
+  });
+
+  it("R6.3: trigger: manual (bare-string equivalent YAML) is parsed with a manual trigger", async () => {
+    const cwd = await makeTmpCwd();
+    const home = await makeTmpHome();
+    await writeTextFile(
+      join(cwd, ".cox", "hooks", "review2.md"),
+      "---\ntrigger: manual\n---\nReview the diff.\n",
+    );
+
+    const loader = createHookConfigLoader({ cwd, env: testEnv({ HOME: home }) });
+
+    expect(loader.agentHookConfigs()[0]?.trigger).toEqual({ type: "manual" });
+  });
+
+  it("a file with no usable front matter is skipped with a recorded warning", async () => {
+    const cwd = await makeTmpCwd();
+    const home = await makeTmpHome();
+    await writeTextFile(join(cwd, ".cox", "hooks", "no-frontmatter.md"), "Just a prompt, no config.\n");
+
+    const loader = createHookConfigLoader({ cwd, env: testEnv({ HOME: home }) });
+
+    expect(loader.agentHookConfigs()).toEqual([]);
+    expect(loader.drainWarnings().length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("a missing .cox/hooks directory does not throw and yields no agent hooks", async () => {
+    const cwd = await makeTmpCwd();
+    const home = await makeTmpHome();
+
+    const loader = createHookConfigLoader({ cwd, env: testEnv({ HOME: home }) });
+
+    expect(loader.agentHookConfigs()).toEqual([]);
+    expect(loader.drainWarnings()).toEqual([]);
+  });
+});
