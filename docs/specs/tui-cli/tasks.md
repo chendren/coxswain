@@ -76,7 +76,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: oneshot.ts routes kind:"oneshot", streams a tool-less ChatModel call, prints text, writes a LedgerEntry directly; suggest's last stdout line is the bare command; test uses an inline fake ChatModel + fake Router/Ledger (local test doubles only — no @cox/providers import).
       verify: pnpm --filter @cox/cli test -- oneshot
 
-- [ ] 13. Composition root: wire.ts + session.ts + ledger writer
+- [x] 13. Composition root: wire.ts + session.ts + ledger writer
       requirements: R8.1, R8.3, R8.4
       complexity: 4
       accept: wire.ts builds the graph in design order with the route/preToolUse/postToolUse/phase-hook closures; session.ts implements submitPrompt (hook gate → steering assembly stable-first → agent.run with abort), resolvePermission bridging, history retention; ledger-writer pairs routing_decision+model_call_finished into entries and emits budget_alert on level≠ok; unit-tested with local fakes for every engine (NotWired paths untouched).

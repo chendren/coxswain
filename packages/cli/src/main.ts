@@ -8,8 +8,13 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
-import { TIERS, type Tier } from "@cox/core";
+import { EventBus, loadConfig, TIERS, type Tier } from "@cox/core";
+import { startTui } from "@cox/tui";
 import { runReplay } from "./commands/replay";
+import { runOneshot, type OneshotKind } from "./commands/oneshot";
+import { loadDeps } from "./deps";
+import { buildSession } from "./wire";
+import { runPrint } from "./print";
 
 /** Thrown by command handlers to exit with a specific code without a stack trace dump. */
 export class CliExit extends Error {
@@ -71,6 +76,24 @@ function notImplemented(command: string): never {
   throw new CliExit(1, `not implemented yet: cox ${command}`);
 }
 
+function resolveCwd(opts: GlobalOpts): string {
+  return resolve(opts.cwd ?? process.cwd());
+}
+
+async function runOneshotCommand(kind: OneshotKind, textParts: string[], command: Command): Promise<void> {
+  const opts = command.optsWithGlobals<GlobalOpts>();
+  const cwd = resolveCwd(opts);
+  const cfg = loadConfig(cwd);
+  const bus = new EventBus();
+  const deps = await loadDeps(cfg, cwd, bus);
+  await runOneshot(kind, textParts.join(" "), {
+    router: deps.router,
+    tierModel: deps.tierModel,
+    ledger: deps.ledger,
+    sessionId: deps.sessionId,
+  });
+}
+
 /** Builds the commander program. Pure — no process.exit, no static engine imports. */
 export function createProgram(io: CliIo = REAL_IO): Command {
   const program = new Command();
@@ -85,9 +108,36 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     .showHelpAfterError(false);
   addGlobalOptions(program);
 
-  // Bare `cox` — interactive session.
-  program.action(async () => {
-    notImplemented("(interactive session)");
+  // Bare `cox` — interactive session, or --print <prompt> for one plain
+  // (non-Ink) turn (R6.1). Engines are still stubs at this point in the
+  // build; buildSession's NotWiredError propagates as a normal exit-1
+  // runtime error (R8.2) until every lane lands.
+  program.action(async (_options: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts>();
+    const cwd = resolveCwd(opts);
+    const cfg = loadConfig(cwd);
+    const bus = new EventBus();
+
+    if (opts.print) {
+      const session = await buildSession(cfg, cwd, bus, opts.model);
+      const code = await runPrint(opts.print, {
+        bus,
+        controller: session.controller,
+        yolo: opts.yolo,
+      });
+      throw new CliExit(code);
+    }
+
+    if (!process.stdout.isTTY) {
+      throw new CliExit(
+        2,
+        "refusing to start an interactive session on a non-TTY stdout; use --print <prompt>",
+      );
+    }
+
+    const session = await buildSession(cfg, cwd, bus, opts.model);
+    const tui = startTui({ bus, controller: session.controller, getSnapshot: session.getSnapshot });
+    await tui.waitUntilExit();
   });
 
   const spec = program.command("spec").description("spec-driven feature workflow");
@@ -124,11 +174,15 @@ export function createProgram(io: CliIo = REAL_IO): Command {
 
   addGlobalOptions(
     program.command("explain <text...>").description("one-shot explanation, always scout tier"),
-  ).action(async () => notImplemented("explain"));
+  ).action(async (text: string[], _o: GlobalOpts, command: Command) => {
+    await runOneshotCommand("explain", text, command);
+  });
 
   addGlobalOptions(
     program.command("suggest <text...>").description("one-shot shell suggestion, scout tier"),
-  ).action(async () => notImplemented("suggest"));
+  ).action(async (text: string[], _o: GlobalOpts, command: Command) => {
+    await runOneshotCommand("suggest", text, command);
+  });
 
   addGlobalOptions(
     program

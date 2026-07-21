@@ -142,5 +142,35 @@ The integrator (M2) resolves these and logs any core changes under
   `AgentEvent` variant so consumers don't have to infer it from a
   different, only-conventionally-paired event.
 
+## 2026-07-21 — tui-cli (task 13, requestPermission bridging)
+
+- Blocked on: design.md's session.ts section says `resolvePermission(d)
+  resolves the promise created by the wired ToolContext.requestPermission
+  (cli supplies that function when constructing tools/agent...)` — but
+  agent-tools/design.md's *published* `createAgentRunner` signature
+  (`{router, modelForTier, tools, permissionMode, config, budgetState,
+  preToolUse?, postToolUse?, now?}`) has no `requestPermission` parameter
+  at all, and no other documented seam exists for `SessionController.
+  resolvePermission` to reach whatever promise the real agent runner's
+  internal `tool.permissionFor` / `ctx.requestPermission` gate is awaiting.
+- Workaround taken: `packages/cli/src/deps.ts` adds `requestPermission`
+  to its *local* `AgentModule` factory-shape type (the one it casts the
+  dynamically-imported module through) and passes an implementation when
+  calling `createAgentRunner(...)`: emits `permission_request` on the bus
+  and parks the resolver; `LoadedDeps.resolvePermission` (also a new,
+  documented-as-extra property) calls that parked resolver.
+  `session.ts`'s `SessionController.resolvePermission` just forwards to
+  it. If the real `@cox/agent` factory doesn't accept a
+  `requestPermission` property, this is silently ignored (plain JS
+  objects don't reject unknown properties) and interactive/print-mode
+  permission resolution simply won't connect end-to-end until this gap is
+  closed — everything *up to* that connection point (the bridge itself,
+  `resolvePermission`'s forwarding, the emitted event) is implemented and
+  unit-tested with local fakes (`test/session.test.ts`).
+- Proposed contract change: add `requestPermission: (req: PermissionRequest)
+  => Promise<PermissionDecision>` to `createAgentRunner`'s published deps
+  in agent-tools/design.md, matching what tui-cli/design.md already
+  assumes cli can supply.
+
 ## Contract changes
 (none yet)

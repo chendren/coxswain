@@ -99,10 +99,12 @@ describe("R7.2: exit codes", () => {
     // The root command owns a default action (bare `cox`), so a stray
     // top-level token is treated as an argument to it rather than a
     // command-not-found error — commander behavior when excess arguments
-    // are allowed on a command that has its own action.
+    // are allowed on a command that has its own action. It still reaches
+    // the default action's own logic (R6.1: non-TTY stdout without
+    // --print is a usage error) rather than "unknown command".
     const { io } = captureIo();
     const code = await runCli(["node", "cox", "bogus"], io);
-    expect(code).toBe(1);
+    expect(code).toBe(2);
   });
 
   it("unknown option exits 2", async () => {
@@ -117,10 +119,17 @@ describe("R7.2: exit codes", () => {
     expect(code).toBe(2);
   });
 
-  it("bare invocation (interactive session) is a runtime exit 1 while unimplemented/unwired", async () => {
+  it("R6.1: bare invocation on a non-TTY stdout without --print is a usage error (exit 2)", async () => {
     const { io } = captureIo();
     const code = await runCli(["node", "cox"], io);
+    expect(code).toBe(2);
+  });
+
+  it("--print reaches the real composition root and fails with a NotWiredError runtime exit 1 (engines are still stubs)", async () => {
+    const { io, err } = captureIo();
+    const code = await runCli(["node", "cox", "--print", "hello"], io);
     expect(code).toBe(1);
+    expect(err.join("")).toMatch(/not wired/);
   });
 
   it("one-shot commands are a runtime exit 1 while unimplemented/unwired", async () => {

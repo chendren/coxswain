@@ -37,7 +37,9 @@ import {
   type HookOutcome,
   type HookPayload,
   type Ledger,
+  type PermissionDecision,
   type PermissionMode,
+  type PermissionRequest,
   type ProviderRegistry,
   type Router,
   type SpecEngine,
@@ -75,9 +77,28 @@ export interface EngineDeps {
  * payloads all agree on one session identity. Not part of the `EngineDeps`
  * shape tui-cli/design.md defines — an documented extra property, same
  * spirit as `@cox/ledger`'s documented `lastReadSkippedLines`.
+ *
+ * Also exposes `resolvePermission`: design.md's session.ts section says
+ * "resolvePermission(d) resolves the promise created by the wired
+ * ToolContext.requestPermission (cli supplies that function when
+ * constructing tools/agent...)" — but agent-tools/design.md's *published*
+ * `createAgentRunner` signature has no `requestPermission` parameter at
+ * all, so there is no documented seam to inject one. `loadDeps` adds it
+ * speculatively (see the `AgentModule` type below and
+ * INTEGRATION-NOTES.md) and parks the resolver here so `session.ts` can
+ * bridge `SessionController.resolvePermission` to it without needing to
+ * know how `agent` is actually wired inside.
  */
 export interface LoadedDeps extends EngineDeps {
   sessionId: string;
+  resolvePermission: (decision: PermissionDecision) => void;
+  /**
+   * The per-tier failover ChatModel closure built in step 1, exposed so
+   * commands/oneshot.ts (explain/suggest, R9.1) can use the exact same
+   * tier -> model resolution `agent` uses, instead of reconstructing a
+   * simpler (fallback-less) version from `registry` itself.
+   */
+  tierModel: (tier: Tier) => ChatModel;
 }
 
 function newSessionId(): string {
@@ -145,6 +166,12 @@ interface AgentModule {
     budgetState: () => Promise<BudgetState>;
     preToolUse?: (p: HookPayload) => Promise<HookOutcome[]>;
     postToolUse?: (p: HookPayload) => Promise<HookOutcome[]>;
+    // NOT in agent-tools/design.md's published signature — added
+    // speculatively per tui-cli/design.md's own assumption that cli
+    // supplies this when constructing agent/tools. Ignored (harmlessly,
+    // real JS objects don't reject unknown properties) if the real
+    // factory doesn't accept it; see INTEGRATION-NOTES.md.
+    requestPermission?: (req: PermissionRequest) => Promise<PermissionDecision>;
     now?: () => number;
   }) => AgentRunner;
 }
@@ -268,6 +295,22 @@ export async function loadDeps(
     },
   };
 
+  // Bridges SessionController.resolvePermission (session.ts) to whatever
+  // ToolContext.requestPermission the real agent runner ends up calling —
+  // see the LoadedDeps and AgentModule comments above for why this is
+  // speculative rather than a documented seam.
+  let pendingPermissionResolve: ((d: PermissionDecision) => void) | null = null;
+  const requestPermission = (req: PermissionRequest): Promise<PermissionDecision> =>
+    new Promise((resolve) => {
+      pendingPermissionResolve = resolve;
+      bus.emit({ type: "permission_request", request: req });
+    });
+  const resolvePermission = (decision: PermissionDecision): void => {
+    const resolve = pendingPermissionResolve;
+    pendingPermissionResolve = null;
+    resolve?.(decision);
+  };
+
   const agent = createAgentRunner({
     router: routerWithHooks,
     modelForTier: tierModel,
@@ -277,6 +320,7 @@ export async function loadDeps(
     budgetState: () => ledger.budgetState(sessionId),
     preToolUse: (p) => hooks.fire(p),
     postToolUse: (p) => hooks.fire(p),
+    requestPermission,
   });
 
   // 6. specs. Decorates `agent` to prepend steering to the fixed
@@ -310,5 +354,17 @@ export async function loadDeps(
     now,
   });
 
-  return { registry, router, ledger, agent, specs, steering, hooks, tools, sessionId };
+  return {
+    registry,
+    router,
+    ledger,
+    agent,
+    specs,
+    steering,
+    hooks,
+    tools,
+    sessionId,
+    resolvePermission,
+    tierModel,
+  };
 }
