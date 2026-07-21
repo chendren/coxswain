@@ -1,6 +1,5 @@
 /**
- * @cox/spec — STUB. Implemented by the "spec" workstream.
- * Contract: import types from @cox/core only. See docs/specs/ for your
- * requirements/design/tasks and docs/04-CONVENTIONS.md before writing code.
+ * @cox/spec — the Kiro-style spec-coding engine (requirements → design →
+ * tasks → execution). See docs/specs/spec-engine/{requirements,design}.md.
  */
-export const PACKAGE = "@cox/spec";
+export { createSpecEngine, type SpecEngineDeps } from "./engine.js";
