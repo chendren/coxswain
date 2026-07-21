@@ -198,6 +198,7 @@ export function createAgentRunner(deps: AgentRunnerDeps): AgentRunner {
             preToolUse: deps.preToolUse,
             postToolUse: deps.postToolUse,
             requestPermission: deps.requestPermission,
+            signal,
           });
           results.push(result);
           tracker.record(call, result); // R4.1, R4.2
@@ -285,6 +286,7 @@ interface ExecOpts {
   preToolUse?: (p: HookPayload) => Promise<HookOutcome[]>;
   postToolUse?: (p: HookPayload) => Promise<HookOutcome[]>;
   requestPermission: (req: PermissionRequest) => Promise<PermissionDecision>;
+  signal?: AbortSignal;
 }
 
 // R3.1, R3.3: brackets the tool's full handling (hooks + permission + exec).
@@ -336,6 +338,7 @@ async function runOneCall(call: ToolCall, opts: ExecOpts): Promise<ToolResult> {
   const ctx: ToolContext = {
     cwd: opts.cwd,
     sessionId: opts.sessionId,
+    signal: opts.signal,
     requestPermission: opts.requestPermission,
     emit: opts.onEvent,
   };

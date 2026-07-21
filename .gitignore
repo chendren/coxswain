@@ -6,3 +6,4 @@ dist/
 .cox/ledger.jsonl
 .cox/sessions/
 coverage/
+.claude/

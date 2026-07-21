@@ -325,6 +325,8 @@ export type PermissionDecision = "allow" | "allowAlways" | "deny";
 export interface ToolContext {
   cwd: string;
   sessionId: string;
+  /** Run-level abort; long-running tools (bash, subprocesses) must observe it. */
+  signal?: AbortSignal;
   /** Resolves permission requests (TUI prompt, or policy in yolo/CI mode). */
   requestPermission(req: PermissionRequest): Promise<PermissionDecision>;
   emit(event: AgentEvent): void;

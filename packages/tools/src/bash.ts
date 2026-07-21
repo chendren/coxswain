@@ -1,5 +1,12 @@
 import { spawn } from "node:child_process";
-import type { CoxConfig, PermissionMode, PermissionRequest, Tool, ToolResult } from "@cox/core";
+import type {
+  CoxConfig,
+  PermissionMode,
+  PermissionRequest,
+  Tool,
+  ToolContext,
+  ToolResult,
+} from "@cox/core";
 import { expectObject, expectOptionalNumber, expectString } from "./validate";
 
 const NAME = "bash";
@@ -35,7 +42,12 @@ function capOutput(text: string, max: number): { text: string; truncated: boolea
   return { text: text.slice(0, max), truncated: true };
 }
 
-function runCommand(command: string, cwd: string, timeoutSec: number): Promise<ToolResult> {
+function runCommand(
+  command: string,
+  cwd: string,
+  timeoutSec: number,
+  signal?: AbortSignal,
+): Promise<ToolResult> {
   return new Promise((resolve) => {
     const shell = process.env.SHELL ?? "/bin/sh";
     const child = spawn(shell, ["-c", command], { cwd, stdio: ["ignore", "pipe", "pipe"] });
@@ -46,13 +58,24 @@ function runCommand(command: string, cwd: string, timeoutSec: number): Promise<T
 
     let settled = false;
     let timedOut = false;
+    let aborted = false;
     let killTimer: NodeJS.Timeout | undefined;
 
-    const timer = setTimeout(() => {
-      timedOut = true;
+    const killChild = () => {
       child.kill("SIGTERM");
       killTimer = setTimeout(() => child.kill("SIGKILL"), KILL_GRACE_MS);
       killTimer.unref?.();
+    };
+    const onAbort = () => {
+      aborted = true;
+      killChild();
+    };
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener("abort", onAbort, { once: true });
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      killChild();
     }, timeoutSec * 1000);
     timer.unref?.();
 
@@ -61,6 +84,7 @@ function runCommand(command: string, cwd: string, timeoutSec: number): Promise<T
       settled = true;
       clearTimeout(timer);
       if (killTimer) clearTimeout(killTimer);
+      signal?.removeEventListener("abort", onAbort);
       resolve(result);
     };
 
@@ -74,6 +98,11 @@ function runCommand(command: string, cwd: string, timeoutSec: number): Promise<T
       let out = text;
       if (truncated) out += `\n[truncated: output exceeds ${MAX_OUTPUT_CHARS} chars]`;
 
+      if (aborted) {
+        out += `\n[error] aborted by user`;
+        finish({ content: out, isError: true });
+        return;
+      }
       if (timedOut) {
         out += `\n[error] timed out after ${timeoutSec}s`;
         finish({ content: out, isError: true });
@@ -127,7 +156,7 @@ export function createBashTool(opts: { cwd: string; config: CoxConfig }): Tool {
       if (mode === "yolo") return null;
       return { toolName: NAME, summary: `bash: ${summarize(command)}`, detail: command };
     },
-    async execute(input: unknown): Promise<ToolResult> {
+    async execute(input: unknown, ctx: ToolContext): Promise<ToolResult> {
       try {
         const obj = expectObject(input, NAME);
         const command = expectString(obj, "command", NAME);
@@ -145,7 +174,7 @@ export function createBashTool(opts: { cwd: string; config: CoxConfig }): Tool {
           };
         }
 
-        return await runCommand(command, opts.cwd, timeoutSec);
+        return await runCommand(command, opts.cwd, timeoutSec, ctx.signal);
       } catch (err) {
         return { content: err instanceof Error ? err.message : String(err), isError: true };
       }

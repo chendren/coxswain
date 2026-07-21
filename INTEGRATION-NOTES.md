@@ -60,4 +60,18 @@ The integrator (M2) resolves these and logs any core changes under
   frozen interfaces agree.
 
 ## Contract changes
-(none yet)
+
+### 2026-07-21 — integrator (resolving agent-tools notes)
+
+1. **`ToolContext.signal?: AbortSignal` added to `@cox/core`** (additive,
+   optional — no consumer breaks). `@cox/agent` now threads the run-level
+   signal through `ExecOpts` into every `ToolContext`; the bash tool races it
+   against its own timeout and reports `[error] aborted by user`
+   (SIGTERM → SIGKILL after the same 2s grace as timeout). Resolves note 1.
+2. **`requestPermission` in `createAgentRunner` deps is ratified** as built
+   (note 2's workaround is the accepted design): the runner emits
+   `permission_request` via `onEvent` for rendering and awaits
+   `deps.requestPermission(req)` for the decision. No core change needed —
+   deps shapes are package-internal. `@cox/cli`'s composition root must
+   bridge it to `SessionController.resolvePermission` via a pending-promise
+   map (verified at the tui-cli merge).
