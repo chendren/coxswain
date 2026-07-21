@@ -9,6 +9,7 @@ import type {
   Tier,
 } from "@cox/core";
 import { resolveStaticTier } from "./policy";
+import { buildEstimate } from "./estimate";
 
 export interface RouterDeps {
   config: CoxConfig;
@@ -40,15 +41,10 @@ export function createRouter(deps: RouterDeps): Router {
   }
 
   async function route(input: RoutingInput): Promise<RoutingDecision> {
-    const { tier, reasons } = await resolveTier(input);
+    const { tier, reasons, estOutputTokens } = await resolveTier(input);
     const model = deps.config.tiers[tier].primary;
-    return {
-      tier,
-      model,
-      reasons,
-      // TODO(task 7, R5.*): real pre-call estimate via buildEstimate.
-      estimate: { inputTokens: 0, estOutputTokens: 0, estCostUsd: null },
-    };
+    const estimate = buildEstimate(input, model, deps.classifyModel(), estOutputTokens);
+    return { tier, model, reasons, estimate };
   }
 
   async function reconsider(

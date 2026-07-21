@@ -41,7 +41,7 @@ first — the router depends on `budgetState`.
   - accept: `createRouter` matches the design signature; `resolveTier` implements override precedence and the full TaskKind table incl. `spec-task-exec` complexity mapping and missing-hint→builder; model = tier primary; reasons byte-match design §Reason strings
   - verify: pnpm --filter @cox/router test -- -t "R1"
 
-- [ ] 7. Estimates module
+- [x] 7. Estimates module
   - requirements: R5.1, R5.2, R5.3
   - complexity: 1
   - accept: `inputTokens = contextTokens + estimateTokens(text)`; kind-default output table exactly as R5.2; `estCostUsd` null when pricing unknown, else `computeCostUsd` with zero cache fields
