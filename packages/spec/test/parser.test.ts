@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SpecTask } from "@cox/core";
-import { parseTasks, renderTasks } from "../src/parser.js";
-import { VALID_TASKS_MD } from "./helpers.js";
+import { extractRequirementExcerpts, flipCheckbox, parseTasks, renderTasks } from "../src/parser.js";
+import { REQ_FIXTURE_MD, VALID_TASKS_MD } from "./helpers.js";
 
 describe("parseTasks", () => {
   it("R6.1: parses well-formed task lines incl. sub-ids", () => {
@@ -160,4 +160,81 @@ describe("R6.4: parse(render(tasks)) round-trip", () => {
       expect(parsed).toEqual(tasks);
     });
   }
+});
+
+describe("flipCheckbox", () => {
+  it("R6.5: flips exactly one line, byte-identical elsewhere", () => {
+    const before = VALID_TASKS_MD;
+    const after = flipCheckbox(before, "2");
+
+    const beforeLines = before.split("\n");
+    const afterLines = after.split("\n");
+    expect(afterLines).toHaveLength(beforeLines.length);
+
+    const changedLines = afterLines
+      .map((line, i) => (line === beforeLines[i] ? null : i))
+      .filter((i): i is number => i !== null);
+
+    expect(changedLines).toHaveLength(1);
+    const [idx] = changedLines;
+    if (idx === undefined) throw new Error("unreachable — length checked above");
+    expect(beforeLines[idx]).toBe("- [ ] 2. Implement core logic");
+    expect(afterLines[idx]).toBe("- [x] 2. Implement core logic");
+  });
+
+  it("R6.5: throws when the task line is absent", () => {
+    expect(() => flipCheckbox(VALID_TASKS_MD, "99")).toThrow(/99/);
+  });
+
+  it("R6.5: id boundaries disambiguate id 1 from 1.1 and from 10", () => {
+    const md = `- [ ] 1. Plain id
+  requirements: R1.1
+  complexity: 1
+
+- [ ] 1.1. Sub-id that looks like a prefix of "1"
+  requirements: R1.1
+  complexity: 1
+
+- [ ] 10. Id that starts with "1"
+  requirements: R1.1
+  complexity: 1
+`;
+    const flipped = flipCheckbox(md, "1");
+    const lines = flipped.split("\n");
+    expect(lines[0]).toBe("- [x] 1. Plain id");
+    expect(lines[4]).toBe("- [ ] 1.1. Sub-id that looks like a prefix of \"1\"");
+    expect(lines[8]).toBe("- [ ] 10. Id that starts with \"1\"");
+  });
+
+  it("R6.5: is idempotent when the box is already checked", () => {
+    const once = flipCheckbox(VALID_TASKS_MD, "1");
+    const twice = flipCheckbox(once, "1");
+    expect(twice).toBe(once);
+  });
+});
+
+describe("extractRequirementExcerpts", () => {
+  it("R7.4: extracts a single-line criterion", () => {
+    const out = extractRequirementExcerpts(REQ_FIXTURE_MD, ["R2.1"]);
+    expect(out).toBe("- R2.1: WHEN something happens, THE engine SHALL respond.");
+  });
+
+  it("R7.4: extracts a criterion together with its indented continuation lines", () => {
+    const out = extractRequirementExcerpts(REQ_FIXTURE_MD, ["R1.1"]);
+    expect(out).toContain("- R1.1: WHEN the fixture is loaded, THE engine SHALL provide criterion text");
+    expect(out).toContain("  that spans two lines, to exercise continuation-line extraction.");
+  });
+
+  it("R7.4: notes missing ids inline instead of throwing", () => {
+    const out = extractRequirementExcerpts(REQ_FIXTURE_MD, ["R9.9"]);
+    expect(out).toBe("(R9.9: not found in requirements.md)");
+  });
+
+  it("R7.4: preserves the given id order and joins multiple excerpts", () => {
+    const out = extractRequirementExcerpts(REQ_FIXTURE_MD, ["R2.2", "R1.2"]);
+    const r22Index = out.indexOf("R2.2");
+    const r12Index = out.indexOf("R1.2");
+    expect(r22Index).toBeGreaterThanOrEqual(0);
+    expect(r12Index).toBeGreaterThan(r22Index);
+  });
 });

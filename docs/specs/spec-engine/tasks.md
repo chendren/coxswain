@@ -28,7 +28,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: parseTasks per the design grammar (tolerant of human lines, collects errors); renderTasks emits the strict format; property test: parse(render(t)) deep-equals t for representative task lists incl. sub-ids; validation catches duplicate ids, bad complexity, bad R-ids, missing metadata lines.
   verify: pnpm --filter @cox/spec test -- -t "R6"
 
-- [ ] 5. Implement surgical checkbox flip and requirement excerpt extraction
+- [x] 5. Implement surgical checkbox flip and requirement excerpt extraction
   requirements: R6.5, R7.4
   complexity: 2
   accept: flipCheckbox changes exactly one line, byte-identical elsewhere (assert full-file equality); throws when task line absent; extractRequirementExcerpts pulls each "- R<id>: ..." line plus indented continuations from REQ_FIXTURE_MD, notes missing ids inline.

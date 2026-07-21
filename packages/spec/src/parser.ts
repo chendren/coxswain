@@ -135,15 +135,60 @@ export function renderTasks(name: string, tasks: SpecTask[]): string {
   return `${lines.join("\n").trimEnd()}\n`;
 }
 
-/** Surgical `- [ ]` → `- [x]` flip for exactly one task id (R6.5). Throws if
- * no line for that id exists; every other byte is untouched. */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Surgical `- [ ]` / `- [x]` → `- [x]` flip for exactly one task id (R6.5).
+ * Only the checkbox character changes; the id/title/every other line is
+ * byte-identical, so hand-edited titles (R8.1) survive. Throws if no task
+ * line for that id exists. Idempotent if already checked. */
 export function flipCheckbox(md: string, taskId: string): string {
-  throw new Error("not implemented");
+  const linePattern = new RegExp(`^(- \\[)([ x])(\\] ${escapeRegExp(taskId)}\\. )`);
+  const lines = md.split("\n");
+  const idx = lines.findIndex((l) => linePattern.test(l));
+  if (idx === -1) {
+    throw new Error(`flipCheckbox: no task line found for id "${taskId}"`);
+  }
+  const line = lines[idx];
+  if (line === undefined) {
+    throw new Error(`flipCheckbox: no task line found for id "${taskId}"`);
+  }
+  lines[idx] = line.replace(linePattern, "$1x$3");
+  return lines.join("\n");
 }
 
 /** Pulls the "- R<id>: ..." line (plus indented continuation lines) for each
  * id out of a requirements.md body, in the order given; notes missing ids
  * inline instead of throwing (R7.4). */
 export function extractRequirementExcerpts(reqMd: string, ids: string[]): string {
-  throw new Error("not implemented");
+  const lines = reqMd.split("\n");
+  const parts: string[] = [];
+
+  for (const id of ids) {
+    const startPattern = new RegExp(`^- ${escapeRegExp(id)}: `);
+    const idx = lines.findIndex((l) => startPattern.test(l));
+    if (idx === -1) {
+      parts.push(`(${id}: not found in requirements.md)`);
+      continue;
+    }
+    const first = lines[idx];
+    if (first === undefined) {
+      parts.push(`(${id}: not found in requirements.md)`);
+      continue;
+    }
+    const excerpt: string[] = [first];
+    let j = idx + 1;
+    while (j < lines.length) {
+      const l = lines[j];
+      if (l === undefined || l.trim() === "" || !/^\s/.test(l)) {
+        break;
+      }
+      excerpt.push(l);
+      j++;
+    }
+    parts.push(excerpt.join("\n"));
+  }
+
+  return parts.join("\n\n");
 }
