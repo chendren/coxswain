@@ -46,7 +46,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: assertCanGenerate/assertCanApprove/applyDemotionCascade in state.ts, tested directly without filesystem; every illegal transition from the requirements throws with the blocking phase named; cascade demotes only "approved" downstream phases.
   verify: pnpm --filter @cox/spec test -- -t "R2|R4.1|R4.2"
 
-- [ ] 8. Write prompts.ts verbatim from the design
+- [x] 8. Write prompts.ts verbatim from the design
   requirements: R5.1
   complexity: 1
   accept: SPEC_SYSTEM and the four builders copied exactly from design.md §Generation prompts; snapshot tests pin them (template drift must be a conscious diff).
