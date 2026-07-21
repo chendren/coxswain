@@ -93,7 +93,7 @@ Check a box only after its `verify` command passes.
   accept: streak counts reset on success; JSON-equal stuck detection; reconsider called with accumulated signals; swap emits escalation + new routing_decision and later requests hit the new model (asserted via two ScriptedChatModels)
   verify: pnpm --filter @cox/agent test -- escalation
 
-- [ ] 16. Termination matrix + NOTES.md + full green
+- [x] 16. Termination matrix + NOTES.md + full green
   requirements: R1.4, R1.5, R7.1, R7.2, R7.3
   complexity: 3
   accept: max_turns, budget_stop (hardStop true/false), warn-once alert, aborted (pre-iteration and mid-stream), max_tokens, refusal all covered; NOTES.md lists decisions (walker perf ceiling, cost-null caveat); typecheck+test green for both packages
