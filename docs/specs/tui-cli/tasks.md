@@ -52,7 +52,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: renders mockup segments from SessionSnapshot incl. ∞ when no limit, omitted spec segment, warn/exceeded colors; App refreshes via getSnapshot() on every event (test: snapshot fn call count ≥ event count).
       verify: pnpm --filter @cox/tui test -- statusline
 
-- [ ] 9. PermissionPrompt modal
+- [x] 9. PermissionPrompt modal
       requirements: R3.1, R3.2
       complexity: 3
       accept: modal shows summary+scrollable detail; y/a/n/Esc map to allow/allowAlways/deny/deny; resolvePermission called exactly once; input disabled while open (stdin writes during modal produce no submitPrompt calls).

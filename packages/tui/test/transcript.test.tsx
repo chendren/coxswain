@@ -204,7 +204,7 @@ describe("R1.1/R1.5: full event mapping (task 6) — one assertion per remaining
     expect(stripAnsi(lastFrame() ?? "")).toContain("⚙ read read src/routes/signup.ts");
   });
 
-  it("permission_request: modal placeholder shows the summary", async () => {
+  it("permission_request: opens a modal showing the summary (full behavior in test/permission.test.tsx)", async () => {
     const bus = new EventBus();
     const { lastFrame } = render(<App bus={bus} controller={fakeController()} getSnapshot={fakeSnapshot} />);
     bus.emit({
@@ -212,7 +212,7 @@ describe("R1.1/R1.5: full event mapping (task 6) — one assertion per remaining
       request: { toolName: "edit", summary: "edit src/routes/signup.ts", detail: "@@ -10,6 +10,12 @@ ..." },
     });
     await flush();
-    expect(stripAnsi(lastFrame() ?? "")).toContain("? permission: edit src/routes/signup.ts");
+    expect(stripAnsi(lastFrame() ?? "")).toContain("edit src/routes/signup.ts");
   });
 
   it("R1.5: tool_call_finished renders green ✓ on success, pulling the summary from tool_call_started", async () => {

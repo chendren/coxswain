@@ -5,9 +5,11 @@
  * `entries` (settled, Static) / `live` (transient) / `modal` / `snapshot`.
  *
  * Covers all 17 AgentEvent variants (R1.1, R1.2, R1.5, R1.6) per
- * docs/specs/tui-cli/design.md's "Event -> render mapping" table. The
- * `permission_request` modal is a placeholder line until task 9 builds
- * PermissionPrompt.tsx.
+ * docs/specs/tui-cli/design.md's "Event -> render mapping" table.
+ * `permission_request` opens the PermissionPrompt modal (R3.1); its
+ * `onDecision` calls `SessionController.resolvePermission` and clears the
+ * modal (R3.2). Text input (submitPrompt/submitCommand/interrupt) is wired
+ * in task 10.
  */
 // Explicit default import (not just the named hooks below): despite this
 // package's tsconfig setting `jsx: "react-jsx"`, the esbuild-based runtime
@@ -30,6 +32,7 @@ import { formatDuration, formatTokens, formatUsd } from "./format";
 import { EMPTY_LIVE, Transcript, type LiveState, type TranscriptEntry } from "./components/Transcript";
 import { RoutingAnnouncement } from "./components/RoutingAnnouncement";
 import { StatusLine } from "./components/StatusLine";
+import { PermissionPrompt } from "./components/PermissionPrompt";
 
 export interface AppProps {
   bus: EventBus;
@@ -38,9 +41,9 @@ export interface AppProps {
   readonly?: boolean;
 }
 
-// `controller` is unused until Input (task 10) / PermissionPrompt (task 9)
-// wire it up for submitPrompt/submitCommand/resolvePermission/interrupt.
-export function App({ bus, getSnapshot }: AppProps): React.JSX.Element {
+// `controller.submitPrompt`/`.submitCommand`/`.interrupt` are unused until
+// Input (task 10) wires them up.
+export function App({ bus, controller, getSnapshot }: AppProps): React.JSX.Element {
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [modal, setModal] = useState<PermissionRequest | null>(null);
@@ -129,7 +132,6 @@ export function App({ bus, getSnapshot }: AppProps): React.JSX.Element {
           break;
         }
         case "permission_request": {
-          // Placeholder until task 9's PermissionPrompt modal (R3.1).
           setModal(e.request);
           break;
         }
@@ -231,7 +233,15 @@ export function App({ bus, getSnapshot }: AppProps): React.JSX.Element {
   return (
     <Box flexDirection="column">
       <Transcript entries={entries} live={live} />
-      {modal ? <Text>{`? permission: ${modal.summary}`}</Text> : null}
+      {modal ? (
+        <PermissionPrompt
+          request={modal}
+          onDecision={(decision) => {
+            controller.resolvePermission(decision);
+            setModal(null);
+          }}
+        />
+      ) : null}
       <StatusLine snapshot={snapshot} />
     </Box>
   );
