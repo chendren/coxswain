@@ -77,7 +77,7 @@ first — the router depends on `budgetState`.
   - accept: disabled→null; thresholds read from `config.routing.escalation`; `context_overflow` inert; one step with `escalatedFrom`, new tier primary, single evidence reason with interpolated counts; architect or already-escalated → null
   - verify: pnpm --filter @cox/router test -- -t "R4"
 
-- [ ] 13. Governor-after-escalation edge
+- [x] 13. Governor-after-escalation edge
   - requirements: R4.5
   - complexity: 2
   - accept: escalation resolving to a tier the governor degrades back to `current.tier` returns null; escalation scout→builder under warn budget still succeeds

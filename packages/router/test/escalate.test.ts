@@ -209,3 +209,40 @@ describe("reconsider — escalation ladder (R4.1, R4.3, R4.4)", () => {
     expect(result).toBeNull();
   });
 });
+
+describe("reconsider — governor interaction (R4.5)", () => {
+  function makeWarnRouter() {
+    const config = configSchema.parse({ routing: { escalation: { enabled: true } } });
+    const ledger = createStubLedger({
+      budgetState: { level: "warn", spentUsd: 4.2, spentTokens: 1000, limitUsd: 5, scope: "session" },
+    });
+    const router = createRouter({
+      config,
+      ledger,
+      classifyModel: () => createMockModel(),
+      now: () => "2026-07-20T12:00:00.000Z",
+    });
+    return router;
+  }
+
+  it("R4.5: an escalation the governor degrades straight back to current.tier returns null", async () => {
+    const router = makeWarnRouter();
+    // builder -> architect escalation, but the warn-budget governor
+    // degrades architect back to builder — a no-op relative to current.tier.
+    const result = await router.reconsider(currentDecision("builder"), baseInput, [
+      { type: "model_requested_help" },
+    ]);
+    expect(result).toBeNull();
+  });
+
+  it("R4.5: escalation scout->builder under warn budget still succeeds (warn only touches architect)", async () => {
+    const router = makeWarnRouter();
+    const result = await router.reconsider(currentDecision("scout"), baseInput, [
+      { type: "model_requested_help" },
+    ]);
+    expect(result).not.toBeNull();
+    expect(result!.tier).toBe("builder");
+    expect(result!.escalatedFrom).toBe("scout");
+    expect(result!.reasons).toEqual(["escalated scout→builder: model requested help"]);
+  });
+});
