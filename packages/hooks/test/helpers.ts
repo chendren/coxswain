@@ -1,7 +1,14 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { configSchema, type CommandHookConfig, type CoxConfig, type HookEventName, type HookPayload } from "@cox/core";
+import {
+  configSchema,
+  type AgentHookConfig,
+  type CommandHookConfig,
+  type CoxConfig,
+  type HookEventName,
+  type HookPayload,
+} from "@cox/core";
 
 /** Fresh mkdtemp project root for a single test. */
 export async function makeTmpCwd(): Promise<string> {
@@ -45,4 +52,30 @@ export function makePayload(
   data: Record<string, unknown> = {},
 ): HookPayload {
   return { event, sessionId: "test-session", cwd, data };
+}
+
+/** A synthetic AgentHookConfig for watcher tests (manual trigger by default). */
+export function makeAgentHook(
+  overrides: Partial<AgentHookConfig> & Pick<AgentHookConfig, "name">,
+): AgentHookConfig {
+  return {
+    name: overrides.name,
+    trigger: overrides.trigger ?? { type: "manual" },
+    tier: overrides.tier ?? "scout",
+    prompt: overrides.prompt ?? `prompt for ${overrides.name}`,
+  };
+}
+
+/** Polls `predicate` until it's true or `timeoutMs` elapses. */
+export async function waitFor(
+  predicate: () => boolean,
+  { timeoutMs = 2000, intervalMs = 20 }: { timeoutMs?: number; intervalMs?: number } = {},
+): Promise<void> {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error(`waitFor: condition not met within ${timeoutMs}ms`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
 }

@@ -87,7 +87,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: hooks.enabled:false → [] and zero spawns (spy on child_process); all matching hooks run even after a block; outcome order = execution order; load warnings appear once on first fire only.
       verify: pnpm --filter @cox/hooks test
 
-- [ ] 14. createFileWatcher (debounced fileSave triggers)
+- [x] 14. createFileWatcher (debounced fileSave triggers)
       requirements: R11.1, R11.2, R11.3, R11.4, R11.5
       complexity: 3
       accept: recursive watch with documented fallback on ERR_FEATURE_UNAVAILABLE_ON_PLATFORM (capability probe + describe.skip guard); picomatch dot:true on cwd-relative paths; .git/node_modules/.cox ignored; deleted paths skipped; 500ms trailing debounce collapses rapid writes to one trigger (poll-based assertions, 2s deadline); manual hooks never trigger; close() cancels pending debounces (no trigger after close).
