@@ -94,7 +94,7 @@ paste its output in the commit body. All tests offline, no env vars.
         ref/estimateTokens delegate to primary.
       verify: pnpm --filter @cox/providers test -- -t "R4"
 
-- [ ] 12. Provider registry
+- [x] 12. Provider registry
       requirements: R5.1, R5.2, R5.3
       complexity: 2
       accept: `createProviderRegistry(configSchema.parse({}))` resolves

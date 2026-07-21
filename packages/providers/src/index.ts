@@ -11,3 +11,4 @@ export { createMockModel, type MockTurn } from "./mock.js";
 export { createAnthropicAdapter } from "./anthropic.js";
 export { createOpenAICompatAdapter } from "./openai-compat.js";
 export { createFailoverChatModel } from "./failover.js";
+export { createProviderRegistry } from "./registry.js";
