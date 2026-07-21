@@ -4,7 +4,7 @@ Execute strictly top to bottom. One commit per task:
 `ws/providers: task N — <title>`. A task is done only when `verify` passes;
 paste its output in the commit body. All tests offline, no env vars.
 
-- [ ] 1. Package scaffolding & deps
+- [x] 1. Package scaffolding & deps
       requirements: R1, R2
       complexity: 1
       accept: `@anthropic-ai/sdk` added to dependencies; `--passWithNoTests`
@@ -12,7 +12,7 @@ paste its output in the commit body. All tests offline, no env vars.
         design.md created with TODO stubs that typecheck.
       verify: pnpm --filter @cox/providers typecheck
 
-- [ ] 2. Error taxonomy + withRetries
+- [x] 2. Error taxonomy + withRetries
       requirements: R3.1, R3.2, R3.3, R3.4
       complexity: 3
       accept: `providerError`/`isRetryable`/`withRetries` per design; sleep
@@ -20,7 +20,7 @@ paste its output in the commit body. All tests offline, no env vars.
         500/1000ms (+jitter) asserted with fake sleep.
       verify: pnpm --filter @cox/providers test -- -t "R3"
 
-- [ ] 3. Mock model
+- [x] 3. Mock model
       requirements: R6.1, R6.2, R6.3
       complexity: 2
       accept: `createMockModel(script)` yields deltas → toolUses → usage →
@@ -28,14 +28,14 @@ paste its output in the commit body. All tests offline, no env vars.
         script throws; exported from index.ts.
       verify: pnpm --filter @cox/providers test -- -t "R6"
 
-- [ ] 4. Estimation + capability tables
+- [x] 4. Estimation + capability tables
       requirements: R8.1, R7.1, R7.2
       complexity: 1
       accept: `estimateTokens` = ceil(len/4); `EFFORT_MODELS` and
         `maxOutputFor` (haiku-4-5 → 64000, default 128000) unit-tested.
       verify: pnpm --filter @cox/providers test -- -t "R8"
 
-- [ ] 5. Anthropic request builder (pure)
+- [x] 5. Anthropic request builder (pure)
       requirements: R1.2, R1.5, R7.1, R7.2, R7.3
       complexity: 3
       accept: pure `buildAnthropicRequest(modelId, req)` covering the full
@@ -44,7 +44,7 @@ paste its output in the commit body. All tests offline, no env vars.
         asserts absence of temperature/top_p/top_k/thinking keys.
       verify: pnpm --filter @cox/providers test -- -t "R1.2"
 
-- [ ] 6. Anthropic stream translation
+- [x] 6. Anthropic stream translation
       requirements: R1.3, R1.4
       complexity: 4
       accept: fake SDK event stream (incl. split input_json_delta fragments
@@ -53,7 +53,7 @@ paste its output in the commit body. All tests offline, no env vars.
         "error".
       verify: pnpm --filter @cox/providers test -- -t "R1.3"
 
-- [ ] 7. Anthropic adapter factory
+- [x] 7. Anthropic adapter factory
       requirements: R1.1, R1.6, R1.7, R3 (classification at call site)
       complexity: 3
       accept: `createAnthropicAdapter` wires builder + translation +
@@ -62,7 +62,7 @@ paste its output in the commit body. All tests offline, no env vars.
         `models()` returns the four known ids.
       verify: pnpm --filter @cox/providers test -- -t "R1.1|R1.6|R1.7" && pnpm --filter @cox/providers typecheck
 
-- [ ] 8. OpenAI-compat request builder (pure)
+- [x] 8. OpenAI-compat request builder (pure)
       requirements: R2.2, R2.5
       complexity: 3
       accept: message flattening rules (system lead message; assistant
@@ -70,7 +70,7 @@ paste its output in the commit body. All tests offline, no env vars.
         prefix), tools mapping, stream_options, auth header presence/absence.
       verify: pnpm --filter @cox/providers test -- -t "R2.2"
 
-- [ ] 9. SSE parser + openai-compat stream translation
+- [x] 9. SSE parser + openai-compat stream translation
       requirements: R2.3, R2.4
       complexity: 4
       accept: byte-stream SSE parsing with a chunk boundary mid-line;
@@ -78,7 +78,7 @@ paste its output in the commit body. All tests offline, no env vars.
         chunk mapping; zeroed usage emitted when provider sends none.
       verify: pnpm --filter @cox/providers test -- -t "R2.3|R2.4"
 
-- [ ] 10. OpenAI-compat adapter factory
+- [x] 10. OpenAI-compat adapter factory
       requirements: R2.1, R2.5, R3
       complexity: 2
       accept: `createOpenAICompatAdapter` wires builder + parser +
@@ -86,7 +86,7 @@ paste its output in the commit body. All tests offline, no env vars.
         retry, 429 with retry asserted.
       verify: pnpm --filter @cox/providers test -- -t "R2.1"
 
-- [ ] 11. Failover wrapper
+- [x] 11. Failover wrapper
       requirements: R4.1, R4.2, R4.3
       complexity: 3
       accept: advances on retryable pre-first-event failures; rethrows
@@ -94,7 +94,7 @@ paste its output in the commit body. All tests offline, no env vars.
         ref/estimateTokens delegate to primary.
       verify: pnpm --filter @cox/providers test -- -t "R4"
 
-- [ ] 12. Provider registry
+- [x] 12. Provider registry
       requirements: R5.1, R5.2, R5.3
       complexity: 2
       accept: `createProviderRegistry(configSchema.parse({}))` resolves
@@ -103,7 +103,7 @@ paste its output in the commit body. All tests offline, no env vars.
         with `pricingFor` results (ollama entry → $0 pricing).
       verify: pnpm --filter @cox/providers test -- -t "R5"
 
-- [ ] 13. Package close-out
+- [x] 13. Package close-out
       requirements: all
       complexity: 1
       accept: index.ts exports exactly the design.md surface; NOTES.md
