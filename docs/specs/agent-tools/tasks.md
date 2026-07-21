@@ -3,7 +3,7 @@
 Execute top to bottom. One commit per task: `ws/agent-tools: task N — <title>`.
 Check a box only after its `verify` command passes.
 
-- [ ] 1. Tools scaffolding: validate.ts, paths.ts, registry.ts
+- [x] 1. Tools scaffolding: validate.ts, paths.ts, registry.ts
   requirements: R8.2, R6.1
   complexity: 2
   accept: resolveWithin flags escapes via `..`/absolute paths; registry list/get; invalid inputs raise actionable errors
