@@ -40,7 +40,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: all 17 AgentEvent variants render per the design table (tool transient→settled lines with ✓/✗, hook_fired incl. block stderr, spec_event, session_started, escalation, budget_alert); snapshot tests cover each variant once using fixture-style events.
       verify: pnpm --filter @cox/tui test -- transcript
 
-- [ ] 7. RoutingAnnouncement + receipts
+- [x] 7. RoutingAnnouncement + receipts
       requirements: R1.3, R1.4
       complexity: 2
       accept: announcement block byte-matches docs/05 §2 shape for the fixture's routing_decision (assert exact 3 lines against a literal); model_call_finished receipt line renders formats incl. cached tokens and n/a cost.
