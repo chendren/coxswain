@@ -12,6 +12,7 @@ import type {
 import { resolveStaticTier, mapClassifiedTier } from "./policy";
 import { buildEstimate } from "./estimate";
 import { classify } from "./classify";
+import { applyGovernor } from "./governor";
 
 export interface RouterDeps {
   config: CoxConfig;
@@ -79,7 +80,10 @@ export function createRouter(deps: RouterDeps): Router {
     const { tier, reasons, estOutputTokens } = await resolveTier(input);
     const model = deps.config.tiers[tier].primary;
     const estimate = buildEstimate(input, model, deps.classifyModel(), estOutputTokens);
-    return { tier, model, reasons, estimate };
+
+    // R3.1: budget state is fetched fresh before every decision is returned.
+    const state = await deps.ledger.budgetState(input.sessionId, input.specName);
+    return applyGovernor({ tier, model, reasons, estimate }, state, deps.config, input.kind);
   }
 
   async function reconsider(

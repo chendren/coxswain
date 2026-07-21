@@ -65,7 +65,7 @@ first — the router depends on `budgetState`.
   - accept: classify call recorded via injected `Ledger.record` with `kind: "classify"`, tier scout, measured `durationMs`, cost from `pricingFor`+`computeCostUsd` (null-safe), `routingReasons: ["classification call"]`; no record when no usage event arrived; test computes classify share from `byTier` demonstrating the ≤2 % health check
   - verify: pnpm --filter @cox/router test -- -t "R2.5"
 
-- [ ] 11. Budget governor
+- [x] 11. Budget governor
   - requirements: R3.1, R3.2, R3.3, R3.4, R3.5, R3.6
   - complexity: 3
   - accept: state fetched per route; warn degrades architect→builder only, `degradedByBudget: true`, pct reason string; spec-requirements/design floor at builder; exceeded (real or projected via `spent + estCostUsd`) throws `code: "budget_exceeded"` under hardStop, appends `budget exceeded — hardStop off` otherwise; governor never raises
