@@ -37,7 +37,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: picomatch with dot:true; leading "./" stripped from touched paths; unknown manualNames ignored; ordering fileMatch-then-manual each name-sorted; dedupe by path; totalTokens = sum over both arrays (table test).
       verify: pnpm --filter @cox/steering test -- select
 
-- [ ] 6. steeringWarnings helper + STEERING_TEMPLATES
+- [x] 6. steeringWarnings helper + STEERING_TEMPLATES
       requirements: R4.1, R4.2, R4.3, R4.4
       complexity: 1
       accept: per-doc and total warnings exactly per design thresholds; oversized docs still present in selection; templates export all three keys, each starting with `---\ninclusion: always\n---` and containing the design's section headings.

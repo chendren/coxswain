@@ -5,6 +5,7 @@ import type {
   CoxConfig,
   SteeringDoc,
   SteeringInclusion,
+  SteeringSelection,
   SteeringStore,
 } from "@cox/core";
 import { parseFrontMatter } from "./frontmatter";
@@ -108,6 +109,40 @@ function orderedContextDocs(
     contextDocs.push(d);
   }
   return contextDocs;
+}
+
+// ---------------------------------------------------------------------------
+// steeringWarnings (R4)
+// ---------------------------------------------------------------------------
+
+function formatTokenCount(n: number): string {
+  const k = n / 1000;
+  const rounded = Math.round(k * 10) / 10;
+  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)}k`;
+}
+
+/**
+ * Per-doc and total-weight warnings for an already-computed selection.
+ * Oversized docs stay in the selection (R4.3) — this only warns.
+ */
+export function steeringWarnings(selection: SteeringSelection, warnTokens: number): string[] {
+  const warnings: string[] = [];
+
+  for (const doc of [...selection.systemDocs, ...selection.contextDocs]) {
+    if (doc.tokens > warnTokens) {
+      warnings.push(
+        `steering doc "${doc.name}" is ~${formatTokenCount(doc.tokens)} tokens (warn threshold ${formatTokenCount(warnTokens)})`,
+      );
+    }
+  }
+
+  if (selection.totalTokens > 2 * warnTokens) {
+    warnings.push(
+      `steering selection totals ~${formatTokenCount(selection.totalTokens)} tokens (warn threshold ${formatTokenCount(warnTokens)} × 2)`,
+    );
+  }
+
+  return warnings;
 }
 
 // ---------------------------------------------------------------------------
