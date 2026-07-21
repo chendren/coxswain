@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { configSchema, type CoxConfig } from "@cox/core";
+import { configSchema, type CommandHookConfig, type CoxConfig, type HookEventName, type HookPayload } from "@cox/core";
 
 /** Fresh mkdtemp project root for a single test. */
 export async function makeTmpCwd(): Promise<string> {
@@ -31,4 +31,18 @@ export function makeConfig(overrides: Record<string, unknown> = {}): CoxConfig {
 /** A minimal, isolated env for spawning test hooks — never process.env. */
 export function testEnv(overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return { SHELL: "/bin/sh", ...overrides };
+}
+
+/** Writes `${cwd}/.cox/hooks.json` with the given command hooks. */
+export async function writeHooksJson(cwd: string, hooks: CommandHookConfig[]): Promise<void> {
+  await writeJsonFile(join(cwd, ".cox", "hooks.json"), { hooks });
+}
+
+/** A HookPayload with sensible defaults, `data` merged over `{}`. */
+export function makePayload(
+  event: HookEventName,
+  cwd: string,
+  data: Record<string, unknown> = {},
+): HookPayload {
+  return { event, sessionId: "test-session", cwd, data };
 }

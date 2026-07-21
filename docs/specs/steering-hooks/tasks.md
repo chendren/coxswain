@@ -63,7 +63,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: name=stem, prompt=trimmed body, tier defaults scout; fileSave requires pattern else skipped+warning; invalid tier skipped+warning; empty body skipped+warning; manual trigger parsed; agentHooks() returns configs without firing anything.
       verify: pnpm --filter @cox/hooks test -- config
 
-- [ ] 10. Matcher selection table
+- [x] 10. Matcher selection table
       requirements: R7.1, R7.2, R7.3, R7.4
       complexity: 2
       accept: table test over (event, matcher, toolName): exact-event match; regex applied only on PreToolUse/PostToolUse; "*"/absent match all; matcher ignored on other events; invalid regex → skipped with continue+stderr outcome naming the pattern.
