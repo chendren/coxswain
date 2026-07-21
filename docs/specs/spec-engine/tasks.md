@@ -52,7 +52,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: SPEC_SYSTEM and the four builders copied exactly from design.md §Generation prompts; snapshot tests pin them (template drift must be a conscious diff).
   verify: pnpm --filter @cox/spec test -- -t "prompts"
 
-- [ ] 9. Implement generate() for requirements and design
+- [x] 9. Implement generate() for requirements and design
   requirements: R5.1, R5.2, R5.3, R5.4, R4.3
   complexity: 4
   accept: correct AgentTask (kind, sessionId "spec:<name>", system=SPEC_SYSTEM, maxTurns per R5.2) asserted via fakeRunner.calls; fence-strip; write + draft + spec_event on end_turn; no write + error event on other stop reasons or blank text; regen demotion cascade fires events and awaits onPhaseChange with from/to.

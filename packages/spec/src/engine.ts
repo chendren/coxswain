@@ -8,6 +8,7 @@ import type { Dirent } from "node:fs";
 import type {
   AgentEvent,
   AgentRunner,
+  AgentTask,
   HookPayload,
   SpecEngine,
   SpecPhase,
@@ -15,10 +16,15 @@ import type {
   SpecTask,
 } from "@cox/core";
 import { parseTasks } from "./parser.js";
+import { designPrompt, requirementsPrompt, SPEC_SYSTEM, tasksPrompt } from "./prompts.js";
 import {
+  applyDemotionCascade,
+  assertCanGenerate,
   createInitialState,
+  designPath,
   ideaPath,
   readSpecState,
+  requirementsPath,
   specDir,
   specJsonPath,
   specsRoot,
@@ -65,8 +71,16 @@ function mergeTasks(fromFile: SpecTask[], fromState: SpecTask[]): SpecTask[] {
   return fromFile.map((t) => ({ ...t, status: statusById.get(t.id) ?? "pending" }));
 }
 
+/** R5.3 — strip a single wrapping ```markdown / ``` fence around the whole
+ * document, if the model added one despite SPEC_SYSTEM asking it not to. */
+function stripFence(text: string): string {
+  const trimmed = text.trim();
+  const match = /^```(?:markdown)?\r?\n([\s\S]*?)\r?\n```$/.exec(trimmed);
+  return match ? (match[1] ?? "") : trimmed;
+}
+
 export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
-  const { cwd, onEvent, now } = deps;
+  const { cwd, runner, onEvent, onPhaseChange, now } = deps;
 
   async function create(name: string, idea: string): Promise<SpecState> {
     // R1.2: validate before any filesystem access.
@@ -128,8 +142,91 @@ export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
     return out;
   }
 
+  async function mustLoad(name: string, op: string): Promise<SpecState> {
+    const state = await load(name);
+    if (!state) {
+      throw new Error(`${op}: spec "${name}" not found — call create() first`);
+    }
+    return state;
+  }
+
   async function generate(name: string, phase: SpecPhase): Promise<SpecState> {
-    throw new Error("not implemented");
+    const state = await mustLoad(name, "generate");
+    assertCanGenerate(state, phase); // R2.1–R2.4: throws + changes nothing when gated
+    const dir = specDir(cwd, name);
+    const idea = await readFileOrEmpty(ideaPath(dir));
+
+    let kind: AgentTask["kind"];
+    let prompt: string;
+    let maxTurns: number | undefined;
+
+    if (phase === "requirements") {
+      kind = "spec-requirements";
+      prompt = requirementsPrompt(name, idea);
+      maxTurns = 1; // R5.2
+    } else if (phase === "design") {
+      kind = "spec-design";
+      const reqMd = await readFileOrEmpty(requirementsPath(dir));
+      prompt = designPrompt(name, idea, reqMd);
+      maxTurns = undefined; // R5.2 — design may explore the repo with tools
+    } else {
+      // phase === "tasks"; assertCanGenerate already rejected "execution"/unknown.
+      kind = "spec-tasks";
+      const reqMd = await readFileOrEmpty(requirementsPath(dir));
+      const designMd = await readFileOrEmpty(designPath(dir));
+      prompt = tasksPrompt(name, reqMd, designMd);
+      maxTurns = 1; // R5.2
+    }
+
+    const task: AgentTask = {
+      kind,
+      prompt,
+      system: SPEC_SYSTEM,
+      history: [],
+      cwd,
+      sessionId: `spec:${name}`, // R5.1
+      specName: name,
+      maxTurns,
+    };
+
+    const result = await runner.run(task, onEvent);
+
+    if (result.stopReason !== "end_turn" || result.finalText.trim() === "") {
+      // R5.4: write nothing, leave all statuses unchanged.
+      onEvent({
+        type: "error",
+        message:
+          `generate: spec "${name}" phase "${phase}" — model did not complete ` +
+          `(stopReason "${result.stopReason}")`,
+      });
+      return state;
+    }
+
+    const content = stripFence(result.finalText);
+    const filePath =
+      phase === "requirements" ? requirementsPath(dir) : phase === "design" ? designPath(dir) : tasksPath(dir);
+    await fs.writeFile(filePath, content, "utf8");
+
+    // R4.1/R4.2: sets `phase` itself to "draft" and demotes approved
+    // downstream phases; R4.4 (tasks-specific reset) layers on in task 10.
+    const cascade = applyDemotionCascade(state, phase);
+    await writeSpecState(dir, cascade.state);
+
+    onEvent({ type: "spec_event", specName: name, phase, status: "draft" }); // R5.3
+    for (const demotedPhase of cascade.demoted) {
+      // R4.3: one spec_event + one awaited onPhaseChange per demoted phase.
+      onEvent({ type: "spec_event", specName: name, phase: demotedPhase, status: "demoted" });
+      if (onPhaseChange) {
+        await onPhaseChange({
+          event: "SpecPhaseChange",
+          sessionId: `spec:${name}`,
+          cwd,
+          data: { specName: name, phase: demotedPhase, from: "approved", to: "draft" },
+        });
+      }
+    }
+
+    return cascade.state;
   }
 
   async function approve(name: string, phase: SpecPhase): Promise<SpecState> {
