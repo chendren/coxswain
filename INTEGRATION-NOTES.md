@@ -32,5 +32,32 @@ The integrator (M2) resolves these and logs any core changes under
   bash (and any future subprocess/network tool) can race it against its own
   timeout.
 
+## 2026-07-20 — agent-tools (2)
+
+- Blocked on: `docs/specs/agent-tools/design.md`'s `createAgentRunner(deps)`
+  signature has no dependency that can resolve a `permission_request` into a
+  `PermissionDecision`. R6.1 requires the runner to "emit permission_request
+  and await `ToolContext.requestPermission`" — but `ToolContext` is built BY
+  the runner for each `Tool.execute` call, and nothing in the listed `deps`
+  (router, modelForTier, tools, permissionMode, config, budgetState,
+  preToolUse, postToolUse, now) can supply a working
+  `requestPermission(req): Promise<PermissionDecision>` implementation.
+  `AgentRunner.run`'s frozen signature (`task, onEvent, signal`) also has no
+  side channel for a caller to push a decision back in — `onEvent` is
+  fire-and-forget (`=> void`).
+- Workaround taken: added one field beyond design.md's literal list —
+  `requestPermission: (req: PermissionRequest) => Promise<PermissionDecision>`
+  — to `createAgentRunner`'s `deps`. The runner still emits `permission_request`
+  via `onEvent` for visibility (TUI rendering) and separately awaits
+  `deps.requestPermission(req)` for the actual decision; `ToolContext.requestPermission`
+  is that same function. Tests inject a scripted resolver directly. `@cox/cli`
+  will presumably implement this by bridging to `SessionController.resolvePermission`
+  (a pending-promise-per-request map keyed by session).
+- Proposed contract change: either add `requestPermission` to
+  `createAgentRunner`'s deps shape in design.md (matches what actually got
+  built), or add a documented side channel on `AgentRunner`/`SessionController`
+  for resolving permission requests, so the factory signature and the
+  frozen interfaces agree.
+
 ## Contract changes
 (none yet)

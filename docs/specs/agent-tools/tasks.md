@@ -69,7 +69,7 @@ Check a box only after its `verify` command passes.
   accept: system verbatim; assistant text+tool_use ordering; single tool_result user message; breakpoint = prev messages last index (first call: history.length-1/undefined) asserted via recorded requests
   verify: pnpm --filter @cox/agent test -- assemble
 
-- [ ] 12. Single-turn loop: routing, events, usage/cost
+- [x] 12. Single-turn loop: routing, events, usage/cost
   requirements: R1.1, R1.3, R3.1, R3.2
   complexity: 3
   accept: routing_decision precedes model_call_started; end_turn resolves with finalText/history; costUsd via core pricing (null-pricing model → 0-contribution + costUsd null on event); durations from injected now
