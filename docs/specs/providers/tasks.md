@@ -4,7 +4,7 @@ Execute strictly top to bottom. One commit per task:
 `ws/providers: task N — <title>`. A task is done only when `verify` passes;
 paste its output in the commit body. All tests offline, no env vars.
 
-- [ ] 1. Package scaffolding & deps
+- [x] 1. Package scaffolding & deps
       requirements: R1, R2
       complexity: 1
       accept: `@anthropic-ai/sdk` added to dependencies; `--passWithNoTests`

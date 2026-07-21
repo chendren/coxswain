@@ -1,6 +1,9 @@
 /**
- * @cox/providers — STUB. Implemented by the "providers" workstream.
- * Contract: import types from @cox/core only. See docs/specs/ for your
- * requirements/design/tasks and docs/04-CONVENTIONS.md before writing code.
+ * @cox/providers — turns configured provider endpoints into streaming
+ * ChatModels behind the frozen contracts in @cox/core. See
+ * docs/specs/providers/{requirements,design,tasks}.md.
+ *
+ * Public surface grows incrementally as tasks land; see tasks.md for the
+ * checklist. Final surface (task 13) matches design.md exactly.
  */
-export const PACKAGE = "@cox/providers";
+export {};
