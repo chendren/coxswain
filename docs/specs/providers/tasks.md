@@ -103,7 +103,7 @@ paste its output in the commit body. All tests offline, no env vars.
         with `pricingFor` results (ollama entry → $0 pricing).
       verify: pnpm --filter @cox/providers test -- -t "R5"
 
-- [ ] 13. Package close-out
+- [x] 13. Package close-out
       requirements: all
       complexity: 1
       accept: index.ts exports exactly the design.md surface; NOTES.md
