@@ -5,7 +5,7 @@ Execute strictly top to bottom. One commit per task:
 holds and `verify` passes (paste output in the commit body). Ledger comes
 first — the router depends on `budgetState`.
 
-- [ ] 1. JSONL append + read foundation (`@cox/ledger`)
+- [x] 1. JSONL append + read foundation (`@cox/ledger`)
   - requirements: R6.1, R6.2
   - complexity: 2
   - accept: `appendEntry` creates parent dir + file on first write, one JSON line per entry via `appendFile`; `readEntries` returns `{ entries, skipped }`, skipping corrupt lines without throwing; `lastReadSkippedLines` exposed on the factory result; tests use `fs.mkdtemp` and injected `now`
