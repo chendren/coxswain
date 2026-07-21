@@ -75,7 +75,7 @@ Check a box only after its `verify` command passes.
   accept: routing_decision precedes model_call_started; end_turn resolves with finalText/history; costUsd via core pricing (null-pricing model → 0-contribution + costUsd null on event); durations from injected now
   verify: pnpm --filter @cox/agent test -- runner
 
-- [ ] 13. Tool-execution turns: sequential exec, unknown tool, permission flow
+- [x] 13. Tool-execution turns: sequential exec, unknown tool, permission flow
   requirements: R1.2, R1.6, R6.1, R6.2, R6.3
   complexity: 4
   accept: multi-tool order preserved; unknown-tool isError lists names; deny feeds "user denied"; allowAlways skips second prompt (bash keyed by first token); events wrap each call
