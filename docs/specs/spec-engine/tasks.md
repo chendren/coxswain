@@ -76,7 +76,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: gating throw; auto-pick first pending; explicit re-run rules incl. done-throws and blocked-reset; in_progress persisted before run; AgentTask fields per R7.4 asserted via fakeRunner.calls (kind, complexityHint, prompt contains title + excerpts + design body); end_turn → done + flip + onTaskComplete awaited; failure → pending, count in runs.json; second consecutive failure → blocked.
   verify: pnpm --filter @cox/spec test -- -t "R7"
 
-- [ ] 13. Hand-edit tolerance suite
+- [x] 13. Hand-edit tolerance suite
   requirements: R8.1, R8.2
   complexity: 2
   accept: reworded title + inserted prose survive a task completion byte-for-byte outside the flipped line; engine paths all derive from deps.cwd (grep test source asserts no process.cwd in src/); no network imports in src/ (grep for "fetch(" and "http").

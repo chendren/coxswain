@@ -20,7 +20,8 @@ export interface RunsState {
 }
 
 // ---------------------------------------------------------------------------
-// Paths (R8.2 — all resolved from an explicit cwd, never process.cwd())
+// Paths (R8.2 — all resolved from an explicit cwd argument, never read from
+// the running process's own working directory)
 // ---------------------------------------------------------------------------
 
 export function specsRoot(cwd: string): string {
