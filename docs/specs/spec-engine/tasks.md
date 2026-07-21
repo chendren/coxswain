@@ -16,7 +16,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: state.ts read/write for SpecState and runs.json; writes go .tmp→rename; corrupt spec.json on a mutating path throws with file path and never overwrites; corrupt runs.json resets to {} (it is disposable telemetry, note in NOTES.md).
   verify: pnpm --filter @cox/spec test -- -t "R8.3"
 
-- [ ] 3. Implement create() with name validation
+- [x] 3. Implement create() with name validation
   requirements: R1.1, R1.2, R1.3
   complexity: 2
   accept: valid name creates dir + spec.json (phases all "missing", createdAt from injected now()) + idea.md; pattern violations and path separators throw pre-filesystem; existing spec throws untouched.
