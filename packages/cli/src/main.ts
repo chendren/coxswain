@@ -17,6 +17,7 @@ import { runSteerInit } from "./commands/steer";
 import { runHookRun } from "./commands/hook";
 import { runLedgerReport } from "./commands/ledger";
 import { runModelsReport } from "./commands/models";
+import { runDoctor } from "./commands/doctor";
 import { loadDeps, type LoadedDeps } from "./deps";
 import { buildSession } from "./wire";
 import { runPrint } from "./print";
@@ -255,7 +256,36 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       .command("doctor")
       .description("check keys, config, and connectivity")
       .option("--offline", "skip provider reachability checks"),
-  ).action(async () => notImplemented("doctor"));
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { offline?: boolean }>();
+    const cwd = resolveCwd(opts);
+    const offline = Boolean(opts.offline);
+    const ok = await runDoctor({
+      cwd,
+      offline,
+      write,
+      // Errors thrown here (including NotWiredError while lanes are still
+      // stubs) are caught by runDoctor itself and reported as a failed
+      // "provider reachable" check with the error message as detail.
+      checkReachability: offline
+        ? undefined
+        : async () => {
+            const { deps } = await resolveDeps(command);
+            const model = deps.tierModel("scout");
+            let done = false;
+            for await (const event of model.stream({
+              system: "ping",
+              messages: [{ role: "user", content: [{ type: "text", text: "hi" }] }],
+              tools: [],
+              maxTokens: 1,
+            })) {
+              if (event.type === "done") done = true;
+            }
+            return done;
+          },
+    });
+    throw new CliExit(ok ? 0 : 1);
+  });
 
   addGlobalOptions(
     program

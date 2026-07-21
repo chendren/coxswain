@@ -120,6 +120,19 @@ dedicated note, this is the biggest cross-lane gap found so far) and
 `oneshot.ts` doesn't have to reconstruct a fallback-less version from
 `registry` alone).
 
+## doctor.ts (task 15)
+
+Node/config/env-var/`.cox/`-writability checks use only `@cox/core` +
+node builtins (no `loadDeps`), so `cox doctor --offline` genuinely works
+with every lane still a stub (R8.2) — smoke-tested for real: reports
+`✗ ANTHROPIC_API_KEY is set` and exits 1 in this worktree (no key
+configured), everything else `✓`. The reachability check is injected as
+`checkReachability` and is the only thing that needs engines; `runDoctor`'s
+own try/catch around it means a `NotWiredError` from building it
+(non-`--offline`, real `loadDeps` call in `main.ts`) surfaces as a normal
+failed check (`✗ provider reachable — @cox/providers not wired`) rather
+than crashing the whole command.
+
 ## Command dispatch (task 14)
 
 `session.ts`'s `submitCommand` and `main.ts`'s CLI commands share the

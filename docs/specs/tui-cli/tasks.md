@@ -88,7 +88,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: submitCommand dispatch complete; /model auto clears override; /budget extend mutates retained budgets object (visible in next budgetState); /context panel lists docs with token weights + system size; renderLedgerTable output matches docs/05 table shape for a synthetic LedgerSummary (literal assertion); cox ledger/models print via shared renderers; steer init writes missing templates only and prompts before agent fill-in (fill-in path behind TTY check, tested via injected prompt fn).
       verify: pnpm --filter @cox/cli test -- commands && pnpm --filter @cox/tui test -- ledgertable
 
-- [ ] 15. doctor
+- [x] 15. doctor
       requirements: R10.1
       complexity: 2
       accept: checks node/config/key-env/.cox-writability/(reachability unless --offline); ✓/✗ lines; exit 1 on any failure; tests cover pass and each failure class with temp dirs + env manipulation (no network — reachability injected as fn).
