@@ -53,7 +53,7 @@ first — the router depends on `budgetState`.
   - accept: RUBRIC constant byte-identical to design; request is `{system: RUBRIC, one user message, tools: [], maxTokens: 128, effort: "low"}`; strict parse + hand validation; task_type→tier map and complexity≥4 bump (max architect); reasons per design; scripted local mock model only
   - verify: pnpm --filter @cox/router test -- -t "R2.3"
 
-- [ ] 9. Classification failure paths + timeout
+- [x] 9. Classification failure paths + timeout
   - requirements: R2.4
   - complexity: 2
   - accept: garbage JSON, wrong field types, stream error, and >3000 ms (fake timers + AbortSignal observed by the mock) all fall back to `defaultTier` with reason `classification failed`; no retries
