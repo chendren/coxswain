@@ -22,7 +22,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: valid name creates dir + spec.json (phases all "missing", createdAt from injected now()) + idea.md; pattern violations and path separators throw pre-filesystem; existing spec throws untouched.
   verify: pnpm --filter @cox/spec test -- -t "R1.1|R1.2|R1.3"
 
-- [ ] 4. Implement tasks.md parser and renderer with round-trip property
+- [x] 4. Implement tasks.md parser and renderer with round-trip property
   requirements: R6.1, R6.2, R6.3, R6.4
   complexity: 3
   accept: parseTasks per the design grammar (tolerant of human lines, collects errors); renderTasks emits the strict format; property test: parse(render(t)) deep-equals t for representative task lists incl. sub-ids; validation catches duplicate ids, bad complexity, bad R-ids, missing metadata lines.
