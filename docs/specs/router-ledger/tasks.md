@@ -71,7 +71,7 @@ first — the router depends on `budgetState`.
   - accept: state fetched per route; warn degrades architect→builder only, `degradedByBudget: true`, pct reason string; spec-requirements/design floor at builder; exceeded (real or projected via `spent + estCostUsd`) throws `code: "budget_exceeded"` under hardStop, appends `budget exceeded — hardStop off` otherwise; governor never raises
   - verify: pnpm --filter @cox/router test -- -t "R3"
 
-- [ ] 12. `reconsider` escalation ladder
+- [x] 12. `reconsider` escalation ladder
   - requirements: R4.1, R4.2, R4.3, R4.4
   - complexity: 3
   - accept: disabled→null; thresholds read from `config.routing.escalation`; `context_overflow` inert; one step with `escalatedFrom`, new tier primary, single evidence reason with interpolated counts; architect or already-escalated → null
