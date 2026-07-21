@@ -1,5 +1,6 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
+import picomatch from "picomatch";
 import type {
   CoxConfig,
   SteeringDoc,
@@ -9,6 +10,17 @@ import type {
 import { parseFrontMatter } from "./frontmatter";
 
 export function createSteeringStore(deps: { config: CoxConfig }): SteeringStore {
+  const matcherCache = new Map<string, ReturnType<typeof picomatch>>();
+
+  function getMatcher(pattern: string): ReturnType<typeof picomatch> {
+    let matcher = matcherCache.get(pattern);
+    if (!matcher) {
+      matcher = picomatch(pattern, { dot: true });
+      matcherCache.set(pattern, matcher);
+    }
+    return matcher;
+  }
+
   return {
     async loadAll(cwd: string): Promise<SteeringDoc[]> {
       const steeringDir = join(cwd, ".cox", "steering");
@@ -28,11 +40,10 @@ export function createSteeringStore(deps: { config: CoxConfig }): SteeringStore 
       return docs;
     },
 
-    select(docs, _touchedFiles, _manualNames) {
-      // fileMatch/manual contextDocs land in a later task.
+    select(docs, touchedFiles, manualNames) {
       const systemDocs = orderedSystemDocs(docs);
-      const contextDocs: SteeringDoc[] = [];
-      const totalTokens = systemDocs.reduce((sum, d) => sum + d.tokens, 0);
+      const contextDocs = orderedContextDocs(docs, touchedFiles, manualNames, getMatcher);
+      const totalTokens = [...systemDocs, ...contextDocs].reduce((sum, d) => sum + d.tokens, 0);
       return { systemDocs, contextDocs, totalTokens };
     },
   };
@@ -46,6 +57,10 @@ function byName(a: SteeringDoc, b: SteeringDoc): number {
   return a.name.localeCompare(b.name, "en");
 }
 
+function stripLeadingDotSlash(p: string): string {
+  return p.startsWith("./") ? p.slice(2) : p;
+}
+
 /**
  * R3.1: exactly the inclusion:"always" docs, non-imported (sorted by name)
  * before imported (sorted by name) — deterministic and byte-stable given the
@@ -57,6 +72,42 @@ function orderedSystemDocs(docs: SteeringDoc[]): SteeringDoc[] {
     ...always.filter((d) => !d.imported).sort(byName),
     ...always.filter((d) => d.imported).sort(byName),
   ];
+}
+
+/**
+ * R3.2–R3.4: fileMatch docs whose pattern matches any touched file (sorted by
+ * name), then manual docs named in `manualNames` (sorted by name), deduped
+ * by path.
+ */
+function orderedContextDocs(
+  docs: SteeringDoc[],
+  touchedFiles: string[],
+  manualNames: string[],
+  getMatcher: (pattern: string) => ReturnType<typeof picomatch>,
+): SteeringDoc[] {
+  const normalizedTouched = touchedFiles.map(stripLeadingDotSlash);
+
+  const fileMatchDocs = docs
+    .filter((d) => d.inclusion === "fileMatch" && d.fileMatchPattern)
+    .filter((d) => {
+      const isMatch = getMatcher(stripLeadingDotSlash(d.fileMatchPattern!));
+      return normalizedTouched.some((f) => isMatch(f));
+    })
+    .sort(byName);
+
+  const manualSet = new Set(manualNames);
+  const manualDocs = docs
+    .filter((d) => d.inclusion === "manual" && manualSet.has(d.name))
+    .sort(byName);
+
+  const seenPaths = new Set<string>();
+  const contextDocs: SteeringDoc[] = [];
+  for (const d of [...fileMatchDocs, ...manualDocs]) {
+    if (seenPaths.has(d.path)) continue;
+    seenPaths.add(d.path);
+    contextDocs.push(d);
+  }
+  return contextDocs;
 }
 
 // ---------------------------------------------------------------------------

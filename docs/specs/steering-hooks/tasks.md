@@ -31,7 +31,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: non-imported always docs sorted by name precede imported sorted by name; two calls with identical inputs produce byte-identical concatenated bodies (test joins bodies and compares strings).
       verify: pnpm --filter @cox/steering test -- select
 
-- [ ] 5. select(): fileMatch + manual contextDocs and totalTokens
+- [x] 5. select(): fileMatch + manual contextDocs and totalTokens
       requirements: R3.2, R3.3, R3.4, R3.5
       complexity: 2
       accept: picomatch with dot:true; leading "./" stripped from touched paths; unknown manualNames ignored; ordering fileMatch-then-manual each name-sorted; dedupe by path; totalTokens = sum over both arrays (table test).
