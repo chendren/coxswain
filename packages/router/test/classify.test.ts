@@ -340,3 +340,180 @@ describe("router fallback on classification failure (R2.4, route() level)", () =
     expect(calls).toBe(1);
   });
 });
+
+describe("classification self-ledgering (R2.5, R2.6)", () => {
+  const base: RoutingInput = {
+    kind: "chat",
+    text: "some ambiguous prompt",
+    contextTokens: 1000,
+    sessionId: "s1",
+    specName: "auth-flow",
+    taskId: "4",
+  };
+  const config = configSchema.parse({});
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("R2.5: records the classify call when a usage event arrives — kind, tier, reasons, ids", async () => {
+    const ledger = createStubLedger();
+    const model = createClassifyMockModel('{"task_type":"feature","complexity":2,"est_output_tokens":500}');
+    const router = createRouter({
+      config,
+      ledger,
+      classifyModel: () => model,
+      now: () => "2026-07-20T12:00:00.000Z",
+    });
+
+    await router.route(base);
+
+    expect(ledger.recorded).toHaveLength(1);
+    const entry = ledger.recorded[0]!;
+    expect(entry.kind).toBe("classify");
+    expect(entry.tier).toBe("scout");
+    expect(entry.model).toEqual(model.ref);
+    expect(entry.sessionId).toBe("s1");
+    expect(entry.specName).toBe("auth-flow");
+    expect(entry.taskId).toBe("4");
+    expect(entry.routingReasons).toEqual(["classification call"]);
+    expect(entry.ts).toBe("2026-07-20T12:00:00.000Z");
+    expect(typeof entry.durationMs).toBe("number");
+    expect(entry.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("R2.5: cost is computed via pricingFor + computeCostUsd for a priced model", async () => {
+    const ledger = createStubLedger();
+    const usage = { inputTokens: 200, outputTokens: 30, cacheReadTokens: 0, cacheWriteTokens: 0 };
+    const model = createClassifyMockModel(
+      '{"task_type":"feature","complexity":2,"est_output_tokens":500}',
+      usage,
+    );
+    const router = createRouter({
+      config,
+      ledger,
+      classifyModel: () => model,
+      now: () => "2026-07-20T12:00:00.000Z",
+    });
+
+    await router.route(base);
+
+    // model.ref is anthropic/claude-haiku-4-5: $1/$5 per MTok (see packages/core/src/pricing.ts)
+    expect(ledger.recorded[0]!.costUsd).toBeCloseTo((200 * 1.0 + 30 * 5.0) / 1_000_000, 8);
+  });
+
+  it("R2.5: cost is null (not thrown) when the classify model's pricing is unknown", async () => {
+    const ledger = createStubLedger();
+    const model = createClassifyMockModel(
+      '{"task_type":"feature","complexity":2,"est_output_tokens":500}',
+      undefined,
+      { ref: { provider: "unknown-provider", model: "mystery-model" } },
+    );
+    const router = createRouter({
+      config,
+      ledger,
+      classifyModel: () => model,
+      now: () => "2026-07-20T12:00:00.000Z",
+    });
+
+    await router.route(base);
+
+    expect(ledger.recorded).toHaveLength(1);
+    expect(ledger.recorded[0]!.costUsd).toBeNull();
+    expect(ledger.recorded[0]!.usage).toEqual({
+      inputTokens: 50,
+      outputTokens: 20,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+    });
+  });
+
+  it("R2.5: still records when parse fails but a usage event arrived", async () => {
+    const ledger = createStubLedger();
+    const model = createClassifyMockModel("garbage, not json");
+    const router = createRouter({
+      config,
+      ledger,
+      classifyModel: () => model,
+      now: () => "2026-07-20T12:00:00.000Z",
+    });
+
+    await router.route(base);
+
+    expect(ledger.recorded).toHaveLength(1);
+    expect(ledger.recorded[0]!.kind).toBe("classify");
+  });
+
+  it("R2.5: does not record when no usage event arrives (timeout)", async () => {
+    vi.useFakeTimers();
+    const ledger = createStubLedger();
+    const model = createMockModel({ hang: true });
+    const router = createRouter({
+      config,
+      ledger,
+      classifyModel: () => model,
+      now: () => "2026-07-20T12:00:00.000Z",
+    });
+
+    const decisionPromise = router.route(base);
+    await vi.advanceTimersByTimeAsync(3100);
+    await decisionPromise;
+
+    expect(ledger.recorded).toHaveLength(0);
+  });
+
+  it("R2.5: does not record when the stream errors before any usage event", async () => {
+    const ledger = createStubLedger();
+    const model = createMockModel({
+      events: [{ type: "text_delta", text: "partial" }], // no usage event
+      throwError: new Error("connection reset"),
+    });
+    const router = createRouter({
+      config,
+      ledger,
+      classifyModel: () => model,
+      now: () => "2026-07-20T12:00:00.000Z",
+    });
+
+    await router.route(base);
+
+    expect(ledger.recorded).toHaveLength(0);
+  });
+
+  it("R2.6: classify entries carry kind 'classify', making the classify cost share computable from byTier-style aggregation and demonstrating the <=2% health target", async () => {
+    const ledger = createStubLedger();
+    const model = createClassifyMockModel('{"task_type":"feature","complexity":2,"est_output_tokens":500}');
+    const router = createRouter({
+      config,
+      ledger,
+      classifyModel: () => model,
+      now: () => "2026-07-20T12:00:00.000Z",
+    });
+
+    await router.route(base);
+
+    // Simulate the rest of a session's spend (e.g. the builder call this
+    // chat turn routed to) landing in the same ledger, the way the cli would
+    // record it after the model call completes.
+    ledger.recorded.push({
+      ts: "2026-07-20T12:00:01.000Z",
+      sessionId: "s1",
+      kind: "chat",
+      tier: "builder",
+      model: config.tiers.builder.primary,
+      usage: { inputTokens: 5000, outputTokens: 1200, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      costUsd: 0.033,
+      routingReasons: ["classified task-type=feature complexity=2"],
+      durationMs: 900,
+    });
+
+    const byTierCost = new Map<string, number>();
+    for (const entry of ledger.recorded) {
+      byTierCost.set(entry.kind, (byTierCost.get(entry.kind) ?? 0) + (entry.costUsd ?? 0));
+    }
+    const totalCost = [...byTierCost.values()].reduce((a, b) => a + b, 0);
+    const classifyShare = (byTierCost.get("classify") ?? 0) / totalCost;
+
+    expect(classifyShare).toBeLessThanOrEqual(0.02);
+  });
+});

@@ -1,3 +1,4 @@
+import { computeCostUsd, pricingFor } from "@cox/core";
 import type {
   ChatModel,
   CoxConfig,
@@ -38,8 +39,30 @@ export function createRouter(deps: RouterDeps): Router {
     }
 
     // Scout classification (R1.4, R2.1-R2.4).
-    const outcome = await classify(deps.classifyModel(), input.text);
-    // TODO(task 10, R2.5/R2.6): ledger the classify call when usage arrived.
+    const classifyModel = deps.classifyModel();
+    const startedAt = Date.now();
+    const outcome = await classify(classifyModel, input.text);
+    const durationMs = Date.now() - startedAt;
+
+    // R2.5: ledger the call whenever a usage event arrived, regardless of
+    // parse success — classify overhead is counted even when it fails.
+    if (outcome.usage) {
+      const pricing = pricingFor(classifyModel.ref.provider, classifyModel.ref.model);
+      const costUsd = pricing ? computeCostUsd(outcome.usage, pricing) : null;
+      await deps.ledger.record({
+        ts: deps.now(),
+        sessionId: input.sessionId,
+        kind: "classify",
+        specName: input.specName,
+        taskId: input.taskId,
+        tier: "scout",
+        model: classifyModel.ref,
+        usage: outcome.usage,
+        costUsd,
+        routingReasons: ["classification call"],
+        durationMs,
+      });
+    }
 
     if (!outcome.parsed) {
       return { tier: deps.config.routing.defaultTier, reasons: ["classification failed"] };

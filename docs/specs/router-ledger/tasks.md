@@ -59,7 +59,7 @@ first — the router depends on `budgetState`.
   - accept: garbage JSON, wrong field types, stream error, and >3000 ms (fake timers + AbortSignal observed by the mock) all fall back to `defaultTier` with reason `classification failed`; no retries
   - verify: pnpm --filter @cox/router test -- -t "R2.4"
 
-- [ ] 10. Classification self-ledgering
+- [x] 10. Classification self-ledgering
   - requirements: R2.5, R2.6
   - complexity: 2
   - accept: classify call recorded via injected `Ledger.record` with `kind: "classify"`, tier scout, measured `durationMs`, cost from `pricingFor`+`computeCostUsd` (null-safe), `routingReasons: ["classification call"]`; no record when no usage event arrived; test computes classify share from `byTier` demonstrating the ≤2 % health check
