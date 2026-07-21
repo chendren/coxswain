@@ -20,7 +20,7 @@ paste its output in the commit body. All tests offline, no env vars.
         500/1000ms (+jitter) asserted with fake sleep.
       verify: pnpm --filter @cox/providers test -- -t "R3"
 
-- [ ] 3. Mock model
+- [x] 3. Mock model
       requirements: R6.1, R6.2, R6.3
       complexity: 2
       accept: `createMockModel(script)` yields deltas → toolUses → usage →

@@ -7,3 +7,4 @@
  * checklist. Final surface (task 13) matches design.md exactly.
  */
 export { providerError, isRetryable, withRetries } from "./errors.js";
+export { createMockModel, type MockTurn } from "./mock.js";
