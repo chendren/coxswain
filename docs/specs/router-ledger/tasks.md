@@ -35,7 +35,7 @@ first — the router depends on `budgetState`.
   - accept: session USD + token limits and spec USD limit computed per R8.1; `spentTokens` sums all four usage fields; worst level wins with `scope` naming the tripped scope; no limits → `ok` with limit fields absent; boundary tests at exactly `warnAt` and exactly 1.0
   - verify: pnpm --filter @cox/ledger test -- -t "R8"
 
-- [ ] 6. Router scaffold: precedence + policy table (`@cox/router`)
+- [x] 6. Router scaffold: precedence + policy table (`@cox/router`)
   - requirements: R1.1, R1.2, R1.3, R1.6, R1.7
   - complexity: 3
   - accept: `createRouter` matches the design signature; `resolveTier` implements override precedence and the full TaskKind table incl. `spec-task-exec` complexity mapping and missing-hint→builder; model = tier primary; reasons byte-match design §Reason strings
