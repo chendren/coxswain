@@ -1,6 +1,2 @@
-/**
- * @cox/steering — STUB. Implemented by the "steering" workstream.
- * Contract: import types from @cox/core only. See docs/specs/ for your
- * requirements/design/tasks and docs/04-CONVENTIONS.md before writing code.
- */
-export const PACKAGE = "@cox/steering";
+export { createSteeringStore, steeringWarnings } from "./store";
+export { STEERING_TEMPLATES } from "./templates";
