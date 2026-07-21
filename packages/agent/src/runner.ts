@@ -25,6 +25,7 @@ import type {
 import { addUsage, computeCostUsd, pricingFor, ZERO_USAGE } from "@cox/core";
 import { createAllowlist, permissionKey, type Allowlist } from "./allowlist";
 import { assemble, buildAssistantMessage, buildToolResultMessage } from "./assemble";
+import { createSignalTracker } from "./escalation";
 import { inputPreview, resultPreview } from "./preview";
 
 const DEFAULT_MAX_TURNS = 40;
@@ -64,17 +65,20 @@ export function createAgentRunner(deps: AgentRunnerDeps): AgentRunner {
       const maxTurns = task.maxTurns ?? DEFAULT_MAX_TURNS;
       const toolSpecs = deps.tools.list().map((t) => t.spec);
 
-      // R1.1
-      const routingInput = routingInputFrom(task);
-      let decision = await deps.router.route(routingInput);
-      onEvent({ type: "routing_decision", decision, kind: task.kind });
-      let model = deps.modelForTier(decision.tier);
-
       const messages: ChatMessage[] = [
         ...task.history,
         { role: "user", content: [{ type: "text", text: task.prompt }] },
       ];
       let prevLen = task.history.length;
+
+      // R1.1
+      let decision = await deps.router.route(buildRoutingInput(task, messages));
+      onEvent({ type: "routing_decision", decision, kind: task.kind });
+      let model = deps.modelForTier(decision.tier);
+
+      const tracker = createSignalTracker({
+        toolErrorStreak: deps.config.routing.escalation.toolErrorStreak,
+      });
 
       let totalUsage: TokenUsage = ZERO_USAGE;
       let totalCost = 0;
@@ -196,8 +200,24 @@ export function createAgentRunner(deps: AgentRunnerDeps): AgentRunner {
             requestPermission: deps.requestPermission,
           });
           results.push(result);
+          tracker.record(call, result); // R4.1, R4.2
         }
         messages.push(buildToolResultMessage(results));
+
+        // R4.3
+        if (deps.config.routing.escalation.enabled) {
+          const signals = tracker.drainNew();
+          if (signals.length > 0) {
+            const nextInput = buildRoutingInput(task, messages);
+            const next = await deps.router.reconsider(decision, nextInput, signals);
+            if (next) {
+              onEvent({ type: "escalation", from: decision.tier, to: next.tier, reasons: next.reasons });
+              decision = next;
+              model = deps.modelForTier(next.tier);
+              onEvent({ type: "routing_decision", decision: next, kind: task.kind });
+            }
+          }
+        }
       }
 
       // R1.4
@@ -212,12 +232,19 @@ export function createAgentRunner(deps: AgentRunnerDeps): AgentRunner {
   };
 }
 
-function routingInputFrom(task: AgentTask): RoutingInput {
+/**
+ * R1.1: builds a RoutingInput from the task; contextTokens is chars/4 over
+ * system + the current messages array. Called once up front (messages =
+ * history + the fresh prompt, equivalent to "system+history+prompt") and
+ * again on each R4.3 reconsider (messages has grown since, giving a fresh
+ * estimate rather than a stale one).
+ */
+function buildRoutingInput(task: AgentTask, messages: ChatMessage[]): RoutingInput {
   return {
     kind: task.kind,
     text: task.prompt,
     complexityHint: task.complexityHint,
-    contextTokens: estimateContextTokens(task),
+    contextTokens: estimateContextTokens(task.system, messages),
     userOverrideTier: task.userOverrideTier,
     sessionId: task.sessionId,
     specName: task.specName,
@@ -225,10 +252,8 @@ function routingInputFrom(task: AgentTask): RoutingInput {
   };
 }
 
-/** R1.1: chars/4 over system+history+prompt. */
-function estimateContextTokens(task: AgentTask): number {
-  const historyChars = task.history.reduce((sum, m) => sum + messageChars(m), 0);
-  const chars = task.system.length + historyChars + task.prompt.length;
+function estimateContextTokens(system: string, messages: ChatMessage[]): number {
+  const chars = system.length + messages.reduce((sum, m) => sum + messageChars(m), 0);
   return Math.ceil(chars / 4);
 }
 

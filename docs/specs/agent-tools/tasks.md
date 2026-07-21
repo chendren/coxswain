@@ -87,7 +87,7 @@ Check a box only after its `verify` command passes.
   accept: preToolUse block → skip + isError(stderr); postToolUse block → "[hook]" appended; plan mode auto-denies mutating tools with no prompt, read tools still run
   verify: pnpm --filter @cox/agent test -- runner -t hook
 
-- [ ] 15. Escalation: SignalTracker + reconsider swap
+- [x] 15. Escalation: SignalTracker + reconsider swap
   requirements: R4.1, R4.2, R4.3
   complexity: 4
   accept: streak counts reset on success; JSON-equal stuck detection; reconsider called with accumulated signals; swap emits escalation + new routing_decision and later requests hit the new model (asserted via two ScriptedChatModels)
