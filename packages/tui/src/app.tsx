@@ -4,11 +4,10 @@
  * mount; every AgentEvent goes through a reducer-style switch that updates
  * `entries` (settled, Static) / `live` (transient) / `modal` / `snapshot`.
  *
- * Event handling here covers R1.1 (partial — user_prompt, text_delta,
- * agent_message, error, turn_done), R1.2 (streaming dedupe), R1.6 (a
- * throwing render never reaches here — core's EventBus already swallows
- * listener errors, so this component doesn't need its own try/catch). The
- * remaining 12 AgentEvent variants are added in task 6.
+ * Covers all 17 AgentEvent variants (R1.1, R1.2, R1.5, R1.6) per
+ * docs/specs/tui-cli/design.md's "Event -> render mapping" table. The
+ * `permission_request` modal is a placeholder line until task 9 builds
+ * PermissionPrompt.tsx.
  */
 // Explicit default import (not just the named hooks below): despite this
 // package's tsconfig setting `jsx: "react-jsx"`, the esbuild-based runtime
@@ -20,9 +19,16 @@
 // Importing React explicitly works under either transform.
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { Box, render, Text, type Instance } from "ink";
-import type { AgentEvent, EventBus, SessionController, SessionSnapshot } from "@cox/core";
-import { formatUsd } from "./format";
+import type {
+  AgentEvent,
+  EventBus,
+  PermissionRequest,
+  SessionController,
+  SessionSnapshot,
+} from "@cox/core";
+import { formatDuration, formatTokens, formatUsd } from "./format";
 import { EMPTY_LIVE, Transcript, type LiveState, type TranscriptEntry } from "./components/Transcript";
+import { RoutingAnnouncement } from "./components/RoutingAnnouncement";
 
 export interface AppProps {
   bus: EventBus;
@@ -36,6 +42,7 @@ export interface AppProps {
 export function App({ bus, getSnapshot }: AppProps): React.JSX.Element {
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
+  const [modal, setModal] = useState<PermissionRequest | null>(null);
   const [, setSnapshot] = useState<SessionSnapshot>(getSnapshot);
 
   // Refs mirror the state above so the event handler (subscribed once,
@@ -45,6 +52,15 @@ export function App({ bus, getSnapshot }: AppProps): React.JSX.Element {
   const liveRef = useRef<LiveState>(EMPTY_LIVE);
   const sawDeltaThisTurn = useRef(false);
   const nextId = useRef(0);
+  const lastUserPromptText = useRef("");
+  // routing_decision carries no taskId (AgentEvent's shape has none); the
+  // closest available signal is the most recent spec_event's taskId, which
+  // spec-engine's runTask flow emits immediately before the agent.run(...)
+  // call that produces the matching routing_decision. See
+  // INTEGRATION-NOTES.md (task 6) — genuine contract gap, this is a
+  // best-effort inference, not a documented guarantee.
+  const lastSpecTaskId = useRef<string | undefined>(undefined);
+  const thinkingAccum = useRef("");
 
   function pushEntry(node: React.ReactNode): void {
     const entry = { id: nextId.current++, node };
@@ -65,13 +81,116 @@ export function App({ bus, getSnapshot }: AppProps): React.JSX.Element {
   useLayoutEffect(() => {
     const handleEvent = (e: AgentEvent): void => {
       switch (e.type) {
+        case "session_started": {
+          pushEntry(<Text dimColor>{`session ${e.sessionId} · ${e.cwd}`}</Text>);
+          break;
+        }
         case "user_prompt": {
+          lastUserPromptText.current = e.text;
           pushEntry(<Text bold>{`❯ ${e.text}`}</Text>);
+          break;
+        }
+        case "routing_decision": {
+          const label =
+            e.kind === "spec-task-exec"
+              ? `spec task ${lastSpecTaskId.current ?? "?"}`
+              : `"${lastUserPromptText.current.slice(0, 40)}"`;
+          const snapshot = getSnapshot();
+          pushEntry(
+            <RoutingAnnouncement
+              decision={e.decision}
+              label={label}
+              spentUsd={snapshot.budget.spentUsd}
+              limitUsd={snapshot.budget.limitUsd}
+            />,
+          );
+          break;
+        }
+        case "model_call_started": {
+          setLiveBoth({ ...liveRef.current, spinner: `⠋ ${e.tier} ${e.model.model} …` });
           break;
         }
         case "text_delta": {
           sawDeltaThisTurn.current = true;
           setLiveBoth({ ...liveRef.current, text: liveRef.current.text + e.text });
+          break;
+        }
+        case "thinking_delta": {
+          thinkingAccum.current = (thinkingAccum.current + e.text).slice(-200);
+          setLiveBoth({ ...liveRef.current, thinking: thinkingAccum.current.slice(-60) });
+          break;
+        }
+        case "tool_call_started": {
+          setLiveBoth({
+            ...liveRef.current,
+            tools: { ...liveRef.current.tools, [e.id]: { name: e.name, summary: e.summary } },
+          });
+          break;
+        }
+        case "permission_request": {
+          // Placeholder until task 9's PermissionPrompt modal (R3.1).
+          setModal(e.request);
+          break;
+        }
+        case "tool_call_finished": {
+          const started = liveRef.current.tools[e.id];
+          const summary = started?.summary ?? "";
+          const name = started?.name ?? e.name;
+          const line = `${e.isError ? "✗" : "✓"} ${name} ${summary} · ${e.resultPreview}`;
+          pushEntry(<Text color={e.isError ? "red" : "green"}>{line}</Text>);
+          const remainingTools = { ...liveRef.current.tools };
+          delete remainingTools[e.id];
+          setLiveBoth({ ...liveRef.current, tools: remainingTools });
+          break;
+        }
+        case "model_call_finished": {
+          const line = `─ actual: ${formatTokens(e.usage.inputTokens)} in (${formatTokens(
+            e.usage.cacheReadTokens,
+          )} cached) / ${formatTokens(e.usage.outputTokens)} out · ${formatUsd(e.costUsd)} · ${formatDuration(
+            e.durationMs,
+          )}`;
+          pushEntry(<Text dimColor>{line}</Text>);
+          setLiveBoth({ ...liveRef.current, spinner: undefined });
+          break;
+        }
+        case "escalation": {
+          pushEntry(
+            <Text color="yellow">{`⚠ escalated ${e.from}→${e.to}: ${e.reasons.join(" · ")}`}</Text>,
+          );
+          break;
+        }
+        case "budget_alert": {
+          const limit = e.state.limitUsd === undefined ? "∞" : formatUsd(e.state.limitUsd);
+          const scope = e.state.scope ?? "session";
+          const headline = `▲ budget ${formatUsd(e.state.spentUsd)}/${limit} (${scope})`;
+          if (e.state.level === "exceeded") {
+            pushEntry(
+              <Box flexDirection="column">
+                <Text color="red">{headline}</Text>
+                <Text color="red">{"type /budget extend <usd>"}</Text>
+              </Box>,
+            );
+          } else {
+            pushEntry(<Text color="yellow">{headline}</Text>);
+          }
+          break;
+        }
+        case "spec_event": {
+          if (e.taskId) lastSpecTaskId.current = e.taskId;
+          const taskSuffix = e.taskId ? ` · task ${e.taskId}` : "";
+          pushEntry(<Text>{`◆ spec ${e.specName} · ${e.phase} · ${e.status}${taskSuffix}`}</Text>);
+          break;
+        }
+        case "hook_fired": {
+          const blocked = e.outcomes.filter((o) => o.action === "block");
+          pushEntry(
+            <Box flexDirection="column">
+              <Text dimColor>{`⚓ ${e.event}: ${e.outcomes.length} hook(s)`}</Text>
+              {blocked.map((o, i) => (
+                <Text key={i} color="red">{`✗ ${o.hook}: ${o.stderr ?? "blocked"}`}</Text>
+              ))}
+            </Box>,
+          );
           break;
         }
         case "agent_message": {
@@ -92,10 +211,14 @@ export function App({ bus, getSnapshot }: AppProps): React.JSX.Element {
           pushEntry(<Text dimColor>{`· turn ${formatUsd(e.costUsd)}`}</Text>);
           setLiveBoth(EMPTY_LIVE);
           sawDeltaThisTurn.current = false;
+          thinkingAccum.current = "";
           break;
         }
-        default:
-          break; // remaining AgentEvent variants: task 6
+        default: {
+          const _exhaustive: never = e;
+          void _exhaustive;
+          break;
+        }
       }
       setSnapshot(getSnapshot());
     };
@@ -107,6 +230,7 @@ export function App({ bus, getSnapshot }: AppProps): React.JSX.Element {
   return (
     <Box flexDirection="column">
       <Transcript entries={entries} live={live} />
+      {modal ? <Text>{`? permission: ${modal.summary}`}</Text> : null}
     </Box>
   );
 }

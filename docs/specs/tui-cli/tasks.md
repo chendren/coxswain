@@ -34,7 +34,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: cox replay streams fixtures/events-sample.jsonl through real App at 33ms cadence with readonly stub controller; snapshot.ts fold accumulates usage/cost; unknown event lines warn+skip; exits after drain+grace; test pumps the fixture (0ms cadence) and asserts final fold totals match the fixture's model_call_finished sums.
       verify: pnpm --filter @cox/cli test -- replay && pnpm cox replay fixtures/events-sample.jsonl
 
-- [ ] 6. Full event mapping in Transcript
+- [x] 6. Full event mapping in Transcript
       requirements: R1.1, R1.5
       complexity: 3
       accept: all 17 AgentEvent variants render per the design table (tool transient→settled lines with ✓/✗, hook_fired incl. block stderr, spec_event, session_started, escalation, budget_alert); snapshot tests cover each variant once using fixture-style events.

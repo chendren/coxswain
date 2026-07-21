@@ -96,5 +96,26 @@ The integrator (M2) resolves these and logs any core changes under
   core change but does mean the snapshot fold can no longer be a pure
   function of the event stream alone for this one field.
 
+## 2026-07-20 — tui-cli (task 6, RoutingAnnouncement label)
+
+- Blocked on: `docs/specs/tui-cli/design.md`'s RoutingAnnouncement label
+  rule needs `taskId` when `decision`'s `kind` is `spec-task-exec`
+  (`spec task <taskId>`), but neither the `routing_decision` `AgentEvent`
+  variant (`{decision, kind}`) nor `RoutingDecision` itself carries a
+  `taskId` anywhere. (`RoutingInput.taskId` exists but is never surfaced
+  onto the event bus.)
+- Workaround taken: `packages/tui/src/app.tsx` remembers the most recent
+  `spec_event`'s `taskId` and uses it as a fallback for the next
+  `spec-task-exec` `routing_decision` (spec-engine's `runTask` sequence
+  emits `spec_event task:in_progress` with a `taskId` immediately before
+  the `agent.run(...)` call that produces the matching decision — see
+  spec-engine/design.md's sequence diagram). Renders `spec task ?` if
+  nothing has been seen yet. This is an inference from event *ordering*,
+  not a documented guarantee — a concurrent/reordered stream would break
+  it.
+- Proposed contract change: add `taskId?: string` to the `routing_decision`
+  `AgentEvent` variant (mirroring `RoutingInput.taskId`), so consumers
+  don't have to infer it from a different event type.
+
 ## Contract changes
 (none yet)
