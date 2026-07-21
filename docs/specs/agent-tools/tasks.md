@@ -27,7 +27,7 @@ Check a box only after its `verify` command passes.
   accept: exactly-once match enforced with count-naming errors; unified diff in PermissionRequest.detail; multi-line old_string works
   verify: pnpm --filter @cox/tools test -- edit
 
-- [ ] 5. globmatch.ts + walk.ts
+- [x] 5. globmatch.ts + walk.ts
   requirements: R8.5
   complexity: 2
   accept: ** * ? {a,b} translated correctly (table-driven); walker skips node_modules/.git; yields mtimes
