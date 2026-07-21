@@ -12,7 +12,7 @@ paste its output in the commit body. All tests offline, no env vars.
         design.md created with TODO stubs that typecheck.
       verify: pnpm --filter @cox/providers typecheck
 
-- [ ] 2. Error taxonomy + withRetries
+- [x] 2. Error taxonomy + withRetries
       requirements: R3.1, R3.2, R3.3, R3.4
       complexity: 3
       accept: `providerError`/`isRetryable`/`withRetries` per design; sleep

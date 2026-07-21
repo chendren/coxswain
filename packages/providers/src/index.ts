@@ -6,4 +6,4 @@
  * Public surface grows incrementally as tasks land; see tasks.md for the
  * checklist. Final surface (task 13) matches design.md exactly.
  */
-export {};
+export { providerError, isRetryable, withRetries } from "./errors.js";
