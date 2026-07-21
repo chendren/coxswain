@@ -70,7 +70,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: createPlainRenderer emits mapping-table content as plain lines (no ANSI cursor codes); print.ts wires auto-deny (default) / auto-allow (--yolo) permission policy and exit codes 0/1 by stop reason; tests capture write() lines for the fixture and assert permission + exit behavior with a scripted run.
       verify: pnpm --filter @cox/tui test -- plain && pnpm --filter @cox/cli test -- print
 
-- [ ] 12. One-shot commands (explain/suggest)
+- [x] 12. One-shot commands (explain/suggest)
       requirements: R9.1, R9.2
       complexity: 2
       accept: oneshot.ts routes kind:"oneshot", streams a tool-less ChatModel call, prints text, writes a LedgerEntry directly; suggest's last stdout line is the bare command; test uses an inline fake ChatModel + fake Router/Ledger (local test doubles only — no @cox/providers import).

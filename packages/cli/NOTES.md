@@ -61,6 +61,21 @@ stream-injection seam, so `test/replay.test.ts` temporarily patches
 `pnpm --filter @cox/cli test` output readable. Assertions are against the
 returned snapshot fold, not rendered frames.
 
+## oneshot.ts (`runOneshot`)
+
+Not yet wired into `main.ts`'s `explain`/`suggest` command handlers — same
+reason as `print.ts`: needs a real `router`/`tierModel`/`ledger` from
+`wire.ts` (task 13). `contextTokens` for the `router.route({kind:"oneshot",
+…})` call is a plain `chars/4` estimate computed directly on the input
+text, not `ChatModel.estimateTokens` — the model isn't known until
+*after* routing decides the tier, so there's no model-specific estimator
+available yet at that point. R9.2 ("suggest prints the command alone on
+the final line") is purely a system-prompt instruction to the model
+(`oneshotSystem("suggest")` ends with it) — `runOneshot` does no
+parsing/extraction of the model's output; the test proves the wiring
+forwards a well-behaved model's text faithfully, not that ill-behaved
+output gets corrected.
+
 ## print.ts (`runPrint`)
 
 Signature is `runPrint(prompt, flags)` per design.md, where `flags` bundles
