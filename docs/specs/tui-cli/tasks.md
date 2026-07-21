@@ -58,7 +58,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: modal shows summary+scrollable detail; y/a/n/Esc map to allow/allowAlways/deny/deny; resolvePermission called exactly once; input disabled while open (stdin writes during modal produce no submitPrompt calls).
       verify: pnpm --filter @cox/tui test -- permission
 
-- [ ] 10. Input: slash grammar, completion, interrupt
+- [x] 10. Input: slash grammar, completion, interrupt
       requirements: R4.1–R4.4
       complexity: 3
       accept: non-slash → submitPrompt; valid slash → submitCommand(cmd,args) per grammar; unknown slash renders local error, controller untouched; Tab completes the six top-level commands; Esc (no modal) → interrupt().

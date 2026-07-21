@@ -8,8 +8,9 @@
  * docs/specs/tui-cli/design.md's "Event -> render mapping" table.
  * `permission_request` opens the PermissionPrompt modal (R3.1); its
  * `onDecision` calls `SessionController.resolvePermission` and clears the
- * modal (R3.2). Text input (submitPrompt/submitCommand/interrupt) is wired
- * in task 10.
+ * modal (R3.2). Input.tsx (below the status line) owns
+ * submitPrompt/submitCommand/interrupt (R4.*); it is not rendered in
+ * `readonly` mode (cox replay).
  */
 // Explicit default import (not just the named hooks below): despite this
 // package's tsconfig setting `jsx: "react-jsx"`, the esbuild-based runtime
@@ -33,6 +34,7 @@ import { EMPTY_LIVE, Transcript, type LiveState, type TranscriptEntry } from "./
 import { RoutingAnnouncement } from "./components/RoutingAnnouncement";
 import { StatusLine } from "./components/StatusLine";
 import { PermissionPrompt } from "./components/PermissionPrompt";
+import { Input } from "./components/Input";
 
 export interface AppProps {
   bus: EventBus;
@@ -41,13 +43,17 @@ export interface AppProps {
   readonly?: boolean;
 }
 
-// `controller.submitPrompt`/`.submitCommand`/`.interrupt` are unused until
-// Input (task 10) wires them up.
-export function App({ bus, controller, getSnapshot }: AppProps): React.JSX.Element {
+export function App({ bus, controller, getSnapshot, readonly }: AppProps): React.JSX.Element {
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [modal, setModal] = useState<PermissionRequest | null>(null);
   const [snapshot, setSnapshot] = useState<SessionSnapshot>(getSnapshot);
+  // R4.3: Esc only interrupts while a turn is actually running. Tracked
+  // from user_prompt (start) to turn_done/error (end) — the agent loop's
+  // other terminal stopReasons (aborted/max_turns/budget_stop) don't emit
+  // a dedicated event, so this can under-reset in those cases; interrupt()
+  // on an already-finished turn is expected to be a harmless no-op.
+  const [turnRunning, setTurnRunning] = useState(false);
 
   // Refs mirror the state above so the event handler (subscribed once,
   // below) always reads the current value instead of a stale closure over
@@ -92,6 +98,7 @@ export function App({ bus, controller, getSnapshot }: AppProps): React.JSX.Eleme
         case "user_prompt": {
           lastUserPromptText.current = e.text;
           pushEntry(<Text bold>{`❯ ${e.text}`}</Text>);
+          setTurnRunning(true);
           break;
         }
         case "routing_decision": {
@@ -205,6 +212,7 @@ export function App({ bus, controller, getSnapshot }: AppProps): React.JSX.Eleme
         }
         case "error": {
           pushEntry(<Text color="red">{`✖ ${e.message}`}</Text>);
+          setTurnRunning(false);
           break;
         }
         case "turn_done": {
@@ -215,6 +223,7 @@ export function App({ bus, controller, getSnapshot }: AppProps): React.JSX.Eleme
           setLiveBoth(EMPTY_LIVE);
           sawDeltaThisTurn.current = false;
           thinkingAccum.current = "";
+          setTurnRunning(false);
           break;
         }
         default: {
@@ -236,6 +245,7 @@ export function App({ bus, controller, getSnapshot }: AppProps): React.JSX.Eleme
       {modal ? (
         <PermissionPrompt
           request={modal}
+          readonly={readonly}
           onDecision={(decision) => {
             controller.resolvePermission(decision);
             setModal(null);
@@ -243,6 +253,14 @@ export function App({ bus, controller, getSnapshot }: AppProps): React.JSX.Eleme
         />
       ) : null}
       <StatusLine snapshot={snapshot} />
+      {!readonly ? (
+        <Input
+          controller={controller}
+          disabled={modal !== null}
+          turnRunning={turnRunning}
+          onLocalError={(message) => pushEntry(<Text color="red">{`✖ ${message}`}</Text>)}
+        />
+      ) : null}
     </Box>
   );
 }

@@ -84,6 +84,37 @@ spacing, glyphs, 10-char bar) using literal, self-consistent test
 assertions — not a byte-for-byte replay of these particular illustrative
 numbers.
 
+## useInput callbacks must be stable + read via refs, not the render closure (task 10)
+
+Ink's `useInput` re-subscribes in a passive `useEffect` whenever the
+callback passed to it changes identity (it's in that effect's own
+dependency array) — an inline arrow function (`useInput((input, key) =>
+{...})`) is a *new* function every render, so after each keystroke that
+changes state there is a window where the *previous* render's handler
+(closed over the *previous* value of that state) is still attached, since
+the re-subscribe effect hasn't run yet.
+
+Concretely broke `Input.tsx`: `submit(line)` on Enter read `line` from the
+render closure. Repro: typing "add tests" then Enter as two separate
+`stdin.write` calls called `controller.submitPrompt` zero times (the Enter
+event ran against the handler from *before* "add tests" was typed, when
+`line` was still `""`, which no-ops on empty). A slash command followed by
+more typed characters (e.g. Tab-completing `/model ` then typing
+"architect") submitted with the pre-completion/pre-typing args instead.
+
+Fixed by wrapping the handler in `useCallback` with an empty dependency
+array (so Ink never has a reason to re-subscribe past the first mount) and
+reading everything through refs (`lineRef`, `latest` mirroring the props)
+instead of the closure. `PermissionPrompt.tsx` uses the same
+inline-callback style but wasn't affected — its only per-render-changing
+read (`onDecision`) still triggers the same externally-visible effect even
+from a "stale" instance, since the props it closes over
+(`controller`/`setModal`) don't themselves change identity in a way that
+matters; `Input.tsx`'s bug was specifically about reading a *rapidly
+accumulating* local value out of the closure. Worth the same scrutiny for
+any future component that both calls `useInput` inline and reads local
+state that changes character-by-character.
+
 ## Public API surface (index.ts)
 
 `cachePct` is implemented in `format.ts` (used internally by the status
