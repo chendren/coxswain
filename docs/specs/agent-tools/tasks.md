@@ -63,7 +63,7 @@ Check a box only after its `verify` command passes.
   accept: scripted turns replay deltas/toolUses/usage/stopReason; records requests; failWith throws mid-stream; previews truncate at 80/120
   verify: pnpm --filter @cox/agent test -- scripted
 
-- [ ] 11. assemble.ts: ChatRequest construction + cache breakpoints
+- [x] 11. assemble.ts: ChatRequest construction + cache breakpoints
   requirements: R2.1, R2.2, R2.3
   complexity: 3
   accept: system verbatim; assistant text+tool_use ordering; single tool_result user message; breakpoint = prev messages last index (first call: history.length-1/undefined) asserted via recorded requests
