@@ -3,11 +3,10 @@ import type {
   Ledger,
   LedgerEntry,
   LedgerQuery,
-  LedgerSummary,
   ModelPricing,
 } from "@cox/core";
-import { ZERO_USAGE } from "@cox/core";
 import { appendEntry, readEntries } from "./jsonl";
+import { summarize } from "./summary";
 
 export interface CreateLedgerDeps {
   /** Absolute path to the JSONL ledger file, e.g. `<cwd>/.cox/ledger.jsonl`. */
@@ -47,6 +46,11 @@ export function createLedger(deps: CreateLedgerDeps): LedgerWithDebug {
     return entries;
   }
 
+  function architectPricing(): ModelPricing | null {
+    const ref = deps.config.tiers.architect.primary;
+    return deps.pricing(ref.provider, ref.model);
+  }
+
   const ledger: LedgerWithDebug = {
     async record(entry: LedgerEntry) {
       await appendEntry(deps.filePath, entry);
@@ -57,16 +61,10 @@ export function createLedger(deps: CreateLedgerDeps): LedgerWithDebug {
       return all.filter((e) => matches(e, q));
     },
 
-    // TODO(task 3/4, R7.1/R7.2): totals, byTier/byModel, baseline calc.
-    async summary(_q: LedgerQuery): Promise<LedgerSummary> {
-      return {
-        entries: 0,
-        usage: ZERO_USAGE,
-        costUsd: 0,
-        byTier: {},
-        byModel: {},
-        baselineArchitectCostUsd: 0,
-      };
+    async summary(q: LedgerQuery) {
+      const all = await readAll();
+      const filtered = all.filter((e) => matches(e, q));
+      return summarize(filtered, architectPricing());
     },
 
     // TODO(task 5, R8.1-R8.3): scopes + levels.

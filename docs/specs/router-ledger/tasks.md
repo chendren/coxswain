@@ -17,7 +17,7 @@ first — the router depends on `budgetState`.
   - accept: filters by sessionId, specName, tier, and `since` (ISO string ≥ compare) compose; results keep file order; empty file/missing file → `[]`
   - verify: pnpm --filter @cox/ledger test -- -t "R6.3"
 
-- [ ] 3. `summary` totals + byTier/byModel
+- [x] 3. `summary` totals + byTier/byModel
   - requirements: R7.1
   - complexity: 2
   - accept: totals use `addUsage`; null `costUsd` counts as 0; `byModel` keyed by `modelKey`; buckets carry usage + cost; verified against a 6-entry fixture spanning 3 tiers/3 models
