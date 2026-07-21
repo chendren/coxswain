@@ -9,3 +9,4 @@
 export { providerError, isRetryable, withRetries } from "./errors.js";
 export { createMockModel, type MockTurn } from "./mock.js";
 export { createAnthropicAdapter } from "./anthropic.js";
+export { createOpenAICompatAdapter } from "./openai-compat.js";

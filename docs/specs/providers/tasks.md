@@ -78,7 +78,7 @@ paste its output in the commit body. All tests offline, no env vars.
         chunk mapping; zeroed usage emitted when provider sends none.
       verify: pnpm --filter @cox/providers test -- -t "R2.3|R2.4"
 
-- [ ] 10. OpenAI-compat adapter factory
+- [x] 10. OpenAI-compat adapter factory
       requirements: R2.1, R2.5, R3
       complexity: 2
       accept: `createOpenAICompatAdapter` wires builder + parser +

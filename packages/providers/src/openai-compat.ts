@@ -1,4 +1,6 @@
-import type { ChatMessage, ChatRequest, ContentBlock, StopReason, StreamEvent } from "@cox/core";
+import type { ChatModel, ChatMessage, ChatRequest, ContentBlock, ProviderAdapter, StopReason, StreamEvent } from "@cox/core";
+import { providerError, withRetries } from "./errors.js";
+import { estimateTokens } from "./estimate.js";
 
 // ---------------------------------------------------------------------------
 // Request shapes (local — see design.md §OpenAI-compat mapping).
@@ -260,4 +262,121 @@ export async function* translateOpenAICompatStream(
     };
   }
   yield { type: "done", stopReason };
+}
+
+// ---------------------------------------------------------------------------
+// Adapter factory (task 10)
+// ---------------------------------------------------------------------------
+
+export interface OpenAICompatEntry {
+  /** Adapter id used in ModelRef.provider, e.g. "xai", "ollama". */
+  id: string;
+  baseUrl: string;
+  /** Env var holding the API key; omit for local servers that need none. */
+  apiKeyEnv?: string;
+  models: string[];
+}
+
+/** Reads a Response body as an async iterable of byte chunks (R2.3's byte-stream input). */
+async function* readBody(body: NonNullable<Response["body"]>): AsyncIterable<Uint8Array> {
+  const reader = body.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return;
+      if (value) yield value as Uint8Array;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+/** Classification at the call site (R3): 429/5xx/network -> retryable; other 4xx -> not; aborts -> not. */
+function classifyFetchError(err: unknown, signal: AbortSignal | undefined): Error {
+  if (err instanceof Error && typeof (err as { retryable?: unknown }).retryable === "boolean") {
+    return err; // already classified upstream
+  }
+  if (signal?.aborted) {
+    return providerError(`request aborted`, false);
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  return providerError(message, true); // network-level failure (fetch TypeError, etc.)
+}
+
+async function* streamOnce(
+  fetchImpl: typeof fetch,
+  entry: OpenAICompatEntry,
+  headers: Record<string, string>,
+  body: OpenAICompatRequestBody,
+  signal: AbortSignal | undefined,
+): AsyncIterable<StreamEvent> {
+  let response: Response;
+  try {
+    response = await fetchImpl(`${entry.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      ...(signal ? { signal } : {}),
+    });
+  } catch (err) {
+    throw classifyFetchError(err, signal);
+  }
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    const retryable = response.status === 429 || response.status >= 500;
+    throw providerError(
+      `${entry.id}: ${response.status} ${text || response.statusText}`,
+      retryable,
+    );
+  }
+  if (!response.body) {
+    throw providerError(`${entry.id}: empty response body`, false);
+  }
+
+  try {
+    yield* translateOpenAICompatStream(parseSSELines(readBody(response.body)));
+  } catch (err) {
+    throw classifyFetchError(err, signal);
+  }
+}
+
+/**
+ * R2.1/R2.5 — an OpenAI-compatible ProviderAdapter (xAI, OpenAI, Ollama, LM
+ * Studio, ...). Reads process.env[apiKeyEnv] lazily inside stream(); sends no
+ * Authorization header when apiKeyEnv is omitted (local servers).
+ */
+export function createOpenAICompatAdapter(
+  entry: OpenAICompatEntry,
+  deps: { fetchImpl?: typeof fetch } = {},
+): ProviderAdapter {
+  const fetchImpl = deps.fetchImpl ?? fetch;
+
+  return {
+    id: entry.id,
+    models(): string[] {
+      return [...entry.models];
+    },
+    create(modelId: string): ChatModel {
+      return {
+        ref: { provider: entry.id, model: modelId },
+        estimateTokens,
+        stream(req: ChatRequest, signal?: AbortSignal): AsyncIterable<StreamEvent> {
+          let apiKey: string | undefined;
+          if (entry.apiKeyEnv) {
+            apiKey = process.env[entry.apiKeyEnv];
+            if (!apiKey) {
+              throw providerError(
+                `${entry.id}: environment variable ${entry.apiKeyEnv} is not set`,
+                false,
+              );
+            }
+          }
+          const body = buildOpenAICompatRequest(modelId, req);
+          const headers = buildOpenAICompatHeaders(apiKey);
+          return withRetries<StreamEvent>(() => streamOnce(fetchImpl, entry, headers, body, signal));
+        },
+      };
+    },
+  };
 }
