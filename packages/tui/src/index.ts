@@ -1,6 +1,6 @@
 /**
- * @cox/tui — STUB. Implemented by the "tui" workstream.
- * Contract: import types from @cox/core only. See docs/specs/ for your
- * requirements/design/tasks and docs/04-CONVENTIONS.md before writing code.
+ * @cox/tui — public API (docs/specs/tui-cli/design.md "Public API (exact)").
+ * Imports only @cox/core; all engine access flows through SessionController
+ * + EventBus + getSnapshot, passed in by @cox/cli.
  */
-export const PACKAGE = "@cox/tui";
+export { formatTokens, formatUsd, formatDuration, budgetBar } from "./format";

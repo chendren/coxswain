@@ -16,7 +16,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: loadDeps dynamic-imports all 8 engine packages, runtime-checks factory presence, throws NotWiredError naming the missing package; the single permitted unknown-cast is commented; a test asserts NotWiredError for current stubs and that main.ts has no static engine imports (grep-style test over source).
       verify: pnpm --filter @cox/cli test -- deps
 
-- [ ] 3. tui scaffold: deps, jsx tsconfig, format helpers
+- [x] 3. tui scaffold: deps, jsx tsconfig, format helpers
       requirements: R1.4 (formats), R2.1 (formats)
       complexity: 2
       accept: ink/react/ink-testing-library added; tsconfig jsx react-jsx; format.ts implements formatTokens/formatUsd/formatDuration/budgetBar/cachePct per design rules with table-driven tests incl. edge cases (null cost, zero denominators, >1M tokens).
