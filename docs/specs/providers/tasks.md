@@ -44,7 +44,7 @@ paste its output in the commit body. All tests offline, no env vars.
         asserts absence of temperature/top_p/top_k/thinking keys.
       verify: pnpm --filter @cox/providers test -- -t "R1.2"
 
-- [ ] 6. Anthropic stream translation
+- [x] 6. Anthropic stream translation
       requirements: R1.3, R1.4
       complexity: 4
       accept: fake SDK event stream (incl. split input_json_delta fragments
