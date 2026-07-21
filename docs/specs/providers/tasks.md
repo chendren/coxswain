@@ -35,7 +35,7 @@ paste its output in the commit body. All tests offline, no env vars.
         `maxOutputFor` (haiku-4-5 → 64000, default 128000) unit-tested.
       verify: pnpm --filter @cox/providers test -- -t "R8"
 
-- [ ] 5. Anthropic request builder (pure)
+- [x] 5. Anthropic request builder (pure)
       requirements: R1.2, R1.5, R7.1, R7.2, R7.3
       complexity: 3
       accept: pure `buildAnthropicRequest(modelId, req)` covering the full
