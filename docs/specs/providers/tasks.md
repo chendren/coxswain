@@ -70,7 +70,7 @@ paste its output in the commit body. All tests offline, no env vars.
         prefix), tools mapping, stream_options, auth header presence/absence.
       verify: pnpm --filter @cox/providers test -- -t "R2.2"
 
-- [ ] 9. SSE parser + openai-compat stream translation
+- [x] 9. SSE parser + openai-compat stream translation
       requirements: R2.3, R2.4
       complexity: 4
       accept: byte-stream SSE parsing with a chunk boundary mid-line;
