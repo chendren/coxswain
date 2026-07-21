@@ -23,8 +23,12 @@ export interface RunsState {
 // Paths (R8.2 — all resolved from an explicit cwd, never process.cwd())
 // ---------------------------------------------------------------------------
 
+export function specsRoot(cwd: string): string {
+  return path.join(cwd, ".cox", "specs");
+}
+
 export function specDir(cwd: string, name: string): string {
-  return path.join(cwd, ".cox", "specs", name);
+  return path.join(specsRoot(cwd), name);
 }
 
 export function specJsonPath(dir: string): string {

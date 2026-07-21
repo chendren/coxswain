@@ -2,8 +2,8 @@ import * as fs from "node:fs/promises";
 import { afterEach, describe, expect, it } from "vitest";
 import type { AgentEvent } from "@cox/core";
 import { createSpecEngine, type SpecEngineDeps } from "../src/engine.js";
-import { ideaPath, specDir, specJsonPath } from "../src/state.js";
-import { fakeRunner, tmpProject } from "./helpers.js";
+import { ideaPath, readSpecState, specDir, specJsonPath, tasksPath, writeSpecState } from "../src/state.js";
+import { fakeRunner, tmpProject, VALID_TASKS_MD } from "./helpers.js";
 
 const FIXED_NOW = "2026-01-01T00:00:00.000Z";
 
@@ -74,5 +74,70 @@ describe("SpecEngine.create", () => {
     const onDisk = JSON.parse(await fs.readFile(specJsonPath(dir), "utf8"));
     expect(onDisk).toEqual(first);
     expect(await fs.readFile(ideaPath(dir), "utf8")).toBe("original idea");
+  });
+});
+
+describe("SpecEngine.load", () => {
+  it("R1.5: returns null for a spec that does not exist", async () => {
+    const { engine } = await setup();
+    expect(await engine.load("does-not-exist")).toBeNull();
+  });
+
+  it("R1.4: merges the task SET from tasks.md with STATUS truth from spec.json, defaulting unknown ids to pending", async () => {
+    const { cwd, engine } = await setup();
+    await engine.create("widget", "idea");
+    const dir = specDir(cwd, "widget");
+
+    // Simulate an approved task list on disk (bypassing generate/approve,
+    // not yet implemented at this point in the lane).
+    await fs.writeFile(tasksPath(dir), VALID_TASKS_MD, "utf8");
+    const stored = await readSpecState(dir);
+    await writeSpecState(dir, {
+      ...stored,
+      phases: { ...stored.phases, tasks: "approved" },
+      tasks: [
+        { id: "1", title: "stale title — file wins", requirements: ["R1.1"], complexity: 1, status: "done" },
+        { id: "99", title: "no longer in tasks.md", requirements: ["R1.1"], complexity: 1, status: "blocked" },
+      ],
+    });
+
+    const loaded = await engine.load("widget");
+    expect(loaded).not.toBeNull();
+    expect(loaded?.tasks).toEqual([
+      { id: "1", title: "Scaffold the module", requirements: ["R1.1"], complexity: 1, status: "done" },
+      { id: "2", title: "Implement core logic", requirements: ["R1.2", "R2.1"], complexity: 3, status: "pending" },
+      { id: "3", title: "Wire up integration", requirements: ["R2.2"], complexity: 2, status: "pending" },
+    ]);
+  });
+});
+
+describe("SpecEngine.list", () => {
+  it("returns one SpecState per spec dir", async () => {
+    const { engine } = await setup();
+    await engine.create("alpha", "idea a");
+    await engine.create("beta", "idea b");
+
+    const specs = await engine.list();
+    expect(specs.map((s) => s.name).sort()).toEqual(["alpha", "beta"]);
+  });
+
+  it("returns an empty list when no specs exist yet", async () => {
+    const { engine } = await setup();
+    expect(await engine.list()).toEqual([]);
+  });
+
+  it("R1.6: skips a corrupt spec.json, emits an error event naming it, and continues", async () => {
+    const { cwd, engine, events } = await setup();
+    await engine.create("good", "idea");
+    await engine.create("bad", "idea");
+    await fs.writeFile(specJsonPath(specDir(cwd, "bad")), "{ not json", "utf8");
+
+    const specs = await engine.list();
+
+    expect(specs.map((s) => s.name)).toEqual(["good"]);
+    const errorEvents = events.filter((e): e is Extract<AgentEvent, { type: "error" }> => e.type === "error");
+    expect(errorEvents).toHaveLength(1);
+    expect(errorEvents[0]?.message).toContain("bad");
+    expect(errorEvents[0]?.message).toContain(specJsonPath(specDir(cwd, "bad")));
   });
 });

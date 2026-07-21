@@ -34,7 +34,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: flipCheckbox changes exactly one line, byte-identical elsewhere (assert full-file equality); throws when task line absent; extractRequirementExcerpts pulls each "- R<id>: ..." line plus indented continuations from REQ_FIXTURE_MD, notes missing ids inline.
   verify: pnpm --filter @cox/spec test -- -t "R6.5"
 
-- [ ] 6. Implement load() and list() with tolerant merge
+- [x] 6. Implement load() and list() with tolerant merge
   requirements: R1.4, R1.5, R1.6
   complexity: 3
   accept: load merges task set from tasks.md with statuses from spec.json (unknown ids → pending); missing spec → null; list skips corrupt spec.json with an error event and continues.

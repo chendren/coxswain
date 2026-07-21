@@ -4,6 +4,7 @@
  * model work goes through the injected AgentRunner (R8.2 — no network here).
  */
 import * as fs from "node:fs/promises";
+import type { Dirent } from "node:fs";
 import type {
   AgentEvent,
   AgentRunner,
@@ -11,8 +12,19 @@ import type {
   SpecEngine,
   SpecPhase,
   SpecState,
+  SpecTask,
 } from "@cox/core";
-import { createInitialState, ideaPath, specDir, specJsonPath, writeSpecState } from "./state.js";
+import { parseTasks } from "./parser.js";
+import {
+  createInitialState,
+  ideaPath,
+  readSpecState,
+  specDir,
+  specJsonPath,
+  specsRoot,
+  tasksPath,
+  writeSpecState,
+} from "./state.js";
 
 export interface SpecEngineDeps {
   cwd: string;
@@ -38,8 +50,23 @@ async function pathExists(p: string): Promise<boolean> {
   }
 }
 
+async function readFileOrEmpty(p: string): Promise<string> {
+  try {
+    return await fs.readFile(p, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+/** R1.4 merge rule: task SET (id/title/requirements/complexity) comes from
+ * tasks.md; task STATUS comes from spec.json by id, unknown ids -> pending. */
+function mergeTasks(fromFile: SpecTask[], fromState: SpecTask[]): SpecTask[] {
+  const statusById = new Map(fromState.map((t) => [t.id, t.status]));
+  return fromFile.map((t) => ({ ...t, status: statusById.get(t.id) ?? "pending" }));
+}
+
 export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
-  const { cwd, now } = deps;
+  const { cwd, onEvent, now } = deps;
 
   async function create(name: string, idea: string): Promise<SpecState> {
     // R1.2: validate before any filesystem access.
@@ -61,11 +88,44 @@ export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
   }
 
   async function load(name: string): Promise<SpecState | null> {
-    throw new Error("not implemented");
+    const dir = specDir(cwd, name);
+    // R1.5: no spec.json at all -> null, not a throw.
+    if (!(await pathExists(specJsonPath(dir)))) {
+      return null;
+    }
+    // Past this point spec.json is expected to exist; a read/parse failure
+    // is corruption (R8.3), not absence, so readSpecState's throw stands.
+    const stored = await readSpecState(dir);
+    const md = await readFileOrEmpty(tasksPath(dir));
+    const { tasks } = parseTasks(md); // tolerant: R6.3 errors ignored here
+    return { ...stored, tasks: mergeTasks(tasks, stored.tasks) };
   }
 
   async function list(): Promise<SpecState[]> {
-    throw new Error("not implemented");
+    let entries: Dirent[];
+    try {
+      entries = await fs.readdir(specsRoot(cwd), { withFileTypes: true });
+    } catch {
+      return [];
+    }
+
+    const out: SpecState[] = [];
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const name = entry.name;
+      const dir = specDir(cwd, name);
+      try {
+        const stored = await readSpecState(dir);
+        const md = await readFileOrEmpty(tasksPath(dir));
+        const { tasks } = parseTasks(md);
+        out.push({ ...stored, tasks: mergeTasks(tasks, stored.tasks) });
+      } catch (err) {
+        // R1.6: skip unreadable/corrupt spec.json, name it, keep going.
+        const message = err instanceof Error ? err.message : String(err);
+        onEvent({ type: "error", message: `list: skipping spec "${name}" — ${message}` });
+      }
+    }
+    return out;
   }
 
   async function generate(name: string, phase: SpecPhase): Promise<SpecState> {
