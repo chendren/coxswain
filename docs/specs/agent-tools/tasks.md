@@ -33,7 +33,7 @@ Check a box only after its `verify` command passes.
   accept: ** * ? {a,b} translated correctly (table-driven); walker skips node_modules/.git; yields mtimes
   verify: pnpm --filter @cox/tools test -- globmatch
 
-- [ ] 6. glob tool
+- [x] 6. glob tool
   requirements: R8.5
   complexity: 1
   accept: cwd-relative results, mtime-desc, limit honored
