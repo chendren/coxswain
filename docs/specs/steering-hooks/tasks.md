@@ -13,7 +13,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: `yaml` + `picomatch` added to @cox/steering deps; `--passWithNoTests` removed; `parseFrontMatter` handles: valid block, no block, unclosed block, invalid YAML (returns data:null + full raw body), CRLF delimiters.
       verify: pnpm --filter @cox/steering typecheck && pnpm --filter @cox/steering test
 
-- [ ] 2. loadAll for .cox/steering docs
+- [x] 2. loadAll for .cox/steering docs
       requirements: R1.1, R1.3, R1.5, R1.6, R1.7
       complexity: 2
       accept: mkdtemp fixtures cover: stem/path/tokens mapping (tokens = ceil(body chars / 4)); default inclusion; fileMatch-without-pattern → manual; missing dir → no throw; subdirs and non-.md ignored.
