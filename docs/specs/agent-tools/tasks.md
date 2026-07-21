@@ -45,7 +45,7 @@ Check a box only after its `verify` command passes.
   accept: three modes; binary skip; invalid-regex error; 1000-match cap marker
   verify: pnpm --filter @cox/tools test -- grep
 
-- [ ] 8. bash tool
+- [x] 8. bash tool
   requirements: R8.4
   complexity: 3
   accept: deny-prefix beats allow-prefix; timeout kill + isError; 30k truncation; exit-code line on failure; $SHELL fallback /bin/sh
