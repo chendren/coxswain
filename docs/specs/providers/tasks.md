@@ -62,7 +62,7 @@ paste its output in the commit body. All tests offline, no env vars.
         `models()` returns the four known ids.
       verify: pnpm --filter @cox/providers test -- -t "R1.1|R1.6|R1.7" && pnpm --filter @cox/providers typecheck
 
-- [ ] 8. OpenAI-compat request builder (pure)
+- [x] 8. OpenAI-compat request builder (pure)
       requirements: R2.2, R2.5
       complexity: 3
       accept: message flattening rules (system lead message; assistant
