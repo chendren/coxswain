@@ -1,6 +1,91 @@
+import type {
+  CoxConfig,
+  Ledger,
+  LedgerEntry,
+  LedgerQuery,
+  LedgerSummary,
+  ModelPricing,
+} from "@cox/core";
+import { appendEntry, readEntries } from "./jsonl";
+import { summarize } from "./summary";
+import { computeBudgetState } from "./budget";
+
+export interface CreateLedgerDeps {
+  /** Absolute path to the JSONL ledger file, e.g. `<cwd>/.cox/ledger.jsonl`. */
+  filePath: string;
+  config: CoxConfig;
+  /** Injected for test override; production wiring passes `pricingFor`. */
+  pricing: (provider: string, model: string) => ModelPricing | null;
+  /** ISO-8601 UTC clock, injected for determinism. */
+  now: () => string;
+}
+
 /**
- * @cox/ledger — STUB. Implemented by the "ledger" workstream.
- * Contract: import types from @cox/core only. See docs/specs/ for your
- * requirements/design/tasks and docs/04-CONVENTIONS.md before writing code.
+ * `Ledger` plus a non-contract debug property. `lastReadSkippedLines`
+ * reflects the corrupt-line count from the most recent read (query/summary/
+ * budgetState) — exposed for tests only; nothing outside tests may rely on
+ * it (see packages/ledger/NOTES.md).
  */
-export const PACKAGE = "@cox/ledger";
+export interface LedgerWithDebug extends Ledger {
+  readonly lastReadSkippedLines: number;
+}
+
+/** R6.3: sessionId/specName/tier exact match; since = ISO string >= compare. */
+function matches(entry: LedgerEntry, q: LedgerQuery): boolean {
+  if (q.sessionId !== undefined && entry.sessionId !== q.sessionId) return false;
+  if (q.specName !== undefined && entry.specName !== q.specName) return false;
+  if (q.tier !== undefined && entry.tier !== q.tier) return false;
+  if (q.since !== undefined && !(entry.ts >= q.since)) return false;
+  return true;
+}
+
+export function createLedger(deps: CreateLedgerDeps): LedgerWithDebug {
+  let skippedLines = 0;
+
+  async function readAll(): Promise<LedgerEntry[]> {
+    const { entries, skipped } = await readEntries(deps.filePath);
+    skippedLines = skipped;
+    return entries;
+  }
+
+  function architectPricing(): ModelPricing | null {
+    const ref = deps.config.tiers.architect.primary;
+    return deps.pricing(ref.provider, ref.model);
+  }
+
+  async function summary(q: LedgerQuery): Promise<LedgerSummary> {
+    const all = await readAll();
+    const filtered = all.filter((e) => matches(e, q));
+    return summarize(filtered, architectPricing());
+  }
+
+  const ledger: LedgerWithDebug = {
+    async record(entry: LedgerEntry) {
+      await appendEntry(deps.filePath, entry);
+    },
+
+    async query(q: LedgerQuery) {
+      const all = await readAll();
+      return all.filter((e) => matches(e, q));
+    },
+
+    summary,
+
+    async budgetState(sessionId: string, specName?: string) {
+      // Two summary calls max: session filter, plus a spec filter only when
+      // both a specName and a specUsd limit are present (design.md).
+      const sessionSummary = await summary({ sessionId });
+      let specSummary: LedgerSummary | null = null;
+      if (specName !== undefined && deps.config.budgets.specUsd !== undefined) {
+        specSummary = await summary({ specName });
+      }
+      return computeBudgetState(sessionSummary, specSummary, deps.config.budgets);
+    },
+
+    get lastReadSkippedLines() {
+      return skippedLines;
+    },
+  };
+
+  return ledger;
+}
