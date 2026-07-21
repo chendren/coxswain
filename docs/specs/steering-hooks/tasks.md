@@ -75,7 +75,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: real /bin/sh spawns (env injected {SHELL:"/bin/sh"}); stdin receives payload JSON (echo-back test with `cat`); exit 0 → continue with stdout JSON object attached and non-Tier tierOverride stripped while other keys survive; exit 2 → block with stderr; exit 3 → continue with stderr; sequential execution order preserved in outcomes.
       verify: pnpm --filter @cox/hooks test -- exec
 
-- [ ] 12. Timeout, spawn errors, output caps
+- [x] 12. Timeout, spawn errors, output caps
       requirements: R9.1, R9.2, R9.3, R9.4
       complexity: 3
       accept: `sleep 5` with timeoutMs:200 SIGKILLed, outcome continue with timeout stderr, test completes <1s; bogus shell path → continue+stderr; stdout/stderr truncated at 1 MiB with marker; command string built without payload interpolation (assert spawn args exactly ["-c", command]).

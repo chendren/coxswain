@@ -1,6 +1,22 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Records every spawn() call (args) while still delegating to the real
+// implementation, so R9.4 can assert exactly what reaches child_process
+// without faking process execution.
+const { spawnCalls } = vi.hoisted(() => ({ spawnCalls: [] as unknown[][] }));
+vi.mock("node:child_process", async () => {
+  const actual = await vi.importActual<typeof import("node:child_process")>("node:child_process");
+  return {
+    ...actual,
+    spawn: (...args: Parameters<typeof actual.spawn>) => {
+      spawnCalls.push(args);
+      return actual.spawn(...args);
+    },
+  };
+});
+
 import { createHookEngine } from "../src/engine";
 import {
   makeConfig,
@@ -11,6 +27,10 @@ import {
   writeHooksJson,
   writeJsonFile,
 } from "./helpers";
+
+beforeEach(() => {
+  spawnCalls.length = 0;
+});
 
 describe("hook command execution — exit code semantics", () => {
   it("R8.1: spawns $SHELL -c <command> with cwd = payload.cwd and the payload JSON written to stdin", async () => {
@@ -129,5 +149,111 @@ describe("hook command execution — exit code semantics", () => {
     const outcomes = await engine.fire(makePayload("Stop", cwd));
 
     expect(outcomes.map((o) => o.hook)).toEqual(["sleep 0.05; printf 'first'", "printf 'second'"]);
+  });
+});
+
+describe("hook command execution — safety limits", () => {
+  it("R9.1: a hook exceeding timeoutMs is SIGKILLed and produces continue with a timeout message, quickly", async () => {
+    const cwd = await makeTmpCwd();
+    await writeHooksJson(cwd, [{ event: "Stop", command: "sleep 5", timeoutMs: 200 }]);
+    const engine = createHookEngine({ cwd, config: makeConfig(), env: testEnv() });
+
+    const start = Date.now();
+    const outcomes = await engine.fire(makePayload("Stop", cwd));
+    const elapsedMs = Date.now() - start;
+
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]?.action).toBe("continue");
+    expect(outcomes[0]?.stderr).toContain("timed out");
+    expect(elapsedMs).toBeLessThan(1000);
+  }, 2000);
+
+  it("R9.1: a timeout is never a block, even for a hook on a blocking-capable event", async () => {
+    const cwd = await makeTmpCwd();
+    await writeHooksJson(cwd, [{ event: "PreToolUse", command: "sleep 5", timeoutMs: 150 }]);
+    const engine = createHookEngine({ cwd, config: makeConfig(), env: testEnv() });
+
+    const outcomes = await engine.fire(makePayload("PreToolUse", cwd, { toolName: "bash" }));
+
+    expect(outcomes[0]?.action).toBe("continue");
+  }, 2000);
+
+  it("R9.2: a nonexistent shell path produces continue with the spawn error in stderr", async () => {
+    const cwd = await makeTmpCwd();
+    await writeHooksJson(cwd, [{ event: "Stop", command: "true" }]);
+    const engine = createHookEngine({
+      cwd,
+      config: makeConfig(),
+      env: testEnv({ SHELL: "/definitely/not/a/real/shell/binary" }),
+    });
+
+    const outcomes = await engine.fire(makePayload("Stop", cwd));
+
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]?.action).toBe("continue");
+    expect(outcomes[0]?.stderr).toBeTruthy();
+  });
+
+  it("R9.3: capturing several MiB of stdout stays capped (doesn't hang or block on backpressure)", async () => {
+    const cwd = await makeTmpCwd();
+    // HookOutcome only ever surfaces stdout via the parsed `output` field
+    // (exit 0 + valid JSON), so raw stdout length isn't directly observable
+    // through the public contract — the exact-length assertion below (same
+    // shared capping logic) covers stderr instead. This proves the cap
+    // keeps a much-larger-than-1-MiB producer from stalling the pipeline.
+    await writeHooksJson(cwd, [{ event: "Stop", command: "yes x | head -c 5000000" }]);
+    const engine = createHookEngine({ cwd, config: makeConfig(), env: testEnv() });
+
+    const start = Date.now();
+    const outcomes = await engine.fire(makePayload("Stop", cwd));
+    const elapsedMs = Date.now() - start;
+
+    expect(outcomes[0]?.action).toBe("continue");
+    expect(elapsedMs).toBeLessThan(3000);
+  }, 5000);
+
+  it("R9.3: stderr captured beyond 1 MiB is truncated with a marker, capped at 1 MiB + marker length", async () => {
+    const cwd = await makeTmpCwd();
+    await writeHooksJson(cwd, [
+      { event: "Stop", command: "yes x | head -c 2000000 >&2; exit 3" },
+    ]);
+    const engine = createHookEngine({ cwd, config: makeConfig(), env: testEnv() });
+
+    const outcomes = await engine.fire(makePayload("Stop", cwd));
+
+    const stderr = outcomes[0]?.stderr ?? "";
+    const MAX = 1024 * 1024;
+    expect(stderr.endsWith("…[truncated]")).toBe(true);
+    expect(stderr.length).toBe(MAX + "…[truncated]".length);
+  });
+
+  it("R9.4: the command string reaches spawn as a single verbatim argv element — never built from payload data", async () => {
+    const cwd = await makeTmpCwd();
+    const command = "printf 'fixed command, unaffected by payload'";
+    await writeHooksJson(cwd, [{ event: "PreToolUse", command }]);
+    const engine = createHookEngine({ cwd, config: makeConfig(), env: testEnv() });
+
+    await engine.fire(
+      makePayload("PreToolUse", cwd, { toolName: "bash", dangerous: "$(touch pwned.txt)`touch pwned2.txt`; rm -rf /" }),
+    );
+
+    expect(spawnCalls).toHaveLength(1);
+    const [, argv] = spawnCalls[0]! as [string, string[], unknown];
+    expect(argv).toEqual(["-c", command]);
+  });
+
+  it("R9.4: payload data that looks like shell syntax reaches the hook only as inert stdin data", async () => {
+    const cwd = await makeTmpCwd();
+    await writeHooksJson(cwd, [{ event: "PreToolUse", command: "cat" }]);
+    const engine = createHookEngine({ cwd, config: makeConfig(), env: testEnv() });
+    const dangerous = "$(touch injected.txt); rm -rf / #";
+
+    const outcomes = await engine.fire(
+      makePayload("PreToolUse", cwd, { toolName: "bash", note: dangerous }),
+    );
+
+    expect(existsSync(join(cwd, "injected.txt"))).toBe(false);
+    const output = outcomes[0]?.output as { data?: { note?: string } } | undefined;
+    expect(output?.data?.note).toBe(dangerous);
   });
 });
