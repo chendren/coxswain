@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type { AgentEvent } from "@cox/core";
+import type { AgentEvent, ContentBlock } from "@cox/core";
 import { computeCostUsd, pricingFor } from "@cox/core";
 import { createAgentRunner } from "../src/runner";
+import { fakeTool } from "./helpers/fake-tool";
 import { scripted } from "./helpers/scripted-model";
 import {
   baseConfig,
@@ -12,6 +13,7 @@ import {
   fixedRouter,
   neverAsked,
   okBudget,
+  toolRegistryFrom,
 } from "./helpers/fixtures";
 
 function runnerWith(overrides: Partial<Parameters<typeof createAgentRunner>[0]> = {}) {
@@ -204,5 +206,167 @@ describe("R3.1, R3.2: event lifecycle, usage, and cost", () => {
     const done = events.find((e) => e.type === "turn_done");
     expect(done && "usage" in done ? done.usage.inputTokens : -1).toBe(42);
     expect(done && "usage" in done ? done.usage.outputTokens : -1).toBe(7);
+  });
+});
+
+describe("R5.1, R5.2: hook callbacks at the tool boundary", () => {
+  it("R5.1: a block outcome skips execution and feeds back isError(stderr)", async () => {
+    let executed = false;
+    const tools = toolRegistryFrom([
+      fakeTool({
+        name: "write",
+        onExecute: () => {
+          executed = true;
+        },
+      }),
+    ]);
+    const runner = runnerWith({
+      tools,
+      modelForTier: () =>
+        scripted([
+          { toolUses: [{ id: "1", name: "write", input: { path: "a.txt" } }] },
+          { deltas: ["ok"] },
+        ]),
+      preToolUse: async () => [
+        { hook: "guard.sh", action: "block", stderr: "blocked: no writes allowed" },
+      ],
+    });
+    const result = await runner.run(baseTask(), () => {});
+
+    expect(executed).toBe(false);
+    const toolResultMsg = result.history[2];
+    const block = toolResultMsg?.content[0] as Extract<ContentBlock, { type: "tool_result" }>;
+    expect(block.isError).toBe(true);
+    expect(block.content).toBe("blocked: no writes allowed");
+  });
+
+  it("R5.1: a continue outcome does not block execution", async () => {
+    let executed = false;
+    const tools = toolRegistryFrom([
+      fakeTool({
+        name: "write",
+        onExecute: () => {
+          executed = true;
+        },
+      }),
+    ]);
+    const runner = runnerWith({
+      tools,
+      modelForTier: () =>
+        scripted([
+          { toolUses: [{ id: "1", name: "write", input: { path: "a.txt" } }] },
+          { deltas: ["ok"] },
+        ]),
+      preToolUse: async () => [{ hook: "guard.sh", action: "continue" }],
+    });
+    await runner.run(baseTask(), () => {});
+    expect(executed).toBe(true);
+  });
+
+  it("R5.2: a postToolUse block appends '[hook] stderr' without retroactively cancelling the result", async () => {
+    const tools = toolRegistryFrom([
+      fakeTool({ name: "write", result: { content: "wrote 5 bytes", isError: false } }),
+    ]);
+    const runner = runnerWith({
+      tools,
+      modelForTier: () =>
+        scripted([
+          { toolUses: [{ id: "1", name: "write", input: { path: "a.txt" } }] },
+          { deltas: ["ok"] },
+        ]),
+      postToolUse: async () => [
+        { hook: "lint.sh", action: "block", stderr: "lint warning: missing newline" },
+      ],
+    });
+    const result = await runner.run(baseTask(), () => {});
+
+    const toolResultMsg = result.history[2];
+    const block = toolResultMsg?.content[0] as Extract<ContentBlock, { type: "tool_result" }>;
+    expect(block.isError).toBe(false); // not cancelled
+    expect(block.content).toBe("wrote 5 bytes\n[hook] lint warning: missing newline");
+  });
+
+  it("R5.2: postToolUse still receives a failing tool's result and can annotate it", async () => {
+    const tools = toolRegistryFrom([
+      fakeTool({ name: "bash", result: { content: "exit 1", isError: true } }),
+    ]);
+    const runner = runnerWith({
+      tools,
+      modelForTier: () =>
+        scripted([
+          { toolUses: [{ id: "1", name: "bash", input: { command: "false" } }] },
+          { deltas: ["ok"] },
+        ]),
+      postToolUse: async () => [{ hook: "notify.sh", action: "block", stderr: "notified" }],
+    });
+    const result = await runner.run(baseTask(), () => {});
+
+    const toolResultMsg = result.history[2];
+    const block = toolResultMsg?.content[0] as Extract<ContentBlock, { type: "tool_result" }>;
+    expect(block.isError).toBe(true); // original failure preserved
+    expect(block.content).toBe("exit 1\n[hook] notified");
+  });
+});
+
+describe("R6.4: plan mode auto-deny (hook engine untouched, permission gate only)", () => {
+  it("auto-denies a mutating tool without prompting", async () => {
+    let asked = 0;
+    let executed = false;
+    const tools = toolRegistryFrom([
+      fakeTool({
+        name: "write",
+        permissionFor: (_input, mode) =>
+          mode === "plan" ? { toolName: "write", summary: "write a.txt" } : null,
+        onExecute: () => {
+          executed = true;
+        },
+      }),
+    ]);
+    const runner = runnerWith({
+      tools,
+      permissionMode: "plan",
+      modelForTier: () =>
+        scripted([
+          { toolUses: [{ id: "1", name: "write", input: { path: "a.txt" } }] },
+          { deltas: ["ok"] },
+        ]),
+      requestPermission: async () => {
+        asked++;
+        return "allow";
+      },
+    });
+    const result = await runner.run(baseTask(), () => {});
+
+    expect(asked).toBe(0);
+    expect(executed).toBe(false);
+    const toolResultMsg = result.history[2];
+    const block = toolResultMsg?.content[0] as Extract<ContentBlock, { type: "tool_result" }>;
+    expect(block.isError).toBe(true);
+    expect(block.content).toBe("denied: plan mode");
+  });
+
+  it("read-only tools (permissionFor -> null) still run in plan mode", async () => {
+    let executed = false;
+    const tools = toolRegistryFrom([
+      fakeTool({
+        name: "read",
+        permissionFor: () => null,
+        onExecute: () => {
+          executed = true;
+        },
+      }),
+    ]);
+    const runner = runnerWith({
+      tools,
+      permissionMode: "plan",
+      modelForTier: () =>
+        scripted([
+          { toolUses: [{ id: "1", name: "read", input: { path: "a.txt" } }] },
+          { deltas: ["ok"] },
+        ]),
+    });
+    const result = await runner.run(baseTask(), () => {});
+    expect(executed).toBe(true);
+    expect(result.stopReason).toBe("end_turn");
   });
 });

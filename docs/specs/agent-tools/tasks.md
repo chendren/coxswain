@@ -81,7 +81,7 @@ Check a box only after its `verify` command passes.
   accept: multi-tool order preserved; unknown-tool isError lists names; deny feeds "user denied"; allowAlways skips second prompt (bash keyed by first token); events wrap each call
   verify: pnpm --filter @cox/agent test -- permissions-flow
 
-- [ ] 14. Hook callbacks + plan mode
+- [x] 14. Hook callbacks + plan mode
   requirements: R5.1, R5.2, R6.4
   complexity: 3
   accept: preToolUse block → skip + isError(stderr); postToolUse block → "[hook]" appended; plan mode auto-denies mutating tools with no prompt, read tools still run
