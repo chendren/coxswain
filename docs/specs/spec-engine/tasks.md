@@ -82,7 +82,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: reworded title + inserted prose survive a task completion byte-for-byte outside the flipped line; engine paths all derive from deps.cwd (grep test source asserts no process.cwd in src/); no network imports in src/ (grep for "fetch(" and "http").
   verify: pnpm --filter @cox/spec test -- -t "R8.1"
 
-- [ ] 14. End-to-end happy path: safe-divide scenario
+- [x] 14. End-to-end happy path: safe-divide scenario
   requirements: R1.1, R2.1, R3.1, R5.3, R7.5
   complexity: 3
   accept: scripted fakeRunner walks create → generate/approve ×3 → runTask ×3 in a tmpProject copy of examples/demo-project; asserts final file states, full ordered spec_event sequence, ledger-relevant AgentTask fields, and that all checkboxes read [x].
