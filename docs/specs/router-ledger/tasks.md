@@ -89,7 +89,7 @@ first — the router depends on `budgetState`.
   - accept: `fixtures.test.ts` implements the design's fixture table verbatim, each row's test name prefixed with its requirement id; whole suite green
   - verify: pnpm --filter @cox/router test
 
-- [ ] 15. Wrap-up: NOTES.md + green workspace lane
+- [x] 15. Wrap-up: NOTES.md + green workspace lane
   - requirements: all
   - complexity: 1
   - accept: `packages/router/NOTES.md` + `packages/ledger/NOTES.md` written (design §NOTES seeds covered); `--passWithNoTests` removed from both package.json test scripts; typecheck + tests green for both packages
