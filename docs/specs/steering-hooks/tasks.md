@@ -93,7 +93,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: recursive watch with documented fallback on ERR_FEATURE_UNAVAILABLE_ON_PLATFORM (capability probe + describe.skip guard); picomatch dot:true on cwd-relative paths; .git/node_modules/.cox ignored; deleted paths skipped; 500ms trailing debounce collapses rapid writes to one trigger (poll-based assertions, 2s deadline); manual hooks never trigger; close() cancels pending debounces (no trigger after close).
       verify: pnpm --filter @cox/hooks test -- watcher
 
-- [ ] 15. NOTES.md + full green
+- [x] 15. NOTES.md + full green
       requirements: R1.1–R11.5
       complexity: 1
       accept: packages/steering/NOTES.md and packages/hooks/NOTES.md written (≤1 page each: yaml-dep sanction for hooks, block-semantics integration notes for cli, watcher fallback caveat); both packages typecheck + all tests green from a clean `pnpm install`.
