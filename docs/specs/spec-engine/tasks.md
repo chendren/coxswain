@@ -4,7 +4,7 @@ Execute top to bottom. One commit per task: `ws/spec-engine: task N — <title>`
 A task is done only when its `verify` command passes; paste output into the
 commit body. All paths relative to `packages/spec/`.
 
-- [ ] 1. Scaffold package internals and test helpers
+- [x] 1. Scaffold package internals and test helpers
   requirements: R1.1
   complexity: 1
   accept: src/{engine,state,parser,prompts}.ts exist with typed exports (bodies may throw "not implemented"); test/helpers.ts provides fakeRunner (recording calls), tmpProject via fs.mkdtemp, VALID_TASKS_MD and REQ_FIXTURE_MD fixtures; remove --passWithNoTests from package.json.
