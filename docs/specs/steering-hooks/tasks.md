@@ -81,7 +81,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: `sleep 5` with timeoutMs:200 SIGKILLed, outcome continue with timeout stderr, test completes <1s; bogus shell path → continue+stderr; stdout/stderr truncated at 1 MiB with marker; command string built without payload interpolation (assert spawn args exactly ["-c", command]).
       verify: pnpm --filter @cox/hooks test -- exec
 
-- [ ] 13. fire() aggregation + enabled flag + first-fire load warnings
+- [x] 13. fire() aggregation + enabled flag + first-fire load warnings
       requirements: R10.1, R10.2, R10.3, R10.4
       complexity: 2
       accept: hooks.enabled:false → [] and zero spawns (spy on child_process); all matching hooks run even after a block; outcome order = execution order; load warnings appear once on first fire only.

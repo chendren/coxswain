@@ -26,6 +26,7 @@ import {
   testEnv,
   writeHooksJson,
   writeJsonFile,
+  writeTextFile,
 } from "./helpers";
 
 beforeEach(() => {
@@ -255,5 +256,85 @@ describe("hook command execution — safety limits", () => {
     expect(existsSync(join(cwd, "injected.txt"))).toBe(false);
     const output = outcomes[0]?.output as { data?: { note?: string } } | undefined;
     expect(output?.data?.note).toBe(dangerous);
+  });
+});
+
+describe("fire() aggregation (R10)", () => {
+  it("R10.1: hooks.enabled:false returns [] and spawns nothing", async () => {
+    const cwd = await makeTmpCwd();
+    await writeHooksJson(cwd, [{ event: "Stop", command: "true" }]);
+    const engine = createHookEngine({
+      cwd,
+      config: makeConfig({ hooks: { enabled: false } }),
+      env: testEnv(),
+    });
+
+    const outcomes = await engine.fire(makePayload("Stop", cwd));
+
+    expect(outcomes).toEqual([]);
+    expect(spawnCalls).toHaveLength(0);
+  });
+
+  it("R10.2: all matching hooks run — and their outcomes are returned — even after an earlier one blocks", async () => {
+    const cwd = await makeTmpCwd();
+    await writeHooksJson(cwd, [
+      { event: "PreToolUse", command: "exit 2" },
+      { event: "PreToolUse", command: "printf 'still ran'" },
+    ]);
+    const engine = createHookEngine({ cwd, config: makeConfig(), env: testEnv() });
+
+    const outcomes = await engine.fire(makePayload("PreToolUse", cwd, { toolName: "bash" }));
+
+    expect(outcomes).toHaveLength(2);
+    expect(outcomes[0]?.action).toBe("block");
+    expect(outcomes[1]?.hook).toBe("printf 'still ran'");
+    expect(outcomes[1]?.action).toBe("continue");
+  });
+
+  it("R10.3: outcome order is execution order, so multiple PreModelCall tierOverride outputs have a well-defined 'last one'", async () => {
+    const cwd = await makeTmpCwd();
+    await writeHooksJson(cwd, [
+      { event: "PreModelCall", command: `printf '%s' '${JSON.stringify({ tierOverride: "scout" })}'` },
+      {
+        event: "PreModelCall",
+        command: `printf '%s' '${JSON.stringify({ tierOverride: "architect" })}'`,
+      },
+    ]);
+    const engine = createHookEngine({ cwd, config: makeConfig(), env: testEnv() });
+
+    const outcomes = await engine.fire(makePayload("PreModelCall", cwd));
+
+    expect(outcomes.map((o) => o.output?.tierOverride)).toEqual(["scout", "architect"]);
+    const lastOverride = outcomes.reduce<string | undefined>(
+      (acc, o) => (o.output?.tierOverride ? String(o.output.tierOverride) : acc),
+      undefined,
+    );
+    expect(lastOverride).toBe("architect");
+  });
+
+  it("R10.4: load warnings ride along on the first fire() only, then clear", async () => {
+    const cwd = await makeTmpCwd();
+    await writeTextFile(join(cwd, ".cox", "hooks.json"), "not valid json");
+    const engine = createHookEngine({ cwd, config: makeConfig(), env: testEnv() });
+
+    const first = await engine.fire(makePayload("Stop", cwd));
+    const second = await engine.fire(makePayload("Stop", cwd));
+
+    expect(
+      first.some((o) => o.action === "continue" && o.stderr?.includes("malformed JSON")),
+    ).toBe(true);
+    expect(second).toEqual([]);
+  });
+
+  it("R10.4: load warnings are keyed to their source file path as the outcome's `hook`", async () => {
+    const cwd = await makeTmpCwd();
+    const hooksJsonPath = join(cwd, ".cox", "hooks.json");
+    await writeTextFile(hooksJsonPath, "{ broken");
+    const engine = createHookEngine({ cwd, config: makeConfig(), env: testEnv() });
+
+    const [outcome] = await engine.fire(makePayload("SessionStart", cwd));
+
+    expect(outcome?.hook).toBe(hooksJsonPath);
+    expect(outcome?.action).toBe("continue");
   });
 });
