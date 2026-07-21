@@ -29,6 +29,7 @@ import {
   pricingFor,
   type AgentEvent,
   type AgentRunner,
+  type AgentTask,
   type BudgetState,
   type ChatModel,
   type CoxConfig,
@@ -40,6 +41,7 @@ import {
   type PermissionDecision,
   type PermissionMode,
   type PermissionRequest,
+  type ProviderAdapter,
   type ProviderRegistry,
   type Router,
   type SpecEngine,
@@ -120,7 +122,10 @@ function newSessionId(): string {
 // ---------------------------------------------------------------------------
 
 interface ProvidersModule {
-  createProviderRegistry?: (config: CoxConfig) => ProviderRegistry;
+  createProviderRegistry?: (
+    config: CoxConfig,
+    deps?: { adapters?: ProviderAdapter[] },
+  ) => ProviderRegistry;
   createFailoverChatModel?: (models: ChatModel[]) => ChatModel;
 }
 
@@ -166,7 +171,7 @@ interface AgentModule {
     tools: ToolRegistry;
     permissionMode: PermissionMode;
     config: CoxConfig;
-    budgetState: () => Promise<BudgetState>;
+    budgetState: (task: AgentTask) => Promise<BudgetState>;
     preToolUse?: (p: HookPayload) => Promise<HookOutcome[]>;
     postToolUse?: (p: HookPayload) => Promise<HookOutcome[]>;
     // NOT in agent-tools/design.md's published signature — added
@@ -222,6 +227,7 @@ export async function loadDeps(
   cfg: CoxConfig,
   cwd: string,
   bus: EventBus,
+  overrides: { adapters?: ProviderAdapter[] } = {},
 ): Promise<LoadedDeps> {
   const now = () => new Date().toISOString();
   const sessionId = newSessionId();
@@ -232,7 +238,9 @@ export async function loadDeps(
   );
   const createProviderRegistry = need("@cox/providers", providersMod.createProviderRegistry);
   const createFailoverChatModel = need("@cox/providers", providersMod.createFailoverChatModel);
-  const registry = createProviderRegistry(cfg);
+  const registry = overrides.adapters
+    ? createProviderRegistry(cfg, { adapters: overrides.adapters })
+    : createProviderRegistry(cfg);
   const tierModelCache = new Map<Tier, ChatModel>();
   const tierModel = (tier: Tier): ChatModel => {
     const cached = tierModelCache.get(tier);
@@ -327,7 +335,7 @@ export async function loadDeps(
     tools,
     permissionMode: cfg.permissions.mode,
     config: cfg,
-    budgetState: () => ledger.budgetState(sessionId),
+    budgetState: (task: AgentTask) => ledger.budgetState(task.sessionId, task.specName),
     preToolUse: (p) => hooks.fire(p),
     postToolUse: (p) => hooks.fire(p),
     requestPermission,

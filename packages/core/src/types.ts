@@ -268,8 +268,8 @@ export interface LedgerSummary {
   entries: number;
   usage: TokenUsage;
   costUsd: number;
-  byTier: Partial<Record<Tier, { usage: TokenUsage; costUsd: number }>>;
-  byModel: Record<string, { usage: TokenUsage; costUsd: number }>;
+  byTier: Partial<Record<Tier, { calls: number; usage: TokenUsage; costUsd: number }>>;
+  byModel: Record<string, { calls: number; usage: TokenUsage; costUsd: number }>;
   /**
    * What the same calls would have cost if every call had run on the
    * architect tier's primary model — the "savings vs all-architect" number.
@@ -537,7 +537,12 @@ export interface HookEngine {
 export type AgentEvent =
   | { type: "session_started"; sessionId: string; cwd: string }
   | { type: "user_prompt"; text: string }
-  | { type: "routing_decision"; decision: RoutingDecision; kind: TaskKind }
+  | {
+      type: "routing_decision";
+      decision: RoutingDecision;
+      kind: TaskKind;
+      taskId?: string;
+    }
   | { type: "model_call_started"; model: ModelRef; tier: Tier }
   | { type: "text_delta"; text: string }
   | { type: "thinking_delta"; text: string }
@@ -566,11 +571,18 @@ export type AgentEvent =
       phase: SpecPhase;
       status: string;
       taskId?: string;
+      tasksDone?: number;
+      tasksTotal?: number;
     }
   | { type: "hook_fired"; event: HookEventName; outcomes: HookOutcome[] }
   | { type: "agent_message"; text: string }
   | { type: "error"; message: string }
-  | { type: "turn_done"; usage: TokenUsage; costUsd: number };
+  | {
+      type: "turn_done";
+      usage: TokenUsage;
+      costUsd: number;
+      stopReason?: AgentRunResult["stopReason"];
+    };
 
 // ---------------------------------------------------------------------------
 // Session control (TUI ⇄ engine boundary)

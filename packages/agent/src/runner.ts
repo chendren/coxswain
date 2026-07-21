@@ -36,7 +36,7 @@ export interface AgentRunnerDeps {
   tools: ToolRegistry;
   permissionMode: PermissionMode;
   config: CoxConfig;
-  budgetState: () => Promise<BudgetState>;
+  budgetState: (task: AgentTask) => Promise<BudgetState>;
   /**
    * Resolves a permission_request to a decision. Not in design.md's literal
    * deps list — required to implement R6.1 (ToolContext.requestPermission
@@ -73,7 +73,7 @@ export function createAgentRunner(deps: AgentRunnerDeps): AgentRunner {
 
       // R1.1
       let decision = await deps.router.route(buildRoutingInput(task, messages));
-      onEvent({ type: "routing_decision", decision, kind: task.kind });
+      onEvent({ type: "routing_decision", decision, kind: task.kind, taskId: task.taskId });
       let model = deps.modelForTier(decision.tier);
 
       const tracker = createSignalTracker({
@@ -97,7 +97,7 @@ export function createAgentRunner(deps: AgentRunnerDeps): AgentRunner {
         }
 
         // R7.1, R7.2
-        const budget = await deps.budgetState();
+        const budget = await deps.budgetState(task);
         if (budget.level !== lastBudgetLevel) {
           if (budget.level === "warn" || budget.level === "exceeded") {
             onEvent({ type: "budget_alert", state: budget });
@@ -181,7 +181,7 @@ export function createAgentRunner(deps: AgentRunnerDeps): AgentRunner {
         // R1.3, R1.5
         if (stopReason === "end_turn" || stopReason === "max_tokens" || stopReason === "refusal") {
           onEvent({ type: "agent_message", text });
-          onEvent({ type: "turn_done", usage: totalUsage, costUsd: totalCost });
+          onEvent({ type: "turn_done", usage: totalUsage, costUsd: totalCost, stopReason });
           return { finalText: text, history: messages, usage: totalUsage, costUsd: totalCost, stopReason };
         }
 
@@ -215,7 +215,7 @@ export function createAgentRunner(deps: AgentRunnerDeps): AgentRunner {
               onEvent({ type: "escalation", from: decision.tier, to: next.tier, reasons: next.reasons });
               decision = next;
               model = deps.modelForTier(next.tier);
-              onEvent({ type: "routing_decision", decision: next, kind: task.kind });
+              onEvent({ type: "routing_decision", decision: next, kind: task.kind, taskId: task.taskId });
             }
           }
         }

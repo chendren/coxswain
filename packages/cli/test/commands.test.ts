@@ -239,6 +239,7 @@ describe("R11.2: cox ledger prints via the shared renderLedgerTable", () => {
           costUsd: 0.03,
           byTier: {
             scout: {
+              calls: 1,
               usage: { inputTokens: 300, outputTokens: 30, cacheReadTokens: 0, cacheWriteTokens: 0 },
               costUsd: 0.03,
             },

@@ -21,15 +21,17 @@ export function summarize(
     const cost = entry.costUsd ?? 0;
     costUsd += cost;
 
-    const tierBucket = byTier[entry.tier] ?? { usage: ZERO_USAGE, costUsd: 0 };
+    const tierBucket = byTier[entry.tier] ?? { calls: 0, usage: ZERO_USAGE, costUsd: 0 };
     byTier[entry.tier] = {
+      calls: tierBucket.calls + 1,
       usage: addUsage(tierBucket.usage, entry.usage),
       costUsd: tierBucket.costUsd + cost,
     };
 
     const key = modelKey(entry.model);
-    const modelBucket = byModel[key] ?? { usage: ZERO_USAGE, costUsd: 0 };
+    const modelBucket = byModel[key] ?? { calls: 0, usage: ZERO_USAGE, costUsd: 0 };
     byModel[key] = {
+      calls: modelBucket.calls + 1,
       usage: addUsage(modelBucket.usage, entry.usage),
       costUsd: modelBucket.costUsd + cost,
     };

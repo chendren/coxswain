@@ -77,14 +77,18 @@ export function createSnapshotStore(opts: SnapshotStoreOpts): SnapshotStore {
         break;
       }
       case "spec_event": {
-        // AgentEvent's spec_event carries no tasksDone/tasksTotal (see
-        // INTEGRATION-NOTES.md) — best effort: track name/phase, preserve
-        // whatever counts we already had for the same spec, else 0/0.
+        // Execution events carry tasksDone/tasksTotal; other phases don't —
+        // carry forward the last known counts for the same spec.
         const carried =
           activeSpec && activeSpec.name === e.specName
             ? { tasksDone: activeSpec.tasksDone, tasksTotal: activeSpec.tasksTotal }
             : { tasksDone: 0, tasksTotal: 0 };
-        activeSpec = { name: e.specName, phase: e.phase, ...carried };
+        activeSpec = {
+          name: e.specName,
+          phase: e.phase,
+          tasksDone: e.tasksDone ?? carried.tasksDone,
+          tasksTotal: e.tasksTotal ?? carried.tasksTotal,
+        };
         break;
       }
       default:

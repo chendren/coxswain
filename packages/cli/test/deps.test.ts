@@ -44,19 +44,26 @@ function staticImportSpecifiers(source: string): string[] {
 }
 
 describe("R8.2: deps.ts NotWiredError boundary", () => {
-  it("loadDeps throws NotWiredError naming a missing engine package for the current stubs", async () => {
+  // Post-integration (M2): every lane is merged, so loadDeps now succeeds —
+  // the stub-era "throws NotWiredError" assertion is inverted. The error
+  // class itself remains the boundary for any future unwired package.
+  it("loadDeps constructs the full engine graph now that all lanes are merged", async () => {
     const cfg = configSchema.parse({});
     const bus = new EventBus();
-    let caught: unknown;
-    try {
-      await loadDeps(cfg, "/tmp/cox-deps-test-not-a-real-cwd", bus);
-    } catch (err) {
-      caught = err;
-    }
-    expect(caught).toBeInstanceOf(NotWiredError);
-    const err = caught as NotWiredError;
-    expect(ENGINE_PACKAGES).toContain(err.pkg);
-    expect(err.message).toBe(`${err.pkg} not wired`);
+    const deps = await loadDeps(cfg, "/tmp/cox-deps-test-not-a-real-cwd", bus);
+    expect(deps.registry).toBeDefined();
+    expect(deps.ledger).toBeDefined();
+    expect(deps.router).toBeDefined();
+    expect(deps.agent).toBeDefined();
+    expect(deps.specs).toBeDefined();
+    expect(typeof deps.resolvePermission).toBe("function");
+  });
+
+  it("NotWiredError names the package in its message and pkg field", () => {
+    const err = new NotWiredError("@cox/example");
+    expect(err.pkg).toBe("@cox/example");
+    expect(err.message).toBe("@cox/example not wired");
+    expect(ENGINE_PACKAGES.length).toBeGreaterThan(0);
   });
 
   it("main.ts has no static imports of any engine package", async () => {

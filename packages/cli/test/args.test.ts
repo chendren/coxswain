@@ -125,11 +125,20 @@ describe("R7.2: exit codes", () => {
     expect(code).toBe(2);
   });
 
-  it("--print reaches the real composition root and fails with a NotWiredError runtime exit 1 (engines are still stubs)", async () => {
-    const { io, err } = captureIo();
-    const code = await runCli(["node", "cox", "--print", "hello"], io);
-    expect(code).toBe(1);
-    expect(err.join("")).toMatch(/not wired/);
+  it("--print reaches the real composition root; without an API key the provider error surfaces as exit 1", async () => {
+    // Post-integration: engines are wired, so the run proceeds until the
+    // anthropic adapter's lazy key read fails. Ensure the key is absent
+    // regardless of the developer's shell environment.
+    const saved = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      const { io, out, err } = captureIo();
+      const code = await runCli(["node", "cox", "--print", "hello"], io);
+      expect(code).toBe(1);
+      expect([...out, ...err].join("")).toMatch(/ANTHROPIC_API_KEY/);
+    } finally {
+      if (saved !== undefined) process.env.ANTHROPIC_API_KEY = saved;
+    }
   });
 
   it("one-shot commands are a runtime exit 1 while unimplemented/unwired", async () => {

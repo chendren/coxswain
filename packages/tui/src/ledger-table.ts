@@ -2,12 +2,9 @@
  * renderLedgerTable — the docs/05-ROUTING-AND-LEDGER.md §2 `/ledger` table,
  * pure text (used both by the in-session `/ledger` panel and `cox ledger`).
  *
- * Deviates from the doc's literal example in two documented ways (see
- * packages/tui/NOTES.md and INTEGRATION-NOTES.md):
- * 1. No "calls" column per tier — `LedgerSummary.byTier`/`.byModel` carry
- *    `{usage, costUsd}` only, no per-bucket entry count, so a per-tier
- *    call count cannot be computed from the frozen core type at all.
- * 2. Column spacing is this file's own consistent algorithm (fixed
+ * Deviates from the doc's literal example in one documented way (see
+ * packages/tui/NOTES.md):
+ * 1. Column spacing is this file's own consistent algorithm (fixed
  *    per-column widths + a 2-space separator), not a literal
  *    reproduction of the doc's example — verified earlier
  *    (packages/tui/NOTES.md, task 6) that the doc's header row and data
@@ -22,14 +19,15 @@ function padCell(text: string, width: number, align: "left" | "right"): string {
   return align === "left" ? text + pad : pad + text;
 }
 
-const COL = { tier: 9, inTok: 6, outTok: 7, cost: 6, share: 5 };
+const COL = { tier: 9, calls: 5, inTok: 6, outTok: 7, cost: 6, share: 5 };
 const SEP = "  ";
 
-function row(tier: string, inTok: string, outTok: string, cost: string, share: string): string {
+function row(tier: string, calls: string, inTok: string, outTok: string, cost: string, share: string): string {
   return (
     "  " +
     [
       padCell(tier, COL.tier, "left"),
+      padCell(calls, COL.calls, "right"),
       padCell(inTok, COL.inTok, "right"),
       padCell(outTok, COL.outTok, "right"),
       padCell(cost, COL.cost, "right"),
@@ -69,13 +67,14 @@ export function renderLedgerTable(summary: LedgerSummary, label: string): string
       summary.usage.cacheReadTokens,
     )} cached) / ${formatTokens(summary.usage.outputTokens)} out, ${formatUsd(summary.costUsd)}`,
   );
-  lines.push(row("tier", "in-tok", "out-tok", "cost", "share"));
+  lines.push(row("tier", "calls", "in-tok", "out-tok", "cost", "share"));
   for (const tier of TIERS) {
     const bucket = summary.byTier[tier];
     if (!bucket) continue;
     lines.push(
       row(
         tier,
+        String(bucket.calls),
         formatTokens(bucket.usage.inputTokens),
         formatTokens(bucket.usage.outputTokens),
         formatUsd(bucket.costUsd),

@@ -25,6 +25,7 @@ import type {
   Ledger,
   LedgerEntry,
   RoutingDecision,
+  ProviderAdapter,
   SessionController,
   SessionSnapshot,
   TaskKind,
@@ -97,8 +98,9 @@ export async function buildSession(
   cwd: string,
   bus: EventBus,
   cliFlagTier?: Tier,
+  overrides: { adapters?: ProviderAdapter[] } = {},
 ): Promise<SessionHandle> {
-  const deps = await loadDeps(cfg, cwd, bus);
+  const deps = await loadDeps(cfg, cwd, bus, overrides);
   const budgets: BudgetConfig = cfg.budgets;
 
   const fold = createSnapshotStore({ sessionId: deps.sessionId, budgets, ledger: deps.ledger });

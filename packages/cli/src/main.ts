@@ -140,6 +140,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
         bus,
         controller: session.controller,
         yolo: opts.yolo,
+        write: (line) => io.writeOut(`${line}\n`),
       });
       throw new CliExit(code);
     }

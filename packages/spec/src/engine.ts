@@ -61,6 +61,13 @@ async function pathExists(p: string): Promise<boolean> {
   }
 }
 
+function taskCounts(state: SpecState): { tasksDone: number; tasksTotal: number } {
+  return {
+    tasksDone: state.tasks.filter((t) => t.status === "done").length,
+    tasksTotal: state.tasks.length,
+  };
+}
+
 async function readFileOrEmpty(p: string): Promise<string> {
   try {
     return await fs.readFile(p, "utf8");
@@ -384,7 +391,7 @@ export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
     // R7.4: mark in_progress and persist before the run (crash recovery).
     state = setTaskStatus(state, task.id, "in_progress");
     await writeSpecState(dir, state);
-    onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:in_progress", taskId: task.id });
+    onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:in_progress", taskId: task.id, ...taskCounts(state) });
 
     const reqMd = await readFileOrEmpty(requirementsPath(dir));
     const designMd = await readFileOrEmpty(designPath(dir));
@@ -413,7 +420,7 @@ export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
       runs[task.id] = { consecutiveFailures: 0, lastStopReason: result.stopReason, lastRunAt: now() };
       await writeRuns(dir, runs);
       await writeSpecState(dir, state);
-      onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:done", taskId: task.id });
+      onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:done", taskId: task.id, ...taskCounts(state) });
       if (onTaskComplete) {
         await onTaskComplete({
           event: "TaskComplete",
@@ -436,11 +443,11 @@ export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
     if (nextCount >= 2) {
       state = setTaskStatus(state, task.id, "blocked");
       await writeSpecState(dir, state);
-      onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:blocked", taskId: task.id });
+      onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:blocked", taskId: task.id, ...taskCounts(state) });
     } else {
       state = setTaskStatus(state, task.id, "pending");
       await writeSpecState(dir, state);
-      onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:failed", taskId: task.id });
+      onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:failed", taskId: task.id, ...taskCounts(state) });
     }
 
     return state;

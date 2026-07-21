@@ -286,3 +286,38 @@ The integrator (M2) resolves these and logs any core changes under
    deps shapes are package-internal. `@cox/cli`'s composition root must
    bridge it to `SessionController.resolvePermission` via a pending-promise
    map (verified at the tui-cli merge).
+
+### 2026-07-21 — integrator M2 pass (resolving the tui-cli notes)
+
+All additive `@cox/core` changes; every package retested after (895 tests
+green, 0 type errors, 12 packages):
+
+1. **`LedgerSummary.byTier`/`.byModel` buckets gained `calls: number`** —
+   `@cox/ledger` populates it; `renderLedgerTable` restored the docs/05
+   "calls" column (the literal docs example now reproduces byte-for-byte).
+2. **`spec_event` gained `tasksDone?`/`tasksTotal?`** — `@cox/spec` emits
+   them on every `execution` event; the snapshot fold consumes them, so the
+   status line's `spec <name> 4/9` segment is now real (no more 0/0).
+3. **`routing_decision` gained `taskId?`** — emitted by `@cox/agent` from
+   `AgentTask.taskId`; the TUI's spec-task label no longer relies on
+   event-ordering inference.
+4. **`turn_done` gained `stopReason?`** — emitted by the agent loop;
+   `--print`'s exit code uses it directly (ordering inference kept only as
+   replay fallback).
+5. **`createAgentRunner.deps.budgetState` is now `(task: AgentTask) =>
+   Promise<BudgetState>`** — cli binds it to
+   `ledger.budgetState(task.sessionId, task.specName)`, so per-spec
+   `specUsd` budgets are enforced for `spec-task-exec` runs (closes the
+   scope-gap note). Package-internal change, not a frozen-interface change.
+6. **Mock injection for M2 is `buildSession(..., overrides: {adapters})`** —
+   threaded to `createProviderRegistry(cfg, {adapters})` (a seam
+   `@cox/providers` already shipped). `wire.test.ts` now runs the full real
+   stack against a scripted mock adapter and passes: routing → model events
+   → 2 ledger lines (classify + chat) → snapshot totals.
+7. **`--print` renderer plumbing fixed** to write through the injected
+   `CliIo` (was writing to `process.stdout` directly, invisible to tests).
+8. Stub-era cli tests (R8.2 "loadDeps throws NotWired", R7.2 "--print not
+   wired") rewritten for the post-integration reality.
+9. Deferred, unchanged: `createPlainRenderer` has no snapshot accessor, so
+   plain-mode routing blocks show no live budget figure (cosmetic; TUI mode
+   unaffected).

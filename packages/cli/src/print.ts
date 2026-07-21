@@ -68,7 +68,9 @@ export async function runPrint(prompt: string, flags: PrintFlags): Promise<numbe
           break;
         }
         case "turn_done": {
-          finish(lastStopReason === "end_turn" ? 0 : 1);
+          // stopReason now rides on the event itself; the model_call_finished
+          // inference remains as fallback for older event streams (replay).
+          finish((e.stopReason ?? lastStopReason) === "end_turn" ? 0 : 1);
           break;
         }
         case "error": {

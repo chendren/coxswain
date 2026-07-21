@@ -15,20 +15,24 @@ const summary: LedgerSummary = {
   costUsd: 1.87,
   byTier: {
     scout: {
+      calls: 29,
       usage: { inputTokens: 102_000, outputTokens: 11_000, cacheReadTokens: 0, cacheWriteTokens: 0 },
       costUsd: 0.16,
     },
     builder: {
+      calls: 15,
       usage: { inputTokens: 614_000, outputTokens: 78_000, cacheReadTokens: 0, cacheWriteTokens: 0 },
       costUsd: 1.32,
     },
     architect: {
+      calls: 3,
       usage: { inputTokens: 175_000, outputTokens: 14_000, cacheReadTokens: 0, cacheWriteTokens: 0 },
       costUsd: 0.39,
     },
   },
   byModel: {
     "anthropic/claude-sonnet-5": {
+      calls: 47,
       usage: { inputTokens: 891_000, outputTokens: 103_000, cacheReadTokens: 612_000, cacheWriteTokens: 0 },
       costUsd: 1.87,
     },
@@ -41,10 +45,10 @@ describe("R11.2: renderLedgerTable", () => {
     const table = renderLedgerTable(summary, "session ses_a1b2");
     const expected = [
       "session ses_a1b2 — 47 calls, 891k in (612k cached) / 103k out, $1.87",
-      "  tier       in-tok  out-tok    cost  share",
-      "  scout        102k      11k   $0.16     9%",
-      "  builder      614k      78k   $1.32    71%",
-      "  architect    175k      14k   $0.39    21%",
+      "  tier       calls  in-tok  out-tok    cost  share",
+      "  scout         29    102k      11k   $0.16     9%",
+      "  builder       15    614k      78k   $1.32    71%",
+      "  architect      3    175k      14k   $0.39    21%",
       "  ─ savings vs all-architect baseline: $6.41 (77% saved)",
       "  ─ cache: 612k reads saved ≈ $1.65 vs uncached",
     ].join("\n");
@@ -58,6 +62,7 @@ describe("R11.2: renderLedgerTable", () => {
       costUsd: 0.05,
       byTier: {
         scout: {
+          calls: 29,
           usage: { inputTokens: 1000, outputTokens: 200, cacheReadTokens: 0, cacheWriteTokens: 0 },
           costUsd: 0.05,
         },
@@ -94,12 +99,14 @@ describe("R11.2: renderLedgerTable", () => {
       costUsd: 0.01,
       byTier: {
         scout: {
+          calls: 29,
           usage: { inputTokens: 100, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 },
           costUsd: 0.01,
         },
       },
       byModel: {
         "anthropic/claude-haiku-4-5": {
+          calls: 1,
           usage: { inputTokens: 100, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 },
           costUsd: 0.01,
         },

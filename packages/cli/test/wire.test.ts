@@ -1,21 +1,25 @@
 /**
- * R13.1 — the M2 integration test. Calls the *real* buildSession (real
- * loadDeps, real dynamic imports) against this worktree's actual packages.
- * While any lane is still a stub — true for every lane in this worktree,
- * since tui-cli builds against fixtures/local fakes per its own charter —
- * loadDeps throws NotWiredError and this test prints a visible skip notice
- * and passes trivially rather than failing the lane's build. Once every
- * lane lands (the integrator's M2 step), it runs for real.
+ * R13.1 — the M2 integration test, running for real: every lane is merged,
+ * so buildSession composes the actual engines. The only fake is the model
+ * itself — a MockChatModel-backed ProviderAdapter injected through
+ * buildSession's `overrides.adapters` seam (the integrator-ratified answer
+ * to this lane's INTEGRATION-NOTES question about how M2 gets a mock).
+ *
+ * Asserts the full M2 exit criteria from docs/03-BUILD-PLAN.md: a submitted
+ * prompt produces routing_decision → model_call_started → text →
+ * model_call_finished → turn_done on the bus, ledger entries land in
+ * .cox/ledger.jsonl (one for the router's self-ledgered classify call, one
+ * for the chat call), and the snapshot reflects the mock's usage.
  */
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { EventBus, configSchema, type AgentEvent } from "@cox/core";
+import { EventBus, configSchema, type AgentEvent, type ProviderAdapter } from "@cox/core";
+import { createMockModel } from "@cox/providers";
 import { buildSession } from "../src/wire";
-import { NotWiredError } from "../src/deps";
 
-function waitFor(bus: EventBus, type: AgentEvent["type"], timeoutMs = 5000): Promise<AgentEvent> {
+function waitFor(bus: EventBus, type: AgentEvent["type"], timeoutMs = 10_000): Promise<AgentEvent> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       unsubscribe();
@@ -31,21 +35,33 @@ function waitFor(bus: EventBus, type: AgentEvent["type"], timeoutMs = 5000): Pro
   });
 }
 
+/** scout answers the router's classification; builder answers the prompt. */
+function mockAdapter(): ProviderAdapter {
+  const scripts: Record<string, Parameters<typeof createMockModel>[0]> = {
+    "mock-scout": [
+      {
+        textDeltas: ['{"task_type": "feature", "complexity": 2, "est_output_tokens": 800}'],
+        usage: { inputTokens: 180, outputTokens: 24 },
+      },
+    ],
+    "mock-builder": [
+      {
+        textDeltas: ["Added parser tests ", "covering both edge cases."],
+        usage: { inputTokens: 2_400, outputTokens: 310, cacheReadTokens: 1_100 },
+      },
+    ],
+    "mock-architect": [],
+  };
+  return {
+    id: "mock",
+    models: () => Object.keys(scripts),
+    create: (id) => createMockModel(scripts[id] ?? [], { provider: "mock", model: id }),
+  };
+}
+
 describe("R13.1: M2 integration — full stack with a MockChatModel-backed registry", () => {
-  it("a submitted prompt produces routing_decision -> ... -> model_call_finished -> turn_done, one ledger line, and a snapshot reflecting the mock's usage", async () => {
+  it("a submitted prompt produces routing_decision -> ... -> model_call_finished -> turn_done, ledger lines, and a snapshot reflecting the mock's usage", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "cox-wire-"));
-    // Best-effort "point providers at the mock adapter" config, per
-    // design.md's wire.test.ts note ("see providers spec pack") — providers
-    // /design.md's createMockModel takes a script directly rather than
-    // being config-driven, and createProviderRegistry(config) builds only
-    // anthropic + openaiCompat entries with no documented "mock" special
-    // case, so it's genuinely unclear from the published contracts alone
-    // how config is meant to select the mock at M2. Flagged in
-    // INTEGRATION-NOTES.md (2026-07-21) rather than guessed at further
-    // here — this worktree can't verify either way since every lane
-    // (including this one, by design — tui-cli builds against fixtures)
-    // is still a stub, so the NotWiredError path below is what actually
-    // runs and is what's actually verified.
     const cfg = configSchema.parse({
       tiers: {
         scout: { primary: { provider: "mock", model: "mock-scout" }, fallbacks: [] },
@@ -57,20 +73,13 @@ describe("R13.1: M2 integration — full stack with a MockChatModel-backed regis
     const events: AgentEvent[] = [];
     bus.subscribe((e) => events.push(e));
 
-    let session: Awaited<ReturnType<typeof buildSession>>;
-    try {
-      session = await buildSession(cfg, cwd, bus);
-    } catch (err) {
-      if (err instanceof NotWiredError) {
-        // eslint-disable-next-line no-console
-        console.log(`skipped: ${err.message}`);
-        return;
-      }
-      throw err;
-    }
+    const session = await buildSession(cfg, cwd, bus, undefined, {
+      adapters: [mockAdapter()],
+    });
 
+    const done = waitFor(bus, "turn_done");
     session.controller.submitPrompt("add tests for the parser");
-    await waitFor(bus, "turn_done");
+    await done;
 
     const types = events.map((e) => e.type);
     const routingIdx = types.indexOf("routing_decision");
@@ -82,16 +91,32 @@ describe("R13.1: M2 integration — full stack with a MockChatModel-backed regis
     expect(finishedIdx).toBeGreaterThan(startedIdx);
     expect(doneIdx).toBeGreaterThan(finishedIdx);
 
+    // Classification succeeded via mock-scout → decision is builder with the
+    // classifier's reasons, and the routed model is the builder primary.
+    const routing = events[routingIdx] as Extract<AgentEvent, { type: "routing_decision" }>;
+    expect(routing.decision.tier).toBe("builder");
+    expect(routing.decision.model).toEqual({ provider: "mock", model: "mock-builder" });
+
+    // turn_done now carries the stopReason (integrator contract addition).
+    const turnDone = events[doneIdx] as Extract<AgentEvent, { type: "turn_done" }>;
+    expect(turnDone.stopReason).toBe("end_turn");
+
+    // Two ledger lines: the router's self-ledgered classify call + the chat
+    // call written by the cli's ledger subscriber.
     const ledgerRaw = await readFile(join(cwd, ".cox", "ledger.jsonl"), "utf8");
-    const ledgerLines = ledgerRaw
+    const entries = ledgerRaw
       .split("\n")
       .map((l) => l.trim())
-      .filter((l) => l.length > 0);
-    expect(ledgerLines).toHaveLength(1);
-    const entry = JSON.parse(ledgerLines[0]!) as { sessionId: string };
-    expect(entry.sessionId).toBe(session.controller.sessionId);
+      .filter((l) => l.length > 0)
+      .map((l) => JSON.parse(l) as { kind: string; sessionId: string });
+    expect(entries).toHaveLength(2);
+    expect(entries.map((e) => e.kind).sort()).toEqual(["chat", "classify"]);
+    for (const entry of entries) {
+      expect(entry.sessionId).toBe(session.controller.sessionId);
+    }
 
     const snapshot = session.getSnapshot();
     expect(snapshot.usage.inputTokens + snapshot.usage.outputTokens).toBeGreaterThan(0);
-  });
+    expect(snapshot.currentModel).toEqual({ provider: "mock", model: "mock-builder" });
+  }, 15_000);
 });
