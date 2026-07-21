@@ -20,25 +20,41 @@ export interface RoutingAnnouncementProps {
 const HEADER_PREFIX = "⑆ router  ";
 const INDENT = " ".repeat(HEADER_PREFIX.length);
 
+/**
+ * Pure line-builder shared with plain.ts (R6.1 "same transcript content
+ * line-by-line") so the byte format is defined in exactly one place.
+ */
+export function routingAnnouncementLines(
+  decision: RoutingDecision,
+  label: string,
+  spentUsd: number,
+  limitUsd?: number,
+): [string, string, string] {
+  const sessionSegment =
+    limitUsd === undefined
+      ? `session ${formatUsd(spentUsd)}`
+      : `session ${formatUsd(spentUsd)}/${formatUsd(limitUsd)} ${budgetBar(spentUsd, limitUsd, 10)}`;
+  return [
+    `${HEADER_PREFIX}${label} → ${decision.tier} (${decision.model.model})`,
+    `${INDENT}${decision.reasons.join(" · ")}`,
+    `${INDENT}est ${formatTokens(decision.estimate.inputTokens)} in / ~${formatTokens(
+      decision.estimate.estOutputTokens,
+    )} out ≈ ${formatUsd(decision.estimate.estCostUsd)}    ${sessionSegment}`,
+  ];
+}
+
 export function RoutingAnnouncement({
   decision,
   label,
   spentUsd,
   limitUsd,
 }: RoutingAnnouncementProps): React.JSX.Element {
-  const sessionSegment =
-    limitUsd === undefined
-      ? `session ${formatUsd(spentUsd)}`
-      : `session ${formatUsd(spentUsd)}/${formatUsd(limitUsd)} ${budgetBar(spentUsd, limitUsd, 10)}`;
+  const [line1, line2, line3] = routingAnnouncementLines(decision, label, spentUsd, limitUsd);
   return (
     <Box flexDirection="column">
-      <Text>{`${HEADER_PREFIX}${label} → ${decision.tier} (${decision.model.model})`}</Text>
-      <Text>{`${INDENT}${decision.reasons.join(" · ")}`}</Text>
-      <Text>
-        {`${INDENT}est ${formatTokens(decision.estimate.inputTokens)} in / ~${formatTokens(
-          decision.estimate.estOutputTokens,
-        )} out ≈ ${formatUsd(decision.estimate.estCostUsd)}    ${sessionSegment}`}
-      </Text>
+      <Text>{line1}</Text>
+      <Text>{line2}</Text>
+      <Text>{line3}</Text>
     </Box>
   );
 }

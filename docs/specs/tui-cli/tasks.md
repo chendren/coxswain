@@ -64,7 +64,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: non-slash → submitPrompt; valid slash → submitCommand(cmd,args) per grammar; unknown slash renders local error, controller untouched; Tab completes the six top-level commands; Esc (no modal) → interrupt().
       verify: pnpm --filter @cox/tui test -- input
 
-- [ ] 11. Plain renderer + --print runner
+- [x] 11. Plain renderer + --print runner
       requirements: R6.1–R6.3
       complexity: 2
       accept: createPlainRenderer emits mapping-table content as plain lines (no ANSI cursor codes); print.ts wires auto-deny (default) / auto-allow (--yolo) permission policy and exit codes 0/1 by stop reason; tests capture write() lines for the fixture and assert permission + exit behavior with a scripted run.

@@ -60,3 +60,15 @@ stream-injection seam, so `test/replay.test.ts` temporarily patches
 `process.stdout.write` to a no-op around the calls that mount it, to keep
 `pnpm --filter @cox/cli test` output readable. Assertions are against the
 returned snapshot fold, not rendered frames.
+
+## print.ts (`runPrint`)
+
+Signature is `runPrint(prompt, flags)` per design.md, where `flags` bundles
+`{bus, controller, yolo?, write?}` — the bus/controller a real caller gets
+from `wire.ts`'s `buildSession` (task 13). Testable now with a fake
+controller whose `submitPrompt` just scripts events onto a real `EventBus`
+(no engines needed). Not yet wired into `main.ts`'s default action or
+`--print` flag — that needs a real session (task 13); `main.ts`'s bare
+invocation still returns the task-1 "not implemented" `CliExit` until then.
+Exit-code inference (R6.3) and the plain-mode routing-announcement
+limitation are documented in `INTEGRATION-NOTES.md` (2026-07-20, task 11).

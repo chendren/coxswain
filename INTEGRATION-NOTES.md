@@ -117,5 +117,30 @@ The integrator (M2) resolves these and logs any core changes under
   `AgentEvent` variant (mirroring `RoutingInput.taskId`), so consumers
   don't have to infer it from a different event type.
 
+## 2026-07-20 — tui-cli (task 11, print.ts / plain.ts)
+
+- Blocked on: two gaps in the `AgentEvent` shape for R6.1/R6.3:
+  1. `createPlainRenderer(write)`'s design.md-specified signature takes only
+     `write: (line: string) => void` — no snapshot accessor — so the
+     `routing_decision` block's "session $spent/$limit" segment cannot
+     reflect live budget state in plain/`--print` mode the way `<App>`'s
+     does via `getSnapshot()`. It always renders `spent $0`, no limit.
+  2. `turn_done` carries `{usage, costUsd}` — no `stopReason` — but R6.3
+     wants exit 0 specifically for `end_turn` and 1 for the *other* stop
+     reasons that also route through `turn_done` (`max_tokens`, `refusal`,
+     per agent-tools/design.md's loop algorithm). The only place a
+     `stopReason` is observable at all is the `model_call_finished` event
+     that always immediately precedes `turn_done` in the same loop step.
+- Workaround taken: (1) documented as a known limitation, not fixable
+  without changing the public signature. (2) `packages/cli/src/print.ts`
+  remembers the most recent `model_call_finished.stopReason` and uses it
+  when `turn_done` arrives. This works because of the algorithm's
+  documented step ordering, not because of any event-level guarantee that
+  pairs them — a `turn_done` with no preceding `model_call_finished` (not
+  possible in the real loop, but not ruled out by the types) would exit 1.
+- Proposed contract change: add `stopReason: StopReason` to the `turn_done`
+  `AgentEvent` variant so consumers don't have to infer it from a
+  different, only-conventionally-paired event.
+
 ## Contract changes
 (none yet)

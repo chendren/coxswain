@@ -115,6 +115,17 @@ accumulating* local value out of the closure. Worth the same scrutiny for
 any future component that both calls `useInput` inline and reads local
 state that changes character-by-character.
 
+## plain.ts's routing_decision block can't show live budget state (task 11)
+
+`createPlainRenderer`'s exact public signature is `(write: (line: string)
+=> void) => EventListener` — no snapshot accessor, unlike `<App>` which
+reads `getSnapshot()` fresh per event. Its `routing_decision` handler
+therefore always renders the session-spend segment as `spent $0`, no
+limit — it cannot know the real budget state. `<App>`'s version is
+authoritative for live numbers; plain/`--print` mode's routing block is
+structurally complete but numerically a placeholder for that one segment.
+Logged in INTEGRATION-NOTES.md.
+
 ## Public API surface (index.ts)
 
 `cachePct` is implemented in `format.ts` (used internally by the status
