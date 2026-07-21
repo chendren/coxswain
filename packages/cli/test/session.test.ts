@@ -99,6 +99,7 @@ function minimalLoadedDeps(over: Partial<LoadedDeps>): LoadedDeps {
     sessionId: "ses_test",
     resolvePermission: vi.fn(),
     tierModel: () => notUsed as never,
+    steeringTemplates: { product: "", tech: "", structure: "" },
     ...over,
   };
 }

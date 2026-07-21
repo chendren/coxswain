@@ -172,5 +172,26 @@ The integrator (M2) resolves these and logs any core changes under
   in agent-tools/design.md, matching what tui-cli/design.md already
   assumes cli can supply.
 
+## 2026-07-21 — tui-cli (task 14, renderLedgerTable)
+
+- Blocked on: docs/05-ROUTING-AND-LEDGER.md §2's `/ledger` table has a
+  per-tier "calls" column (29/15/3 in its example), but
+  `LedgerSummary.byTier`/`.byModel` (core/types.ts) are
+  `Partial<Record<Tier, { usage: TokenUsage; costUsd: number }>>` /
+  `Record<string, { usage; costUsd }>` — no per-bucket entry count
+  anywhere. Only the top-level `LedgerSummary.entries: number` counts
+  calls, and it's a single combined total, not broken out per tier/model.
+- Workaround taken: `packages/tui/src/ledger-table.ts`'s `renderLedgerTable`
+  drops the "calls" column entirely (tier / in-tok / out-tok / cost /
+  share) rather than showing a fabricated or "n/a" number in a column
+  literally labeled "calls" — the goal was the table's overall shape and
+  the two explicitly-required lines (R11.2: savings-vs-baseline,
+  cache-savings), not a byte-for-byte copy of the doc's specific example
+  (already shown not to be internally self-consistent — see the task 6
+  entry above and packages/tui/NOTES.md).
+- Proposed contract change: add a `calls: number` field alongside
+  `usage`/`costUsd` in both `LedgerSummary.byTier`'s and `.byModel`'s
+  bucket shape.
+
 ## Contract changes
 (none yet)

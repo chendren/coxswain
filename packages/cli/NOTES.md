@@ -119,3 +119,25 @@ dedicated note, this is the biggest cross-lane gap found so far) and
 `tierModel` (exposes the internal per-tier failover `ChatModel` closure so
 `oneshot.ts` doesn't have to reconstruct a fallback-less version from
 `registry` alone).
+
+## Command dispatch (task 14)
+
+`session.ts`'s `submitCommand` and `main.ts`'s CLI commands share the
+`commands/{spec,steer,ledger,models,hook}.ts` modules (steer/spec/hook take
+a small deps object; ledger/models are pure functions of `{ledger|cfg,
+write}`). `LoadedDeps` grew a third extra property, `steeringTemplates`
+(needed the same `STEERING_TEMPLATES` constant `@cox/steering` exports
+alongside `createSteeringStore`, fetched via the same dynamic import —
+`deps.ts` also grew `needValue()` alongside `need()` since
+`STEERING_TEMPLATES` is a plain object export, not a factory function, so
+`need()`'s `typeof x === "function"` check doesn't apply).
+
+`renderLedgerTable`'s dropped "calls" column is documented in
+`INTEGRATION-NOTES.md`/`packages/tui/NOTES.md`. In-session `/steer init`
+skips the architect-fill-in offer (`isTTY: false` always) — a real y/N
+confirmation flow inside the TUI would need Input.tsx support that doesn't
+exist yet; `cox steer init` (the CLI command, run before any TUI session
+exists) does offer it, gated on `process.stdout.isTTY` with an injectable
+`confirm` fn for tests. `/spec approve` with no explicit phase, and `cox
+spec approve` likewise, load the spec and approve the first
+not-yet-approved phase in `requirements -> design -> tasks` order.

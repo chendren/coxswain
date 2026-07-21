@@ -6,3 +6,4 @@
 export { formatTokens, formatUsd, formatDuration, budgetBar } from "./format";
 export { startTui, type TuiOptions, type TuiHandle } from "./app";
 export { createPlainRenderer } from "./plain";
+export { renderLedgerTable } from "./ledger-table";

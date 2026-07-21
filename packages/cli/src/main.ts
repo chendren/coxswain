@@ -12,7 +12,12 @@ import { EventBus, loadConfig, TIERS, type Tier } from "@cox/core";
 import { startTui } from "@cox/tui";
 import { runReplay } from "./commands/replay";
 import { runOneshot, type OneshotKind } from "./commands/oneshot";
-import { loadDeps } from "./deps";
+import { runSpecApprove, runSpecGenerate, runSpecNew, runSpecRunTask, runSpecStatus } from "./commands/spec";
+import { runSteerInit } from "./commands/steer";
+import { runHookRun } from "./commands/hook";
+import { runLedgerReport } from "./commands/ledger";
+import { runModelsReport } from "./commands/models";
+import { loadDeps, type LoadedDeps } from "./deps";
 import { buildSession } from "./wire";
 import { runPrint } from "./print";
 
@@ -80,12 +85,22 @@ function resolveCwd(opts: GlobalOpts): string {
   return resolve(opts.cwd ?? process.cwd());
 }
 
-async function runOneshotCommand(kind: OneshotKind, textParts: string[], command: Command): Promise<void> {
+/** Resolves cwd/config and loads the full engine graph for a one-off CLI command. */
+async function resolveDeps(command: Command): Promise<{ cwd: string; deps: LoadedDeps }> {
   const opts = command.optsWithGlobals<GlobalOpts>();
   const cwd = resolveCwd(opts);
   const cfg = loadConfig(cwd);
   const bus = new EventBus();
   const deps = await loadDeps(cfg, cwd, bus);
+  return { cwd, deps };
+}
+
+const write = (line: string): void => {
+  process.stdout.write(`${line}\n`);
+};
+
+async function runOneshotCommand(kind: OneshotKind, textParts: string[], command: Command): Promise<void> {
+  const { deps } = await resolveDeps(command);
   await runOneshot(kind, textParts.join(" "), {
     router: deps.router,
     tierModel: deps.tierModel,
@@ -143,34 +158,65 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   const spec = program.command("spec").description("spec-driven feature workflow");
   addGlobalOptions(
     spec.command("new <name> <idea...>").description("start a new spec from an idea"),
-  ).action(async () => notImplemented("spec new"));
+  ).action(async (name: string, idea: string[], _o: GlobalOpts, command: Command) => {
+    const { deps } = await resolveDeps(command);
+    await runSpecNew({ specs: deps.specs, write }, name, idea.join(" "));
+  });
   addGlobalOptions(
     spec
       .command("approve <name> [phase]")
       .description("approve requirements|design|tasks (default: next unapproved)"),
-  ).action(async () => notImplemented("spec approve"));
+  ).action(async (name: string, phase: string | undefined, _o: GlobalOpts, command: Command) => {
+    const { deps } = await resolveDeps(command);
+    await runSpecApprove({ specs: deps.specs, write }, name, phase);
+  });
   addGlobalOptions(
     spec.command("design <name>").description("generate the design document"),
-  ).action(async () => notImplemented("spec design"));
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const { deps } = await resolveDeps(command);
+    await runSpecGenerate({ specs: deps.specs, write }, name, "design");
+  });
   addGlobalOptions(
     spec.command("tasks <name>").description("generate the task list"),
-  ).action(async () => notImplemented("spec tasks"));
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const { deps } = await resolveDeps(command);
+    await runSpecGenerate({ specs: deps.specs, write }, name, "tasks");
+  });
   addGlobalOptions(
     spec.command("run <name> [taskId]").description("execute the next (or given) task"),
-  ).action(async () => notImplemented("spec run"));
+  ).action(async (name: string, taskId: string | undefined, _o: GlobalOpts, command: Command) => {
+    const { deps } = await resolveDeps(command);
+    await runSpecRunTask({ specs: deps.specs, write }, name, taskId);
+  });
   addGlobalOptions(
     spec.command("status [name]").description("show phase/task status"),
-  ).action(async () => notImplemented("spec status"));
+  ).action(async (name: string | undefined, _o: GlobalOpts, command: Command) => {
+    const { deps } = await resolveDeps(command);
+    await runSpecStatus({ specs: deps.specs, write }, name);
+  });
 
   const steer = program.command("steer").description("steering docs");
   addGlobalOptions(
     steer.command("init").description("write starter steering docs to .cox/steering/"),
-  ).action(async () => notImplemented("steer init"));
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const { cwd, deps } = await resolveDeps(command);
+    await runSteerInit({
+      cwd,
+      templates: deps.steeringTemplates,
+      sessionId: deps.sessionId,
+      write,
+      isTTY: Boolean(process.stdout.isTTY),
+      agent: deps.agent,
+    });
+  });
 
   const hook = program.command("hook").description("agent hooks");
   addGlobalOptions(
     hook.command("run <name>").description("run an agent hook manually"),
-  ).action(async () => notImplemented("hook run"));
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const { cwd, deps } = await resolveDeps(command);
+    await runHookRun({ hooks: deps.hooks, agent: deps.agent, cwd, sessionId: deps.sessionId, write }, name);
+  });
 
   addGlobalOptions(
     program.command("explain <text...>").description("one-shot explanation, always scout tier"),
@@ -190,11 +236,19 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       .description("offline cost report")
       .option("--spec <name>", "filter to one spec")
       .option("--since <iso>", "filter to entries at/after this ISO-8601 timestamp"),
-  ).action(async () => notImplemented("ledger"));
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { spec?: string; since?: string }>();
+    const { deps } = await resolveDeps(command);
+    await runLedgerReport({ ledger: deps.ledger, specName: opts.spec, since: opts.since, write });
+  });
 
   addGlobalOptions(
     program.command("models").description("configured tiers, models, and pricing"),
-  ).action(async () => notImplemented("models"));
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts>();
+    const cfg = loadConfig(resolveCwd(opts));
+    runModelsReport({ cfg, write });
+  });
 
   addGlobalOptions(
     program

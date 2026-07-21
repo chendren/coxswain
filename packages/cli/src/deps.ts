@@ -99,6 +99,8 @@ export interface LoadedDeps extends EngineDeps {
    * simpler (fallback-less) version from `registry` itself.
    */
   tierModel: (tier: Tier) => ChatModel;
+  /** @cox/steering's STEERING_TEMPLATES constant (R12.1's `cox steer init`). */
+  steeringTemplates: Record<"product" | "tech" | "structure", string>;
 }
 
 function newSessionId(): string {
@@ -146,6 +148,7 @@ interface ToolsModule {
 
 interface SteeringModule {
   createSteeringStore?: (deps: { config: CoxConfig }) => SteeringStore;
+  STEERING_TEMPLATES?: Record<"product" | "tech" | "structure", string>;
 }
 
 interface HooksModule {
@@ -199,6 +202,12 @@ async function safeImport<T>(pkg: string, thunk: () => Promise<unknown>): Promis
 function need<T>(pkg: string, factory: T | undefined): T {
   if (typeof factory !== "function") throw new NotWiredError(pkg);
   return factory;
+}
+
+/** Like `need`, but for a required plain value export (not a factory function) — e.g. STEERING_TEMPLATES. */
+function needValue<T>(pkg: string, value: T | undefined): T {
+  if (value === undefined) throw new NotWiredError(pkg);
+  return value;
 }
 
 function mergeTierOverride(outcomes: HookOutcome[]): Tier | undefined {
@@ -260,6 +269,7 @@ export async function loadDeps(
   );
   const createSteeringStore = need("@cox/steering", steeringMod.createSteeringStore);
   const steering = createSteeringStore({ config: cfg });
+  const steeringTemplates = needValue("@cox/steering", steeringMod.STEERING_TEMPLATES);
 
   const hooksMod = await safeImport<HooksModule>("@cox/hooks", () => import("@cox/hooks"));
   const createHookEngine = need("@cox/hooks", hooksMod.createHookEngine);
@@ -366,5 +376,6 @@ export async function loadDeps(
     sessionId,
     resolvePermission,
     tierModel,
+    steeringTemplates,
   };
 }

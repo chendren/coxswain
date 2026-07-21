@@ -126,6 +126,18 @@ authoritative for live numbers; plain/`--print` mode's routing block is
 structurally complete but numerically a placeholder for that one segment.
 Logged in INTEGRATION-NOTES.md.
 
+## renderLedgerTable drops the "calls" column (task 14)
+
+`LedgerSummary.byTier`/`.byModel` carry `{usage, costUsd}` only — no
+per-bucket call count exists anywhere to populate docs/05's "calls"
+column, so `src/ledger-table.ts` renders tier/in-tok/out-tok/cost/share
+only. Full writeup in `INTEGRATION-NOTES.md` (2026-07-21). Also: no
+`LedgerPanel.tsx` component was added despite being in design.md's file
+list — design.md's own "Panels" section says panels are plain
+preformatted text delivered as `{type:"agent_message", text}`, which
+`<App>`'s existing agent_message handling (task 4/6) already renders
+fully; a dedicated Ink component would have had no caller.
+
 ## Public API surface (index.ts)
 
 `cachePct` is implemented in `format.ts` (used internally by the status

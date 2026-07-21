@@ -82,7 +82,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: wire.ts builds the graph in design order with the route/preToolUse/postToolUse/phase-hook closures; session.ts implements submitPrompt (hook gate → steering assembly stable-first → agent.run with abort), resolvePermission bridging, history retention; ledger-writer pairs routing_decision+model_call_finished into entries and emits budget_alert on level≠ok; unit-tested with local fakes for every engine (NotWired paths untouched).
       verify: pnpm --filter @cox/cli test -- session
 
-- [ ] 14. Command handlers: /model /context /ledger /budget, spec/steer/hook/ledger/models CLI commands
+- [x] 14. Command handlers: /model /context /ledger /budget, spec/steer/hook/ledger/models CLI commands
       requirements: R8.5, R11.1, R11.2, R12.1
       complexity: 3
       accept: submitCommand dispatch complete; /model auto clears override; /budget extend mutates retained budgets object (visible in next budgetState); /context panel lists docs with token weights + system size; renderLedgerTable output matches docs/05 table shape for a synthetic LedgerSummary (literal assertion); cox ledger/models print via shared renderers; steer init writes missing templates only and prompts before agent fill-in (fill-in path behind TTY check, tested via injected prompt fn).
