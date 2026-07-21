@@ -88,7 +88,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: scripted fakeRunner walks create → generate/approve ×3 → runTask ×3 in a tmpProject copy of examples/demo-project; asserts final file states, full ordered spec_event sequence, ledger-relevant AgentTask fields, and that all checkboxes read [x].
   verify: pnpm --filter @cox/spec test -- -t "e2e"
 
-- [ ] 15. Package NOTES.md and full-lane green
+- [x] 15. Package NOTES.md and full-lane green
   requirements: R1.1
   complexity: 1
   accept: NOTES.md (≤1 page) records decisions (runs.json, idea.md, sessionId scheme, steering-via-runner-decorator expectation) and any deviations; whole lane green.
