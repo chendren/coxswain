@@ -51,7 +51,7 @@ routing scale (1–2 scout-able, 3 builder).
 
 ## @cox/hooks
 
-- [ ] 8. Hook config loading (hooks.json, user then project)
+- [x] 8. Hook config loading (hooks.json, user then project)
       requirements: R5.1, R5.2, R5.3
       complexity: 2
       accept: user hooks precede project hooks; missing files silent; malformed JSON and unknown-event entries skipped with recorded load warnings; user path resolved from injected env.HOME (tests never read real ~); `yaml`+`picomatch` deps added, `--passWithNoTests` removed.
