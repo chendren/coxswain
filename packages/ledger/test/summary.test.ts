@@ -146,3 +146,54 @@ describe("summary totals + byTier/byModel (R7.1)", () => {
     expect(summary.byModel).toEqual({});
   });
 });
+
+describe("baseline-vs-architect calculation (R7.2)", () => {
+  async function ledgerWithPricing(
+    entries: LedgerEntry[],
+    pricing: typeof pricingFor,
+  ) {
+    const dir = await mkdtemp(join(tmpdir(), "cox-ledger-"));
+    const path = join(dir, "ledger.jsonl");
+    await writeFile(path, `${entries.map((e) => JSON.stringify(e)).join("\n")}\n`, "utf8");
+    return createLedger({
+      filePath: path,
+      config: configSchema.parse({}), // architect primary = anthropic/claude-opus-4-8
+      pricing,
+      now: () => FIXED_NOW,
+    });
+  }
+
+  it("R7.2: re-prices every matched entry's usage at the architect primary's pricing", async () => {
+    const ledger = await ledgerWithPricing(FIXTURE, pricingFor);
+    const summary = await ledger.summary({});
+    // Hand-computed at anthropic/claude-opus-4-8 rates ($5/$25/$0.5/$6.25 per
+    // MTok): totals in=2150 out=215 cacheRead=50 cacheWrite=0 →
+    // (2150*5 + 215*25 + 50*0.5) / 1e6 = (10750 + 5375 + 25) / 1e6 = 0.01615
+    expect(summary.baselineArchitectCostUsd).toBeCloseTo(0.01615, 5);
+  });
+
+  it("R7.2: baseline ignores each entry's own costUsd/tier and only re-prices usage", async () => {
+    // A single scout entry with cheap actual cost still re-prices at the
+    // (expensive) architect rate for the baseline.
+    const entry = makeEntry({
+      tier: "scout",
+      usage: { inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      costUsd: 0.001, // real (haiku) cost — irrelevant to baseline
+    });
+    const ledger = await ledgerWithPricing([entry], pricingFor);
+    const summary = await ledger.summary({});
+    expect(summary.baselineArchitectCostUsd).toBeCloseTo(5.0, 5); // 1M in @ $5/M opus
+  });
+
+  it("R7.2: unknown architect pricing yields baseline 0", async () => {
+    const ledger = await ledgerWithPricing(FIXTURE, () => null);
+    const summary = await ledger.summary({});
+    expect(summary.baselineArchitectCostUsd).toBe(0);
+  });
+
+  it("R7.2: empty entry set yields baseline 0", async () => {
+    const ledger = await ledgerWithPricing([], pricingFor);
+    const summary = await ledger.summary({});
+    expect(summary.baselineArchitectCostUsd).toBe(0);
+  });
+});

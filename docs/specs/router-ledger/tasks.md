@@ -23,7 +23,7 @@ first — the router depends on `budgetState`.
   - accept: totals use `addUsage`; null `costUsd` counts as 0; `byModel` keyed by `modelKey`; buckets carry usage + cost; verified against a 6-entry fixture spanning 3 tiers/3 models
   - verify: pnpm --filter @cox/ledger test -- -t "R7.1"
 
-- [ ] 4. Baseline-vs-architect calculation
+- [x] 4. Baseline-vs-architect calculation
   - requirements: R7.2
   - complexity: 2
   - accept: `baselineArchitectCostUsd` re-prices every matched entry's usage (incl. cache fields at cache rates) at `config.tiers.architect.primary` via injected `pricing`; unknown pricing → 0; hand-computed expected value in test matches to 5 decimals

@@ -1,9 +1,10 @@
-import { addUsage, modelKey, ZERO_USAGE } from "@cox/core";
+import { addUsage, computeCostUsd, modelKey, ZERO_USAGE } from "@cox/core";
 import type { LedgerEntry, LedgerSummary, ModelPricing } from "@cox/core";
 
 /**
- * Single-pass totals + byTier/byModel breakdown (R7.1). `architectPricing`
- * feeds the baseline-vs-architect re-pricing (R7.2, task 4).
+ * Single-pass totals + byTier/byModel breakdown (R7.1) plus the
+ * baseline-vs-architect re-pricing (R7.2). `architectPricing` null (unknown
+ * pricing for the configured architect primary) yields baseline 0.
  */
 export function summarize(
   entries: LedgerEntry[],
@@ -11,6 +12,7 @@ export function summarize(
 ): LedgerSummary {
   let usage = ZERO_USAGE;
   let costUsd = 0;
+  let baselineArchitectCostUsd = 0;
   const byTier: LedgerSummary["byTier"] = {};
   const byModel: LedgerSummary["byModel"] = {};
 
@@ -31,10 +33,13 @@ export function summarize(
       usage: addUsage(modelBucket.usage, entry.usage),
       costUsd: modelBucket.costUsd + cost,
     };
-  }
 
-  // TODO(task 4, R7.2): re-price each entry's usage at architectPricing.
-  const baselineArchitectCostUsd = 0;
+    if (architectPricing) {
+      // computeCostUsd already prices cache fields at cache rates when the
+      // pricing table defines them (falls back to input rate otherwise).
+      baselineArchitectCostUsd += computeCostUsd(entry.usage, architectPricing);
+    }
+  }
 
   return {
     entries: entries.length,
