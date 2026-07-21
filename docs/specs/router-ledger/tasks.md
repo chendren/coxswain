@@ -29,7 +29,7 @@ first — the router depends on `budgetState`.
   - accept: `baselineArchitectCostUsd` re-prices every matched entry's usage (incl. cache fields at cache rates) at `config.tiers.architect.primary` via injected `pricing`; unknown pricing → 0; hand-computed expected value in test matches to 5 decimals
   - verify: pnpm --filter @cox/ledger test -- -t "R7.2"
 
-- [ ] 5. `budgetState` scopes + levels
+- [x] 5. `budgetState` scopes + levels
   - requirements: R8.1, R8.2, R8.3
   - complexity: 3
   - accept: session USD + token limits and spec USD limit computed per R8.1; `spentTokens` sums all four usage fields; worst level wins with `scope` naming the tripped scope; no limits → `ok` with limit fields absent; boundary tests at exactly `warnAt` and exactly 1.0

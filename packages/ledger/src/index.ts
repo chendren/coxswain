@@ -3,10 +3,12 @@ import type {
   Ledger,
   LedgerEntry,
   LedgerQuery,
+  LedgerSummary,
   ModelPricing,
 } from "@cox/core";
 import { appendEntry, readEntries } from "./jsonl";
 import { summarize } from "./summary";
+import { computeBudgetState } from "./budget";
 
 export interface CreateLedgerDeps {
   /** Absolute path to the JSONL ledger file, e.g. `<cwd>/.cox/ledger.jsonl`. */
@@ -51,6 +53,12 @@ export function createLedger(deps: CreateLedgerDeps): LedgerWithDebug {
     return deps.pricing(ref.provider, ref.model);
   }
 
+  async function summary(q: LedgerQuery): Promise<LedgerSummary> {
+    const all = await readAll();
+    const filtered = all.filter((e) => matches(e, q));
+    return summarize(filtered, architectPricing());
+  }
+
   const ledger: LedgerWithDebug = {
     async record(entry: LedgerEntry) {
       await appendEntry(deps.filePath, entry);
@@ -61,15 +69,17 @@ export function createLedger(deps: CreateLedgerDeps): LedgerWithDebug {
       return all.filter((e) => matches(e, q));
     },
 
-    async summary(q: LedgerQuery) {
-      const all = await readAll();
-      const filtered = all.filter((e) => matches(e, q));
-      return summarize(filtered, architectPricing());
-    },
+    summary,
 
-    // TODO(task 5, R8.1-R8.3): scopes + levels.
-    async budgetState(_sessionId: string, _specName?: string) {
-      return { level: "ok" as const, spentUsd: 0, spentTokens: 0 };
+    async budgetState(sessionId: string, specName?: string) {
+      // Two summary calls max: session filter, plus a spec filter only when
+      // both a specName and a specUsd limit are present (design.md).
+      const sessionSummary = await summary({ sessionId });
+      let specSummary: LedgerSummary | null = null;
+      if (specName !== undefined && deps.config.budgets.specUsd !== undefined) {
+        specSummary = await summary({ specName });
+      }
+      return computeBudgetState(sessionSummary, specSummary, deps.config.budgets);
     },
 
     get lastReadSkippedLines() {
