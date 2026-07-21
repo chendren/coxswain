@@ -39,7 +39,7 @@ Check a box only after its `verify` command passes.
   accept: cwd-relative results, mtime-desc, limit honored
   verify: pnpm --filter @cox/tools test -- glob
 
-- [ ] 7. grep tool
+- [x] 7. grep tool
   requirements: R8.6
   complexity: 3
   accept: three modes; binary skip; invalid-regex error; 1000-match cap marker

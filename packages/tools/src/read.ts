@@ -1,20 +1,12 @@
 import { readFile, stat } from "node:fs/promises";
 import type { Tool, ToolResult } from "@cox/core";
+import { splitLines } from "./lines";
 import { resolveWithin } from "./paths";
 import { expectObject, expectOptionalNumber, expectString } from "./validate";
 
 const NAME = "read";
 const MAX_LINES = 2000;
 const MAX_BYTES = 2 * 1024 * 1024;
-
-function splitLines(text: string): string[] {
-  if (text.length === 0) return [];
-  const parts = text.split("\n");
-  if (parts.length > 0 && parts[parts.length - 1] === "" && text.endsWith("\n")) {
-    parts.pop();
-  }
-  return parts;
-}
 
 export function createReadTool(opts: { cwd: string }): Tool {
   return {
