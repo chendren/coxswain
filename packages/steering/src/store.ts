@@ -21,6 +21,10 @@ export function createSteeringStore(deps: { config: CoxConfig }): SteeringStore 
         docs.push(buildSteeringDoc(fileName.slice(0, -3), filePath, raw));
       }
 
+      if (deps.config.steering.importCompat) {
+        docs.push(...(await loadCompatImports(cwd)));
+      }
+
       return docs;
     },
 
@@ -96,4 +100,53 @@ function buildSteeringDoc(name: string, path: string, raw: string): SteeringDoc 
     tokens: Math.ceil(body.length / 4),
     imported: false,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Compat imports (R2)
+// ---------------------------------------------------------------------------
+
+async function readIfExists(path: string): Promise<string | null> {
+  try {
+    return await readFile(path, "utf8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw err;
+  }
+}
+
+function makeImportedDoc(name: string, path: string, raw: string): SteeringDoc {
+  return {
+    name,
+    path,
+    inclusion: "always",
+    body: raw, // front matter is never parsed/stripped for imported files
+    tokens: Math.ceil(raw.length / 4),
+    imported: true,
+  };
+}
+
+async function loadCompatImports(cwd: string): Promise<SteeringDoc[]> {
+  const claudePath = join(cwd, "CLAUDE.md");
+  const agentsPath = join(cwd, "AGENTS.md");
+  const copilotPath = join(cwd, ".github", "copilot-instructions.md");
+
+  const [claudeRaw, agentsRaw, copilotRaw] = await Promise.all([
+    readIfExists(claudePath),
+    readIfExists(agentsPath),
+    readIfExists(copilotPath),
+  ]);
+
+  const docs: SteeringDoc[] = [];
+  if (claudeRaw !== null) {
+    docs.push(makeImportedDoc("CLAUDE", claudePath, claudeRaw));
+  }
+  // R2.2: byte-identical CLAUDE.md/AGENTS.md dedupes to CLAUDE only.
+  if (agentsRaw !== null && !(claudeRaw !== null && agentsRaw === claudeRaw)) {
+    docs.push(makeImportedDoc("AGENTS", agentsPath, agentsRaw));
+  }
+  if (copilotRaw !== null) {
+    docs.push(makeImportedDoc("copilot-instructions", copilotPath, copilotRaw));
+  }
+  return docs;
 }

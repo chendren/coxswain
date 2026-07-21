@@ -19,7 +19,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: mkdtemp fixtures cover: stem/path/tokens mapping (tokens = ceil(body chars / 4)); default inclusion; fileMatch-without-pattern → manual; missing dir → no throw; subdirs and non-.md ignored.
       verify: pnpm --filter @cox/steering test -- load
 
-- [ ] 3. Compat imports (CLAUDE.md / AGENTS.md / copilot-instructions.md)
+- [x] 3. Compat imports (CLAUDE.md / AGENTS.md / copilot-instructions.md)
       requirements: R2.1, R2.2, R2.3
       complexity: 2
       accept: imported docs carry imported:true, inclusion always, names per design; byte-identical CLAUDE/AGENTS dedupes to CLAUDE only; importCompat:false imports nothing; front matter in imported files is left in body untouched.
