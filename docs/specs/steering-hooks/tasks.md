@@ -7,7 +7,7 @@ routing scale (1–2 scout-able, 3 builder).
 
 ## @cox/steering
 
-- [ ] 1. Steering package scaffolding + front matter parser
+- [x] 1. Steering package scaffolding + front matter parser
       requirements: R1.2, R1.4
       complexity: 2
       accept: `yaml` + `picomatch` added to @cox/steering deps; `--passWithNoTests` removed; `parseFrontMatter` handles: valid block, no block, unclosed block, invalid YAML (returns data:null + full raw body), CRLF delimiters.
