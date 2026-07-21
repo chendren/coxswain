@@ -57,7 +57,7 @@ Check a box only after its `verify` command passes.
   accept: table-driven test mirrors the design matrix exactly, incl. outside-cwd rows and bash prefix rows
   verify: pnpm --filter @cox/tools test -- permissions
 
-- [ ] 10. ScriptedChatModel helper + preview.ts
+- [x] 10. ScriptedChatModel helper + preview.ts
   requirements: R9.1, R3.3
   complexity: 2
   accept: scripted turns replay deltas/toolUses/usage/stopReason; records requests; failWith throws mid-stream; previews truncate at 80/120
