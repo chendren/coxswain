@@ -8,8 +8,9 @@ import type {
   RoutingInput,
   Tier,
 } from "@cox/core";
-import { resolveStaticTier } from "./policy";
+import { resolveStaticTier, mapClassifiedTier } from "./policy";
 import { buildEstimate } from "./estimate";
+import { classify } from "./classify";
 
 export interface RouterDeps {
   config: CoxConfig;
@@ -31,13 +32,24 @@ export function createRouter(deps: RouterDeps): Router {
     const staticRes = resolveStaticTier(input, deps.config);
     if (staticRes) return staticRes;
 
-    // kind === "chat" with no override: scout classification (R1.4, tasks
-    // 8/9) or the disabled/default path (R1.5). Classification itself lands
-    // in classify.ts; until then this always takes the failure path.
+    // kind === "chat" with no override: disabled -> default tier (R1.5).
     if (!deps.config.routing.classifyWithScout) {
       return { tier: deps.config.routing.defaultTier, reasons: ["default tier"] };
     }
-    return { tier: deps.config.routing.defaultTier, reasons: ["classification failed"] };
+
+    // Scout classification (R1.4, R2.1-R2.4).
+    const outcome = await classify(deps.classifyModel(), input.text);
+    // TODO(task 10, R2.5/R2.6): ledger the classify call when usage arrived.
+
+    if (!outcome.parsed) {
+      return { tier: deps.config.routing.defaultTier, reasons: ["classification failed"] };
+    }
+    const mapped = mapClassifiedTier(outcome.parsed);
+    return {
+      tier: mapped.tier,
+      reasons: mapped.reasons,
+      estOutputTokens: outcome.parsed.estOutputTokens,
+    };
   }
 
   async function route(input: RoutingInput): Promise<RoutingDecision> {

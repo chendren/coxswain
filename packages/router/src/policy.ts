@@ -1,8 +1,39 @@
 import type { CoxConfig, RoutingInput, Tier } from "@cox/core";
+import type { ClassifyParsed, ClassifyTaskType } from "./classify";
 
 export interface StaticResolution {
   tier: Tier;
   reasons: string[];
+}
+
+const TIER_ORDER: readonly Tier[] = ["scout", "builder", "architect"];
+
+const TASK_TYPE_TIER: Record<ClassifyTaskType, Tier> = {
+  question: "scout",
+  "mechanical-edit": "scout",
+  feature: "builder",
+  debug: "builder",
+  architecture: "architect",
+};
+
+/**
+ * task_type -> tier, complexity >= 4 bumps one step (max architect) (R2.3).
+ * Reasons: `classified task-type=<t> complexity=<n>` then
+ * `tier <tier> per routing table`.
+ */
+export function mapClassifiedTier(parsed: ClassifyParsed): StaticResolution {
+  let tier = TASK_TYPE_TIER[parsed.taskType];
+  if (parsed.complexity >= 4) {
+    const idx = TIER_ORDER.indexOf(tier);
+    tier = TIER_ORDER[Math.min(idx + 1, TIER_ORDER.length - 1)]!;
+  }
+  return {
+    tier,
+    reasons: [
+      `classified task-type=${parsed.taskType} complexity=${parsed.complexity}`,
+      `tier ${tier} per routing table`,
+    ],
+  };
 }
 
 /**

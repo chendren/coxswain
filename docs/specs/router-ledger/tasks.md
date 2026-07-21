@@ -47,7 +47,7 @@ first — the router depends on `budgetState`.
   - accept: `inputTokens = contextTokens + estimateTokens(text)`; kind-default output table exactly as R5.2; `estCostUsd` null when pricing unknown, else `computeCostUsd` with zero cache fields
   - verify: pnpm --filter @cox/router test -- -t "R5"
 
-- [ ] 8. Scout classification happy path
+- [x] 8. Scout classification happy path
   - requirements: R2.1, R2.2, R2.3
   - complexity: 3
   - accept: RUBRIC constant byte-identical to design; request is `{system: RUBRIC, one user message, tools: [], maxTokens: 128, effort: "low"}`; strict parse + hand validation; task_type→tier map and complexity≥4 bump (max architect); reasons per design; scripted local mock model only
