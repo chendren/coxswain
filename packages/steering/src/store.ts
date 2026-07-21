@@ -28,11 +28,35 @@ export function createSteeringStore(deps: { config: CoxConfig }): SteeringStore 
       return docs;
     },
 
-    select(_docs, _touchedFiles, _manualNames) {
-      // Implemented in a later task.
-      return { systemDocs: [], contextDocs: [], totalTokens: 0 };
+    select(docs, _touchedFiles, _manualNames) {
+      // fileMatch/manual contextDocs land in a later task.
+      const systemDocs = orderedSystemDocs(docs);
+      const contextDocs: SteeringDoc[] = [];
+      const totalTokens = systemDocs.reduce((sum, d) => sum + d.tokens, 0);
+      return { systemDocs, contextDocs, totalTokens };
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// select (R3)
+// ---------------------------------------------------------------------------
+
+function byName(a: SteeringDoc, b: SteeringDoc): number {
+  return a.name.localeCompare(b.name, "en");
+}
+
+/**
+ * R3.1: exactly the inclusion:"always" docs, non-imported (sorted by name)
+ * before imported (sorted by name) — deterministic and byte-stable given the
+ * same input docs.
+ */
+function orderedSystemDocs(docs: SteeringDoc[]): SteeringDoc[] {
+  const always = docs.filter((d) => d.inclusion === "always");
+  return [
+    ...always.filter((d) => !d.imported).sort(byName),
+    ...always.filter((d) => d.imported).sort(byName),
+  ];
 }
 
 // ---------------------------------------------------------------------------

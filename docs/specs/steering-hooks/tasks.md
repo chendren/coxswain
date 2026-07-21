@@ -25,7 +25,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: imported docs carry imported:true, inclusion always, names per design; byte-identical CLAUDE/AGENTS dedupes to CLAUDE only; importCompat:false imports nothing; front matter in imported files is left in body untouched.
       verify: pnpm --filter @cox/steering test -- load
 
-- [ ] 4. select(): deterministic systemDocs ordering
+- [x] 4. select(): deterministic systemDocs ordering
       requirements: R3.1
       complexity: 2
       accept: non-imported always docs sorted by name precede imported sorted by name; two calls with identical inputs produce byte-identical concatenated bodies (test joins bodies and compares strings).

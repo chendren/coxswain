@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { configSchema, type CoxConfig } from "@cox/core";
+import { configSchema, type CoxConfig, type SteeringDoc } from "@cox/core";
 
 /** Fresh mkdtemp project root for a single test. */
 export async function makeTmpCwd(): Promise<string> {
@@ -33,4 +33,18 @@ export async function writeProjectFile(
 /** A full CoxConfig with the given overrides deep-merged over defaults. */
 export function makeConfig(overrides: Record<string, unknown> = {}): CoxConfig {
   return configSchema.parse(overrides);
+}
+
+/** A synthetic SteeringDoc for select()-only tests (no fs involved). */
+export function makeDoc(overrides: Partial<SteeringDoc> & Pick<SteeringDoc, "name">): SteeringDoc {
+  const body = overrides.body ?? `body of ${overrides.name}`;
+  return {
+    name: overrides.name,
+    path: overrides.path ?? `/fake/${overrides.name}.md`,
+    inclusion: overrides.inclusion ?? "always",
+    fileMatchPattern: overrides.fileMatchPattern,
+    body,
+    tokens: overrides.tokens ?? Math.ceil(body.length / 4),
+    imported: overrides.imported ?? false,
+  };
 }
