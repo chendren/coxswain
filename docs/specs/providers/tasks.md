@@ -53,7 +53,7 @@ paste its output in the commit body. All tests offline, no env vars.
         "error".
       verify: pnpm --filter @cox/providers test -- -t "R1.3"
 
-- [ ] 7. Anthropic adapter factory
+- [x] 7. Anthropic adapter factory
       requirements: R1.1, R1.6, R1.7, R3 (classification at call site)
       complexity: 3
       accept: `createAnthropicAdapter` wires builder + translation +

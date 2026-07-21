@@ -1,5 +1,8 @@
-import type { ChatRequest, ContentBlock, StopReason, StreamEvent } from "@cox/core";
+import Anthropic from "@anthropic-ai/sdk";
+import type { ChatModel, ChatRequest, ContentBlock, ProviderAdapter, StopReason, StreamEvent } from "@cox/core";
 import { EFFORT_MODELS, maxOutputFor } from "./capabilities.js";
+import { providerError, withRetries } from "./errors.js";
+import { estimateTokens } from "./estimate.js";
 
 // ---------------------------------------------------------------------------
 // Request shapes (local — see design.md §Anthropic mapping). Not the real
@@ -230,4 +233,109 @@ export async function* translateAnthropicStream(
     usage: { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens },
   };
   yield { type: "done", stopReason };
+}
+
+// ---------------------------------------------------------------------------
+// Adapter factory (task 7)
+// ---------------------------------------------------------------------------
+
+/** Model ids known to this adapter — `create()` accepts any id (pass-through). */
+const KNOWN_MODELS = ["claude-haiku-4-5", "claude-sonnet-5", "claude-opus-4-8", "claude-fable-5"];
+
+/**
+ * Minimal local structural type over the `@anthropic-ai/sdk` surface this
+ * adapter actually uses — decouples us from the SDK's much larger param/
+ * event types and lets tests supply a plain object instead of mocking ESM.
+ */
+export interface AnthropicLike {
+  messages: {
+    stream(
+      body: AnthropicRequestBody,
+      options?: { signal?: AbortSignal },
+    ): AsyncIterable<AnthropicStreamEvent>;
+  };
+}
+
+function defaultClientFactory(apiKey: string): AnthropicLike {
+  // The real SDK's types are far richer than AnthropicLike; this boundary
+  // cast is the one place that bridges them (see design.md: "AnthropicLike
+  // is a minimal local structural type over the SDK surface used").
+  return new Anthropic({ apiKey }) as unknown as AnthropicLike;
+}
+
+function readStatus(err: unknown): number | undefined {
+  if (typeof err === "object" && err !== null && "status" in err) {
+    const status = (err as { status?: unknown }).status;
+    return typeof status === "number" ? status : undefined;
+  }
+  return undefined;
+}
+
+/** Classification at the call site (R3): 429/5xx/network -> retryable; other 4xx -> not; aborts -> not. */
+function classifyAnthropicError(err: unknown, signal: AbortSignal | undefined): Error {
+  if (err instanceof Error && typeof (err as { retryable?: unknown }).retryable === "boolean") {
+    return err; // already classified upstream
+  }
+  const message = err instanceof Error ? err.message : String(err);
+  if (signal?.aborted) {
+    return providerError(`anthropic: request aborted`, false);
+  }
+  const status = readStatus(err);
+  if (status === undefined) {
+    return providerError(`anthropic: ${message}`, true); // network-level failure
+  }
+  if (status === 429 || status >= 500) {
+    return providerError(`anthropic: ${status} ${message}`, true);
+  }
+  return providerError(`anthropic: ${status} ${message}`, false);
+}
+
+async function* streamOnce(
+  client: AnthropicLike,
+  body: AnthropicRequestBody,
+  signal: AbortSignal | undefined,
+): AsyncIterable<StreamEvent> {
+  try {
+    const raw = client.messages.stream(body, signal ? { signal } : {});
+    yield* translateAnthropicStream(raw);
+  } catch (err) {
+    throw classifyAnthropicError(err, signal);
+  }
+}
+
+/**
+ * R1.1/R1.6/R1.7 — the anthropic ProviderAdapter. Reads `process.env[apiKeyEnv]`
+ * lazily inside `stream()` (never at `create()` time) so e.g. `cox doctor` can
+ * construct adapters without any key present.
+ */
+export function createAnthropicAdapter(
+  cfg: { apiKeyEnv: string },
+  deps: { clientFactory?: (apiKey: string) => AnthropicLike } = {},
+): ProviderAdapter {
+  const clientFactory = deps.clientFactory ?? defaultClientFactory;
+
+  return {
+    id: "anthropic",
+    models(): string[] {
+      return [...KNOWN_MODELS];
+    },
+    create(modelId: string): ChatModel {
+      return {
+        ref: { provider: "anthropic", model: modelId },
+        estimateTokens,
+        stream(req: ChatRequest, signal?: AbortSignal): AsyncIterable<StreamEvent> {
+          const apiKey = process.env[cfg.apiKeyEnv];
+          if (!apiKey) {
+            throw providerError(
+              `anthropic: environment variable ${cfg.apiKeyEnv} is not set`,
+              false,
+            );
+          }
+          const client = clientFactory(apiKey);
+          const body = buildAnthropicRequest(modelId, req);
+          return withRetries<StreamEvent>(() => streamOnce(client, body, signal));
+        },
+      };
+    },
+  };
 }
