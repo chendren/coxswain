@@ -28,7 +28,7 @@ paste its output in the commit body. All tests offline, no env vars.
         script throws; exported from index.ts.
       verify: pnpm --filter @cox/providers test -- -t "R6"
 
-- [ ] 4. Estimation + capability tables
+- [x] 4. Estimation + capability tables
       requirements: R8.1, R7.1, R7.2
       complexity: 1
       accept: `estimateTokens` = ceil(len/4); `EFFORT_MODELS` and
