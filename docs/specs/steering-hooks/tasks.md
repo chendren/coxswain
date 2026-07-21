@@ -43,7 +43,7 @@ routing scale (1–2 scout-able, 3 builder).
       accept: per-doc and total warnings exactly per design thresholds; oversized docs still present in selection; templates export all three keys, each starting with `---\ninclusion: always\n---` and containing the design's section headings.
       verify: pnpm --filter @cox/steering test -- warnings
 
-- [ ] 7. Steering coverage sweep + export surface
+- [x] 7. Steering coverage sweep + export surface
       requirements: R1.1–R4.4
       complexity: 1
       accept: every R1–R4 id appears in ≥1 test name; src/index.ts exports exactly createSteeringStore, steeringWarnings, STEERING_TEMPLATES (grep the file in the test).
