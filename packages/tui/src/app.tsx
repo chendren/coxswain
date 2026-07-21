@@ -29,6 +29,7 @@ import type {
 import { formatDuration, formatTokens, formatUsd } from "./format";
 import { EMPTY_LIVE, Transcript, type LiveState, type TranscriptEntry } from "./components/Transcript";
 import { RoutingAnnouncement } from "./components/RoutingAnnouncement";
+import { StatusLine } from "./components/StatusLine";
 
 export interface AppProps {
   bus: EventBus;
@@ -43,7 +44,7 @@ export function App({ bus, getSnapshot }: AppProps): React.JSX.Element {
   const [entries, setEntries] = useState<TranscriptEntry[]>([]);
   const [live, setLive] = useState<LiveState>(EMPTY_LIVE);
   const [modal, setModal] = useState<PermissionRequest | null>(null);
-  const [, setSnapshot] = useState<SessionSnapshot>(getSnapshot);
+  const [snapshot, setSnapshot] = useState<SessionSnapshot>(getSnapshot);
 
   // Refs mirror the state above so the event handler (subscribed once,
   // below) always reads the current value instead of a stale closure over
@@ -231,6 +232,7 @@ export function App({ bus, getSnapshot }: AppProps): React.JSX.Element {
     <Box flexDirection="column">
       <Transcript entries={entries} live={live} />
       {modal ? <Text>{`? permission: ${modal.summary}`}</Text> : null}
+      <StatusLine snapshot={snapshot} />
     </Box>
   );
 }

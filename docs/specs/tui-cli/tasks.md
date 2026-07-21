@@ -46,7 +46,7 @@ into the commit body). Never edit `packages/core` or other lanes' packages.
       accept: announcement block byte-matches docs/05 §2 shape for the fixture's routing_decision (assert exact 3 lines against a literal); model_call_finished receipt line renders formats incl. cached tokens and n/a cost.
       verify: pnpm --filter @cox/tui test -- routing
 
-- [ ] 8. StatusLine
+- [x] 8. StatusLine
       requirements: R2.1, R2.2, R2.3
       complexity: 2
       accept: renders mockup segments from SessionSnapshot incl. ∞ when no limit, omitted spec segment, warn/exceeded colors; App refreshes via getSnapshot() on every event (test: snapshot fn call count ≥ event count).
