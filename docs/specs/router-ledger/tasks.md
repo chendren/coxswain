@@ -83,7 +83,7 @@ first — the router depends on `budgetState`.
   - accept: escalation resolving to a tier the governor degrades back to `current.tier` returns null; escalation scout→builder under warn budget still succeeds
   - verify: pnpm --filter @cox/router test -- -t "R4.5"
 
-- [ ] 14. Table-driven fixture suite
+- [x] 14. Table-driven fixture suite
   - requirements: R1–R5 (integration of)
   - complexity: 2
   - accept: `fixtures.test.ts` implements the design's fixture table verbatim, each row's test name prefixed with its requirement id; whole suite green
