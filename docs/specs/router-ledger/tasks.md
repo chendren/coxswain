@@ -11,7 +11,7 @@ first — the router depends on `budgetState`.
   - accept: `appendEntry` creates parent dir + file on first write, one JSON line per entry via `appendFile`; `readEntries` returns `{ entries, skipped }`, skipping corrupt lines without throwing; `lastReadSkippedLines` exposed on the factory result; tests use `fs.mkdtemp` and injected `now`
   - verify: pnpm --filter @cox/ledger test -- -t "R6"
 
-- [ ] 2. `query` filters
+- [x] 2. `query` filters
   - requirements: R6.3
   - complexity: 1
   - accept: filters by sessionId, specName, tier, and `since` (ISO string ≥ compare) compose; results keep file order; empty file/missing file → `[]`

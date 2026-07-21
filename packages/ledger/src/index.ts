@@ -29,6 +29,15 @@ export interface LedgerWithDebug extends Ledger {
   readonly lastReadSkippedLines: number;
 }
 
+/** R6.3: sessionId/specName/tier exact match; since = ISO string >= compare. */
+function matches(entry: LedgerEntry, q: LedgerQuery): boolean {
+  if (q.sessionId !== undefined && entry.sessionId !== q.sessionId) return false;
+  if (q.specName !== undefined && entry.specName !== q.specName) return false;
+  if (q.tier !== undefined && entry.tier !== q.tier) return false;
+  if (q.since !== undefined && !(entry.ts >= q.since)) return false;
+  return true;
+}
+
 export function createLedger(deps: CreateLedgerDeps): LedgerWithDebug {
   let skippedLines = 0;
 
@@ -43,9 +52,9 @@ export function createLedger(deps: CreateLedgerDeps): LedgerWithDebug {
       await appendEntry(deps.filePath, entry);
     },
 
-    // TODO(task 2, R6.3): filter by sessionId/specName/tier/since.
-    async query(_q: LedgerQuery) {
-      return readAll();
+    async query(q: LedgerQuery) {
+      const all = await readAll();
+      return all.filter((e) => matches(e, q));
     },
 
     // TODO(task 3/4, R7.1/R7.2): totals, byTier/byModel, baseline calc.
