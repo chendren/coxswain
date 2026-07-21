@@ -15,8 +15,8 @@ import type {
   SpecState,
   SpecTask,
 } from "@cox/core";
-import { parseTasks, renderTasks } from "./parser.js";
-import { designPrompt, requirementsPrompt, SPEC_SYSTEM, tasksPrompt } from "./prompts.js";
+import { extractRequirementExcerpts, flipCheckbox, parseTasks, renderTasks } from "./parser.js";
+import { designPrompt, execPrompt, requirementsPrompt, SPEC_SYSTEM, tasksPrompt } from "./prompts.js";
 import {
   applyDemotionCascade,
   assertCanApprove,
@@ -24,6 +24,7 @@ import {
   createInitialState,
   designPath,
   ideaPath,
+  readRuns,
   readSpecState,
   requirementsPath,
   specDir,
@@ -31,7 +32,9 @@ import {
   specsRoot,
   tasksPath,
   tasksRejectedPath,
+  writeRuns,
   writeSpecState,
+  type RunEntry,
 } from "./state.js";
 
 export interface SpecEngineDeps {
@@ -73,6 +76,10 @@ function mergeTasks(fromFile: SpecTask[], fromState: SpecTask[]): SpecTask[] {
   return fromFile.map((t) => ({ ...t, status: statusById.get(t.id) ?? "pending" }));
 }
 
+function setTaskStatus(state: SpecState, taskId: string, status: SpecTask["status"]): SpecState {
+  return { ...state, tasks: state.tasks.map((t) => (t.id === taskId ? { ...t, status } : t)) };
+}
+
 /** R5.3 — strip a single wrapping ```markdown / ``` fence around the whole
  * document, if the model added one despite SPEC_SYSTEM asking it not to. */
 function stripFence(text: string): string {
@@ -82,7 +89,7 @@ function stripFence(text: string): string {
 }
 
 export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
-  const { cwd, runner, onEvent, onPhaseChange, now } = deps;
+  const { cwd, runner, onEvent, onPhaseChange, onTaskComplete, now } = deps;
 
   async function create(name: string, idea: string): Promise<SpecState> {
     // R1.2: validate before any filesystem access.
@@ -332,7 +339,111 @@ export function createSpecEngine(deps: SpecEngineDeps): SpecEngine {
   }
 
   async function runTask(name: string, taskId?: string): Promise<SpecState> {
-    throw new Error("not implemented");
+    let state = await mustLoad(name, "runTask");
+    if (state.phases.tasks !== "approved") {
+      // R7.1
+      throw new Error(
+        `runTask: spec "${name}" — phase "tasks" is "${state.phases.tasks}", must be "approved" before running tasks`,
+      );
+    }
+    const dir = specDir(cwd, name);
+
+    let task: SpecTask;
+    let isExplicit: boolean;
+    if (taskId === undefined) {
+      // R7.2: first pending task in document order.
+      const pending = state.tasks.find((t) => t.status === "pending");
+      if (!pending) {
+        const allDone = state.tasks.length > 0 && state.tasks.every((t) => t.status === "done");
+        throw new Error(
+          `runTask: spec "${name}" — no pending tasks (${allDone ? "all tasks are done" : "remaining tasks are blocked or in progress"})`,
+        );
+      }
+      task = pending;
+      isExplicit = false;
+    } else {
+      const found = state.tasks.find((t) => t.id === taskId);
+      if (!found) {
+        throw new Error(`runTask: spec "${name}" — no task with id "${taskId}"`);
+      }
+      if (found.status === "done") {
+        // R7.3
+        throw new Error(`runTask: spec "${name}" — task "${taskId}" is already "done"`);
+      }
+      task = found;
+      isExplicit = true;
+    }
+
+    const runs = await readRuns(dir);
+    if (isExplicit) {
+      // R7.7: an explicit re-run resets the consecutive-failure count.
+      const prior = runs[task.id];
+      runs[task.id] = { consecutiveFailures: 0, lastStopReason: prior?.lastStopReason ?? "", lastRunAt: prior?.lastRunAt ?? "" };
+    }
+
+    // R7.4: mark in_progress and persist before the run (crash recovery).
+    state = setTaskStatus(state, task.id, "in_progress");
+    await writeSpecState(dir, state);
+    onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:in_progress", taskId: task.id });
+
+    const reqMd = await readFileOrEmpty(requirementsPath(dir));
+    const designMd = await readFileOrEmpty(designPath(dir));
+    const excerpts = extractRequirementExcerpts(reqMd, task.requirements);
+    const prompt = execPrompt(task, excerpts, designMd);
+
+    const agentTask: AgentTask = {
+      kind: "spec-task-exec",
+      prompt,
+      system: SPEC_SYSTEM,
+      history: [],
+      cwd,
+      sessionId: `spec:${name}`,
+      specName: name,
+      taskId: task.id,
+      complexityHint: task.complexity,
+    };
+
+    const result = await runner.run(agentTask, onEvent);
+
+    if (result.stopReason === "end_turn") {
+      // R7.5
+      state = setTaskStatus(state, task.id, "done");
+      const md = await readFileOrEmpty(tasksPath(dir));
+      await fs.writeFile(tasksPath(dir), flipCheckbox(md, task.id), "utf8");
+      runs[task.id] = { consecutiveFailures: 0, lastStopReason: result.stopReason, lastRunAt: now() };
+      await writeRuns(dir, runs);
+      await writeSpecState(dir, state);
+      onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:done", taskId: task.id });
+      if (onTaskComplete) {
+        await onTaskComplete({
+          event: "TaskComplete",
+          sessionId: `spec:${name}`,
+          cwd,
+          data: { specName: name, taskId: task.id, title: task.title },
+        });
+      }
+      return state;
+    }
+
+    // R7.6/R7.7: any other stop reason — back to pending, bump the failure
+    // count, and demote to blocked once it reaches 2.
+    const priorCount = runs[task.id]?.consecutiveFailures ?? 0;
+    const nextCount = priorCount + 1;
+    const entry: RunEntry = { consecutiveFailures: nextCount, lastStopReason: result.stopReason, lastRunAt: now() };
+    runs[task.id] = entry;
+    await writeRuns(dir, runs);
+
+    if (nextCount >= 2) {
+      state = setTaskStatus(state, task.id, "blocked");
+      await writeSpecState(dir, state);
+      onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:blocked", taskId: task.id });
+    } else {
+      state = setTaskStatus(state, task.id, "pending");
+      await writeSpecState(dir, state);
+      onEvent({ type: "spec_event", specName: name, phase: "execution", status: "task:failed", taskId: task.id });
+    }
+
+    return state;
   }
 
   return { create, load, list, generate, approve, runTask };

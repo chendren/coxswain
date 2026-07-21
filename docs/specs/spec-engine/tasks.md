@@ -70,7 +70,7 @@ commit body. All paths relative to `packages/spec/`.
   accept: draft→approved with approvals append + persist + spec_event + awaited onPhaseChange; missing/approved throw unchanged; approve("tasks") re-parses the (possibly hand-edited) file, populates statuses pending, fails actionably on parse errors leaving phase draft.
   verify: pnpm --filter @cox/spec test -- -t "R3"
 
-- [ ] 12. Implement runTask() selection, execution, and failure ladder
+- [x] 12. Implement runTask() selection, execution, and failure ladder
   requirements: R7.1, R7.2, R7.3, R7.4, R7.5, R7.6, R7.7
   complexity: 4
   accept: gating throw; auto-pick first pending; explicit re-run rules incl. done-throws and blocked-reset; in_progress persisted before run; AgentTask fields per R7.4 asserted via fakeRunner.calls (kind, complexityHint, prompt contains title + excerpts + design body); end_turn → done + flip + onTaskComplete awaited; failure → pending, count in runs.json; second consecutive failure → blocked.
