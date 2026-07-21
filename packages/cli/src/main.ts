@@ -9,6 +9,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Command, CommanderError, InvalidArgumentError } from "commander";
 import { TIERS, type Tier } from "@cox/core";
+import { runReplay } from "./commands/replay";
 
 /** Thrown by command handlers to exit with a specific code without a stack trace dump. */
 export class CliExit extends Error {
@@ -152,7 +153,10 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     program
       .command("replay <file>")
       .description("replay a recorded AgentEvent stream through the TUI"),
-  ).action(async () => notImplemented("replay"));
+  ).action(async (file: string, _options: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts>();
+    await runReplay(file, { cwd: opts.cwd ?? process.cwd() });
+  });
 
   return program;
 }

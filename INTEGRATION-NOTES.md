@@ -75,5 +75,26 @@ The integrator (M2) resolves these and logs any core changes under
   param so hook-wrapping doesn't require reimplementing `Router.reconsider`
   as a pass-through.
 
+## 2026-07-20 — tui-cli (task 5, snapshot.ts)
+
+- Blocked on: `SessionSnapshot.activeSpec` (core/types.ts) is
+  `{ name: string; phase: SpecPhase; tasksDone: number; tasksTotal: number }`,
+  but the only event that could populate it, `AgentEvent`'s `spec_event`
+  variant, carries `{ specName, phase, status, taskId? }` — no task counts
+  at all. `packages/cli/src/snapshot.ts`'s fold (used by both `cox replay`
+  and, from task 13, the real session) cannot derive `tasksDone`/
+  `tasksTotal` from the event stream.
+- Workaround taken: `spec_event` handling in the fold tracks `name`/`phase`
+  only and leaves `tasksDone`/`tasksTotal` at whatever was last known for
+  that spec name (0/0 until something else sets them — nothing currently
+  does). The status line's spec segment (task 8) will render `0/0` for a
+  real spec-in-progress until this is resolved.
+- Proposed contract change: either add `tasksDone`/`tasksTotal` (or the
+  full `SpecTask[]`) to the `spec_event` payload, or have `cli` populate
+  `activeSpec` by calling `SpecEngine.load(name)` directly (outside the
+  event stream) whenever a `spec_event` arrives — the latter doesn't need a
+  core change but does mean the snapshot fold can no longer be a pure
+  function of the event stream alone for this one field.
+
 ## Contract changes
 (none yet)

@@ -1,0 +1,62 @@
+# @cox/cli — NOTES
+
+Decisions and deviations for the integrator. Kept to ~1 page; grows as
+later tasks land.
+
+## deps.ts owns the whole engine-graph construction, not just import+check
+
+See `INTEGRATION-NOTES.md` (2026-07-20). `EngineDeps.agent`/`.specs` must be
+fully-constructed instances, so `deps.ts::loadDeps` ends up doing what
+design.md's "wire.ts order" section describes (registry -> ledger -> router
+-> tools/steering/hooks -> agent -> specs), including the PreModelCall-hook
+`Router` decorator and the steering-prepending `AgentRunner` decorator for
+specs. `wire.ts` (task 13) only adds the session-level pieces design.md's
+step 8 assigns to it (snapshot store, ledger-writer subscriber) plus
+`SessionController` construction — it never imports an engine package
+itself. `deps.ts` remains the *only* file with dynamic `import("@cox/...")`
+calls; a grep-style test (`test/deps.test.ts`) checks every other `.ts`
+file in `src/`.
+
+`loadDeps` also stamps a generated session id (`LoadedDeps.sessionId`, an
+extra property beyond design.md's literal `EngineDeps` shape) because
+`createAgentRunner`'s real `budgetState` is a zero-arg closure with no
+per-call sessionId seam — `wire.ts` reuses this id as
+`SessionController.sessionId` so ledger writes/budget checks/hook payloads
+agree on one identity.
+
+## cli's tsconfig needs `"jsx": "react-jsx"` too
+
+`@cox/cli` has no `.tsx` files of its own, but `packages/cli/src/commands/
+replay.ts` imports `startTui` from `@cox/tui`, and since v1 has no build
+step (packages export TS source directly, per docs/04), `tsc --noEmit` for
+`@cox/cli` walks into `@cox/tui/src/app.tsx` as part of the same
+compilation and needs to know how to parse JSX there. tui's own
+package-local `jsx` setting doesn't apply when a *different* package's tsc
+invocation pulls its source in. Added the same `"jsx": "react-jsx"` to
+`packages/cli/tsconfig.json`. No new dependency needed for `@types/react`
+resolution — TS/Node resolve it from `packages/tui/node_modules` based on
+the importing file's own location on disk, not the invoking package.
+
+## snapshot.ts (`createSnapshotStore`)
+
+Used by both `cox replay` (task 5, no ledger) and, from task 13, the real
+session. `get()` must stay synchronous (`TuiOptions.getSnapshot: () =>
+SessionSnapshot`), so it cannot await `Ledger.budgetState()` — budget
+numbers instead come from the fold's own running total of
+`model_call_finished` usage/cost (self-sufficient in replay mode) and get
+corrected to the ledger-authoritative numbers whenever a `budget_alert`
+event arrives (see code comment: classify calls are ledgered directly by
+the router and never emit `model_call_finished`, so the fold's own running
+total slightly under-counts until a `budget_alert` corrects it — bounded
+by design, since router-ledger's own docs treat >2% classify overhead as a
+bug). `activeSpec.tasksDone`/`tasksTotal` cannot be derived from the event
+stream at all — see `INTEGRATION-NOTES.md` (2026-07-20, task 5).
+
+## cox replay
+
+`runReplay` (`src/commands/replay.ts`) mounts the real `startTui` against
+real `process.stdout`/`stdin` — design.md's `TuiOptions` has no
+stream-injection seam, so `test/replay.test.ts` temporarily patches
+`process.stdout.write` to a no-op around the calls that mount it, to keep
+`pnpm --filter @cox/cli test` output readable. Assertions are against the
+returned snapshot fold, not rendered frames.
