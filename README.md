@@ -296,6 +296,14 @@ offline commands verified live.
 **Next (M3):** live-API smoke — `cox explain`, a `--print` run, one full
 spec flow against `examples/demo-project` — then `v0.1.0`.
 
+**In design (CXOS):** Coxswain is being extended into a Customer Experience
+Operating / Building System: five new `cx-*` packages behind a frozen
+`@cox/cx-core` adapter contract, one CX spec fanning out to three build
+targets (platform-neutral artifacts, a local omnichannel platform, the AWS
+CX stack), and a per-target operate layer with `commands` / `console` /
+`autonomous` modes. Approved design:
+`docs/superpowers/specs/2026-07-22-cxos-design.md`.
+
 **v2 candidates:** MCP servers (the tool registry is shaped for it),
 watch-mode daemon for agent hooks, Grok-style parallel subagent fan-out (the
 event model supports it), packaged binaries, Windows.
