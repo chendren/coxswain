@@ -10,3 +10,7 @@ Decisions and deviations for the integrator.
   `toAgentEvent()` to bridge.
 - `CxAdapterError` follows `@cox/providers`'s `providerError()` pattern:
   a plain `Error` with extra properties, no class hierarchy.
+- `createMockTargetAdapter()` ships from the main barrel (`src/index.ts`),
+  not a test-only subpath — the design doc's "test exports" phrasing
+  notwithstanding. This is deliberate: every downstream lane's own test
+  suite imports it directly, so it's public API, not an internal helper.
