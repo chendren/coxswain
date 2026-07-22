@@ -582,6 +582,15 @@ export type AgentEvent =
       usage: TokenUsage;
       costUsd: number;
       stopReason?: AgentRunResult["stopReason"];
+    }
+  | {
+      /** CXOS escape hatch — core stays domain-neutral; @cox/cx-core's
+       * CxOpsEvent carries the typed payload and renders it into `summary`
+       * and `data` via toAgentEvent(). */
+      type: "cx_event";
+      targetId: string;
+      summary: string;
+      data: Record<string, unknown>;
     };
 
 // ---------------------------------------------------------------------------

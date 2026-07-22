@@ -30,6 +30,14 @@ describe("@cox/core", () => {
     expect(cfg.budgets.warnAt).toBe(0.8);
   });
 
+  it("parses default cx config block", () => {
+    const cfg = configSchema.parse({});
+    expect(cfg.cx.defaultOpsMode).toBe("console");
+    expect(cfg.cx.watcherPollIntervalMs).toBe(60_000);
+    expect(cfg.cx.targets).toEqual({});
+    expect(cfg.cx.budgets).toEqual({});
+  });
+
   it("event bus swallows listener errors", () => {
     const bus = new EventBus();
     const seen: AgentEvent[] = [];

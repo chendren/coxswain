@@ -102,6 +102,23 @@ export const configSchema = z.object({
       enabled: z.boolean().default(true),
     })
     .default({}),
+  cx: z
+    .object({
+      targets: z
+        .object({
+          local: z.object({ baseUrl: z.string() }).optional(),
+          aws: z.object({ profile: z.string().optional(), region: z.string().optional() }).optional(),
+        })
+        .default({}),
+      budgets: z
+        .object({
+          cxOpsUsd: z.number().optional(),
+        })
+        .default({}),
+      defaultOpsMode: z.enum(["commands", "console", "autonomous"]).default("console"),
+      watcherPollIntervalMs: z.number().int().default(60_000),
+    })
+    .default({}),
 });
 
 export type CoxConfig = z.infer<typeof configSchema>;

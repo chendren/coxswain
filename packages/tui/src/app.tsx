@@ -226,6 +226,10 @@ export function App({ bus, controller, getSnapshot, readonly }: AppProps): React
           setTurnRunning(false);
           break;
         }
+        case "cx_event": {
+          pushEntry(<Text dimColor>{`▤ cx ${e.targetId} · ${e.summary}`}</Text>);
+          break;
+        }
         default: {
           const _exhaustive: never = e;
           void _exhaustive;

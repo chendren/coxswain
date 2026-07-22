@@ -131,6 +131,10 @@ export function createPlainRenderer(write: (line: string) => void): EventListene
         sawDeltaThisTurn = false;
         break;
       }
+      case "cx_event": {
+        write(`▤ cx ${e.targetId} · ${e.summary}`);
+        break;
+      }
       default: {
         const _exhaustive: never = e;
         void _exhaustive;
