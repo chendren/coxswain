@@ -63,7 +63,7 @@ describe("createLocalAdapter", () => {
       }
       if (req.method === "GET" && req.url === "/api/dashboard/kpis") {
         res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ "handle-time": 280 }));
+        res.end(JSON.stringify({ sla_compliance_rate: 280, sentiment_distribution: { positive: 3, negative: 1 } }));
         return;
       }
       res.writeHead(404);
@@ -81,7 +81,7 @@ describe("createLocalAdapter", () => {
         if (prompt.includes("Which of these journey types")) {
           return JSON.stringify({ journeyType: "billing_dispute" });
         }
-        return JSON.stringify({ metrics: [{ name: "handle-time", target: 300, unit: "seconds" }] });
+        return JSON.stringify({ metrics: [{ name: "sla_compliance_rate", target: 300, unit: "seconds" }] });
       },
     };
   });
@@ -121,7 +121,7 @@ describe("createLocalAdapter", () => {
     });
     expect(posted).toHaveLength(1);
     expect((posted[0]!.body as { events: unknown[] }).events).toHaveLength(2);
-    expect(report.outcomes).toEqual([{ kpiName: "handle-time", achieved: 280, target: 300 }]);
+    expect(report.outcomes).toEqual([{ kpiName: "sla_compliance_rate", achieved: 280, target: 300 }]);
   });
 
   it("teardown() removes what deploy() created", async () => {

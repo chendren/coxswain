@@ -134,12 +134,15 @@ export function createLocalAdapter(deps: LocalAdapterDeps): CxTargetAdapter {
       const events = generateSyntheticEvents(traffic, journeyType, deps.randomFn);
       await postJson(deps, "/api/events/batch", { events }, "simulate");
 
-      const kpis = (await getJson(deps, "/api/dashboard/kpis", "simulate")) as Record<string, number>;
-      const outcomes = (kpiFrame?.metrics ?? []).map((m) => ({
-        kpiName: m.name,
-        achieved: kpis[m.name] ?? 0,
-        target: m.target,
-      }));
+      const kpis = (await getJson(deps, "/api/dashboard/kpis", "simulate")) as Record<string, unknown>;
+      const outcomes = (kpiFrame?.metrics ?? []).map((m) => {
+        const value = kpis[m.name];
+        return {
+          kpiName: m.name,
+          achieved: typeof value === "number" ? value : 0,
+          target: m.target,
+        };
+      });
 
       return { targetId: "local", profile: traffic, outcomes, ranAt: deps.now() };
     },

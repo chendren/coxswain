@@ -8,6 +8,13 @@ describe("kpiPrompt", () => {
     expect(prompt).toContain("billing_dispute");
     expect(prompt).toContain("JSON only");
   });
+
+  it("constrains metric names to the platform's real KPI vocabulary", () => {
+    const prompt = kpiPrompt("billing_dispute");
+    expect(prompt).toContain("sla_compliance_rate");
+    expect(prompt).toContain("avg_wait_time");
+    expect(prompt).toContain("do not invent new names");
+  });
 });
 
 describe("parseKpiFrame", () => {
@@ -35,5 +42,10 @@ describe("parseKpiFrame", () => {
 
   it("throws a CxAdapterError when metrics is missing", () => {
     expect(() => parseKpiFrame(JSON.stringify({}), "billing-dispute", "local")).toThrow(/missing required fields/);
+  });
+
+  it("throws a CxAdapterError when a metric entry has a non-numeric target", () => {
+    const raw = JSON.stringify({ metrics: [{ name: "handle-time", target: "fast", unit: "seconds" }] });
+    expect(() => parseKpiFrame(raw, "billing-dispute", "local")).toThrow(/missing required fields/);
   });
 });
