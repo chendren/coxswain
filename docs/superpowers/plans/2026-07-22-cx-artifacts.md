@@ -509,7 +509,7 @@ export function parseArtifact(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @cox/cx-artifacts test`
-Expected: PASS — all 7 new tests green.
+Expected: PASS — all 6 new tests green.
 
 - [ ] **Step 5: Export from the barrel**
 
@@ -764,6 +764,20 @@ const RESPONSES: Record<string, string> = {
   architectureDoc: JSON.stringify({ title: "Dispute architecture", markdown: "# Design" }),
 };
 
+// Distinctive lowercase phrases that actually appear in each artifact
+// kind's real promptFor() text (verbatim from generate.ts) — the kind
+// names themselves ("journeyMap", "nbaRuleSet", ...) do NOT appear as
+// contiguous substrings in the prompt prose, so matching on the key name
+// directly would fail for 5 of 6 kinds.
+const PROMPT_PHRASE: Record<string, string> = {
+  journeyMap: "customer journey",
+  persona: "customer persona",
+  intentTaxonomy: "intent taxonomy",
+  nbaRuleSet: "next-best-action rules",
+  kpiFrame: "kpi frame",
+  architectureDoc: "cx architecture",
+};
+
 function makeDeps(cxRoot: string): ArtifactsAdapterDeps {
   const calls: { prompt: string; tier: string }[] = [];
   return {
@@ -771,10 +785,11 @@ function makeDeps(cxRoot: string): ArtifactsAdapterDeps {
     now: () => "2026-07-22T00:00:00Z",
     generate: async (prompt, tier) => {
       calls.push({ prompt, tier });
-      // Determine which artifact kind this prompt is for by which shape
-      // phrase promptFor() embedded in it.
-      for (const k of Object.keys(RESPONSES)) {
-        if (prompt.toLowerCase().includes(k.toLowerCase())) return RESPONSES[k]!;
+      // Determine which artifact kind this prompt is for by which
+      // distinctive phrase promptFor() embedded in it.
+      const lower = prompt.toLowerCase();
+      for (const [k, phrase] of Object.entries(PROMPT_PHRASE)) {
+        if (lower.includes(phrase)) return RESPONSES[k]!;
       }
       throw new Error(`test stub: no scripted response matches prompt: ${prompt}`);
     },
