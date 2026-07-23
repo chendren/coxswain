@@ -78,6 +78,19 @@ importers:
         specifier: ^22.0.0
         version: 22.20.1
 
+  packages/cx-artifacts:
+    dependencies:
+      '@cox/core':
+        specifier: workspace:*
+        version: link:../core
+      '@cox/cx-core':
+        specifier: workspace:*
+        version: link:../cx-core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+
   packages/cx-core:
     dependencies:
       '@cox/core':
