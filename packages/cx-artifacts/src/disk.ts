@@ -9,6 +9,10 @@ export interface DiskDeps {
   now: () => string;
 }
 
+// `specName` is trusted here: it originates from `spec.state.name`, which is
+// validated at spec-creation time elsewhere in the system (not sanitized in
+// this file). If this pattern gets copied into `cx-local`/`cx-aws`, make that
+// trust call deliberately rather than by accident.
 function artifactsDir(deps: DiskDeps, specName: string): string {
   return join(deps.cxRoot, specName, "artifacts");
 }

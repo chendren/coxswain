@@ -40,7 +40,17 @@ const PROMPT_PHRASE: Record<string, string> = {
   architectureDoc: "cx architecture",
 };
 
-function makeDeps(cxRoot: string): ArtifactsAdapterDeps {
+// Expected tier per artifact kind, straight from ARTIFACT_STEP_SPECS in plan.ts.
+const EXPECTED_TIER: Record<string, string> = {
+  journeyMap: "architect",
+  persona: "architect",
+  intentTaxonomy: "architect",
+  nbaRuleSet: "architect",
+  kpiFrame: "builder",
+  architectureDoc: "builder",
+};
+
+function makeDeps(cxRoot: string): ArtifactsAdapterDeps & { calls: { prompt: string; tier: string }[] } {
   const calls: { prompt: string; tier: string }[] = [];
   return {
     cxRoot,
@@ -53,6 +63,7 @@ function makeDeps(cxRoot: string): ArtifactsAdapterDeps {
       }
       throw new Error(`test stub: no scripted response matches prompt: ${prompt}`);
     },
+    calls,
   };
 }
 
@@ -83,6 +94,20 @@ describe("createArtifactsAdapter", () => {
     expect(dep.resources).toHaveLength(6);
     const health = await adapter.status(dep);
     expect(health.level).toBe("healthy");
+  });
+
+  it("build() forwards the correct tier per artifact kind to deps.generate", async () => {
+    const deps = makeDeps(cxRoot);
+    const adapter = createArtifactsAdapter(deps);
+    const plan = await adapter.plan(spec);
+    await adapter.build(plan);
+
+    expect(deps.calls).toHaveLength(6);
+    for (const [kind, phrase] of Object.entries(PROMPT_PHRASE)) {
+      const call = deps.calls.find((c) => c.prompt.toLowerCase().includes(phrase));
+      expect(call, `expected a generate() call for kind "${kind}"`).toBeDefined();
+      expect(call!.tier).toBe(EXPECTED_TIER[kind]);
+    }
   });
 
   it("teardown() removes what deploy() created", async () => {

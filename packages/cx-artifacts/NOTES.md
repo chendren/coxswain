@@ -16,3 +16,8 @@ Decisions and deviations for the integrator.
   `cx-local`/`cx-aws`, which tailor an agent config to their own runtime.
 - `simulate()` throws — a document factory has no traffic to run against.
   `capabilities()` omits it.
+- The design doc's documented artifact location is `.cox/cx/<spec>/artifacts/`.
+  This package never hardcodes that base path — whatever wires this
+  adapter's `deps` in production (the future `@cox/cli` composition root)
+  must set `cxRoot: ".cox/cx"` (relative to the project root, or an
+  absolute path ending in `.cox/cx`) to honor it.
