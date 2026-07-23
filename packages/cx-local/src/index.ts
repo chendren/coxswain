@@ -4,3 +4,4 @@ export * from "./kpi";
 export * from "./plan";
 export * from "./disk";
 export * from "./simulate-traffic";
+export * from "./adapter";
