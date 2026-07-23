@@ -509,7 +509,7 @@ export function parseArtifact(
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @cox/cx-artifacts test`
-Expected: PASS — all 7 new tests green.
+Expected: PASS — all 6 new tests green.
 
 - [ ] **Step 5: Export from the barrel**
 
