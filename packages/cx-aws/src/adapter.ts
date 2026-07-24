@@ -54,6 +54,13 @@ export function createAwsAdapter(deps: AwsAdapterDeps): CxTargetAdapter {
         } else if (step.producesArtifactKind === "agentDefinition") {
           const raw = await deps.generate(agentPrompt(journeyMap.name), stepSpec.tier);
           artifacts.push(parseAgentDefinition(raw, plan.specName, "aws"));
+        } else {
+          throw createCxAdapterError({
+            message: `cx-aws: no dispatch branch for artifact kind "${step.producesArtifactKind}" (present in AWS_STEP_SPECS but not handled in build())`,
+            targetId: "aws",
+            phase: "build",
+            retryable: false,
+          });
         }
       }
       return artifacts;
