@@ -73,3 +73,23 @@ commercial default.
 
 Offline pure-function tests for load integrity, NBA evaluation, journey
 transitions, confidence bands, artifact validation, and merge packs.
+
+## Graph-node AI practice (July–August 2026)
+
+CXOS implements the production pattern known as **Agentic GraphRAG** plus
+**graph-of-nodes agent control** (Capozzi & Helbing arXiv:2605.18770;
+NODES AI 2026; LangGraph-class orchestration):
+
+| Phase | CXOS module | Role |
+|---|---|---|
+| 1 Strong nodes | `buildStrongGraph(ontology)` | Deterministic ingest of verified catalog |
+| 2 Weak nodes | model JSON via `cx-artifacts` | LLM extraction constrained by ontology prompts |
+| 3 Identity resolution | `hubKey` + `resolveLabel` + absorb | Strict hub match; weak absorbs into strong |
+| Control graph | `runClosedWorldPass` / `runGraphNodePipeline` | load → route → generate → resolve → validate → absorb → emit |
+| Intent router | `routeClosedKinds` | Restrict closed sets per artifact kind |
+| Ops | `recommendNba` / `matchNbaRules` | Pure graph-side recommendations |
+
+Hard closed-world: `intentTaxonomy`, `kpiFrame`. Soft: journey maps (design freedom).
+
+Proven offline in `packages/cx-core/test/ontology-*.test.ts` and
+`cx-artifacts` adapter builds with absorb.

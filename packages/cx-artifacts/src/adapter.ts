@@ -4,21 +4,37 @@ import type {
   CxBuildPlan,
   CxDeployment,
   CxHealth,
+  CxOntology,
   CxSimReport,
   CxSpec,
   CxTargetAdapter,
   CxTrafficProfile,
 } from "@cox/cx-core";
-import { createCxAdapterError } from "@cox/cx-core";
+import {
+  createCxAdapterError,
+  DEFAULT_ONTOLOGY,
+  runClosedWorldPass,
+} from "@cox/cx-core";
 import { deployArtifacts, statusFromDisk, teardownFromDisk, type DiskDeps } from "./disk";
 import { parseArtifact, promptFor } from "./generate";
 import { ARTIFACT_STEP_SPECS, buildPlan } from "./plan";
 
 export interface ArtifactsAdapterDeps extends DiskDeps {
   generate: (prompt: string, tier: Tier) => Promise<string>;
+  /** Closed-world ontology for prompts + strong/weak graph absorption. */
+  ontology?: CxOntology;
+  /**
+   * When true (default), KPI/intent weak labels are absorbed into strong
+   * ontology ids after parse. Unknown closed-set labels are dropped or fail
+   * the step if nothing remains resolvable for required kinds.
+   */
+  absorbWeak?: boolean;
 }
 
 export function createArtifactsAdapter(deps: ArtifactsAdapterDeps): CxTargetAdapter {
+  const ontology = deps.ontology ?? DEFAULT_ONTOLOGY;
+  const absorbWeak = deps.absorbWeak !== false;
+
   return {
     id: "artifacts",
 
@@ -40,9 +56,34 @@ export function createArtifactsAdapter(deps: ArtifactsAdapterDeps): CxTargetAdap
             retryable: false,
           });
         }
-        const prompt = promptFor(step.producesArtifactKind, plan.specName, step.description);
+        const prompt = promptFor(
+          step.producesArtifactKind,
+          plan.specName,
+          step.description,
+          ontology,
+        );
         const raw = await deps.generate(prompt, stepSpec.tier);
-        artifacts.push(parseArtifact(step.producesArtifactKind, raw, { specName: plan.specName, targetId: "artifacts" }));
+        let artifact = parseArtifact(step.producesArtifactKind, raw, {
+          specName: plan.specName,
+          targetId: "artifacts",
+        });
+
+        // Graph-node practice: strong graph resolve + optional absorb of weak labels
+        // Hard closed-world only for intentTaxonomy + kpiFrame (journey maps stay free-form).
+        if (artifact.kind === "kpiFrame" || artifact.kind === "intentTaxonomy") {
+          const pass = runClosedWorldPass(ontology, artifact, { absorb: absorbWeak });
+          if (!pass.state.ok || !pass.artifact) {
+            throw createCxAdapterError({
+              message: `cx-artifacts: closed-world validation failed for "${artifact.kind}": ${pass.state.errors.join("; ")}`,
+              targetId: "artifacts",
+              phase: "build",
+              retryable: false,
+            });
+          }
+          artifact = pass.artifact;
+        }
+
+        artifacts.push(artifact);
       }
       return artifacts;
     },

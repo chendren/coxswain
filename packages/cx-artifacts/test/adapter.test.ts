@@ -20,9 +20,11 @@ const spec: CxSpec = {
 const RESPONSES: Record<string, string> = {
   journeyMap: JSON.stringify({ name: "Dispute journey", stages: [] }),
   persona: JSON.stringify({ name: "Alex", goals: [], painPoints: [] }),
-  intentTaxonomy: JSON.stringify({ domains: [] }),
+  intentTaxonomy: JSON.stringify({
+    domains: [{ id: "billing", name: "Billing", intents: ["payment_issue", "billing_inquiry"] }],
+  }),
   nbaRuleSet: JSON.stringify({ rules: [] }),
-  kpiFrame: JSON.stringify({ metrics: [{ name: "handle-time", target: 300, unit: "seconds" }] }),
+  kpiFrame: JSON.stringify({ metrics: [{ name: "total_contacts", target: 300, unit: "count" }] }),
   architectureDoc: JSON.stringify({ title: "Dispute architecture", markdown: "# Design" }),
 };
 

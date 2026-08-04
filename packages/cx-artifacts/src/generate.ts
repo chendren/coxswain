@@ -1,6 +1,7 @@
 import type {
   CxArchitectureDoc,
   CxArtifact,
+  CxOntology,
   CxTargetId,
   IntentTaxonomy,
   JourneyMap,
@@ -8,7 +9,14 @@ import type {
   NbaRuleSet,
   Persona,
 } from "@cox/cx-core";
-import { createCxAdapterError } from "@cox/cx-core";
+import {
+  createCxAdapterError,
+  DEFAULT_ONTOLOGY,
+  listIntentIds,
+  listJourneyIds,
+  listKpiIds,
+  ontologyPromptConstraint,
+} from "@cox/cx-core";
 
 function unsupportedKind(kind: CxArtifact["kind"], targetId: CxTargetId): never {
   throw createCxAdapterError({
@@ -19,19 +27,25 @@ function unsupportedKind(kind: CxArtifact["kind"], targetId: CxTargetId): never 
   });
 }
 
-export function promptFor(kind: CxArtifact["kind"], specName: string, requirementsText: string): string {
+export function promptFor(
+  kind: CxArtifact["kind"],
+  specName: string,
+  requirementsText: string,
+  ontology: CxOntology = DEFAULT_ONTOLOGY,
+): string {
   const base = `Spec: ${specName}\nRequirements:\n${requirementsText}\n\n`;
+  const closed = ontologyPromptConstraint(ontology);
   switch (kind) {
     case "journeyMap":
-      return `${base}Produce a JSON object with fields "name" (string) and "stages" (array of {id, name, description, touchpoints: string[]}) describing the customer journey for this spec. Respond with JSON only.`;
+      return `${base}${closed}\n\nProduce a JSON object with fields "name" (string) and "stages" (array of {id, name, description, touchpoints: string[]}) describing the customer journey for this spec. Prefer journey name/id from the closed journey list when one fits: ${listJourneyIds(ontology).join(", ")}. Respond with JSON only.`;
     case "persona":
       return `${base}Produce a JSON object with fields "name" (string), "goals" (string[]), and "painPoints" (string[]) describing the primary customer persona for this spec. Respond with JSON only.`;
     case "intentTaxonomy":
-      return `${base}Produce a JSON object with field "domains" (array of {name, intents: string[]}) describing the intent taxonomy for this spec. Respond with JSON only.`;
+      return `${base}${closed}\n\nProduce a JSON object with field "domains" (array of {id, name, intents: array of {id, name} or string intent ids}) describing the intent taxonomy for this spec. Every domain.id and intent id MUST be drawn from the closed ontology intent list. Prefer full intent ids like domain.intent. Allowed intents: ${listIntentIds(ontology).join(", ")}. Respond with JSON only.`;
     case "nbaRuleSet":
-      return `${base}Produce a JSON object with field "rules" (array of {id, condition, action, priority: number}) describing the next-best-action rules for this spec. Respond with JSON only.`;
+      return `${base}${closed}\n\nProduce a JSON object with field "rules" (array of {id, condition, action, priority: number}) describing the next-best-action rules for this spec. Prefer action strings that match known ontology NBA actions / actionTypes. Respond with JSON only.`;
     case "kpiFrame":
-      return `${base}Produce a JSON object with field "metrics" (array of {name, target: number, unit}) describing the KPI frame for this spec. Respond with JSON only.`;
+      return `${base}${closed}\n\nProduce a JSON object with field "metrics" (array of {name, target: number, unit}) describing the KPI frame for this spec. Each metric "name" MUST be exactly one of: ${listKpiIds(ontology).join(", ")}. Respond with JSON only.`;
     case "architectureDoc":
       return `${base}Produce a JSON object with fields "title" (string) and "markdown" (string) describing the CX architecture for this spec. Respond with JSON only.`;
     case "agentDefinition":

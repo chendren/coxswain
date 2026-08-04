@@ -12,6 +12,15 @@ describe("promptFor", () => {
     expect(prompt).toContain("JSON only");
   });
 
+  it("embeds closed-world ontology constraints for intentTaxonomy and kpiFrame", () => {
+    const intentPrompt = promptFor("intentTaxonomy", "billing-dispute", "R1");
+    expect(intentPrompt).toContain("billing.payment_issue");
+    expect(intentPrompt).toContain("closed ontology");
+    const kpiPrompt = promptFor("kpiFrame", "billing-dispute", "R1");
+    expect(kpiPrompt).toContain("total_contacts");
+    expect(kpiPrompt).toContain("MUST be exactly one of");
+  });
+
   it("throws for agentDefinition — this adapter does not generate it", () => {
     expect(() => promptFor("agentDefinition", "billing-dispute", "")).toThrow(/does not generate/);
   });

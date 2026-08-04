@@ -4,3 +4,6 @@ export * from "./ids";
 export * from "./load";
 export * from "./validate";
 export * from "./evaluate";
+export * from "./graph";
+export * from "./resolve";
+export * from "./pipeline";

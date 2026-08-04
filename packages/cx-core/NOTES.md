@@ -20,3 +20,9 @@ Decisions and deviations for the integrator.
   vocabularies; they import lists from the ontology. Model calls may select
   within the ontology; pure evaluators (`matchNbaRules`, `nextStages`,
   `confidenceBand`) decide deterministically.
+- Graph-node AI practice (2026 Agentic GraphRAG): `buildStrongGraph` materializes
+  catalog entities as strong nodes; generated artifacts are weak nodes;
+  `resolveArtifactAgainstGraph` / absorb helpers perform deterministic identity
+  resolution via hub keys; `runClosedWorldPass` / `runGraphNodePipeline` are the
+  control-flow graph (load → route → generate → resolve → validate → absorb →
+  emit) with bounded retries. See `docs/superpowers/specs/2026-08-03-cxos-ontology-design.md`.
