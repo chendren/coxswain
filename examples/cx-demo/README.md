@@ -3,6 +3,16 @@
 End-to-end Customer Experience Operating System flow using **strong-graph**
 adapters. Default is fully offline (no live AWS or platform required).
 
+## Golden path (script)
+
+```bash
+# offline
+./examples/cx-demo/golden-path.sh
+
+# live platform + OpenAI/XAI weak generate when keys present
+./examples/cx-demo/golden-path.sh --live
+```
+
 ## Offline (always works)
 
 ```bash
@@ -12,12 +22,17 @@ pnpm cox cx ontology graph
 
 pnpm cox cx new billing-dispute "reduce dispute handle time"
 pnpm cox cx approve billing-dispute requirements
-pnpm cox cx build billing-dispute --target all
+pnpm cox cx build billing-dispute --target all   # auto-approves design after artifacts
 
 pnpm cox cx status billing-dispute
 pnpm cox cx simulate billing-dispute --target local
 pnpm cox cx report billing-dispute
-pnpm cox cx console billing-dispute   # poll + gated NBA proposals (no mutations)
+pnpm cox cx console billing-dispute
+pnpm cox cx watch billing-dispute --ticks 3
+pnpm cox cx daemon start billing-dispute --live   # detached long-running watch
+pnpm cox cx daemon status billing-dispute
+pnpm cox cx daemon stop billing-dispute
+pnpm cox cx proposals billing-dispute
 pnpm cox cx nba journey=churn_prevention stage=cancel_requested confidence=0.9
 
 pnpm cox cx teardown billing-dispute

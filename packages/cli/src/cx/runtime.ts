@@ -27,6 +27,10 @@ import {
   type OrchestratorAdapters,
   type CxWorkspaceDeps,
 } from "@cox/cx-ops";
+import {
+  generateViaOpenAi,
+  resolveOpenAiGenerateOpts,
+} from "./openai-generate";
 
 export type CxRuntimeMode = "offline" | "live" | "hybrid";
 
@@ -165,11 +169,19 @@ export async function createCxRuntime(opts: CxRuntimeOpts): Promise<CxRuntime> {
   const ontology = pack === "default" ? DEFAULT_ONTOLOGY : LOCAL_PLATFORM_ONTOLOGY;
   const workspace: CxWorkspaceDeps = { cxRoot, now };
 
-  const generate = opts.tierModel
-    ? (prompt: string, tier: Tier) => generateFromModel(opts.tierModel!, prompt, tier)
-    : undefined;
-
-  path.push(generate ? "weak_generate_ready" : "weak_generate_absent");
+  const openAi = resolveOpenAiGenerateOpts();
+  let generate: ((prompt: string, tier: Tier) => Promise<string>) | undefined;
+  let generateSource: "tierModel" | "openai_compat" | "none" = "none";
+  if (opts.tierModel && process.env[cfg.providers.anthropic.apiKeyEnv]) {
+    generate = (prompt, tier) => generateFromModel(opts.tierModel!, prompt, tier);
+    generateSource = "tierModel";
+  } else if (openAi) {
+    generate = (prompt, tier) => generateViaOpenAi(prompt, tier, openAi);
+    generateSource = "openai_compat";
+  }
+  path.push(
+    generateSource === "none" ? "weak_generate_absent" : `weak_generate:${generateSource}`,
+  );
 
   const localBaseUrl = resolveLocalBaseUrl(opts, cfg);
   let platformHealthy = false;
@@ -182,11 +194,8 @@ export async function createCxRuntime(opts: CxRuntimeOpts): Promise<CxRuntime> {
   }
 
   const wantLive = mode === "live" || mode === "hybrid";
-  // Only treat models as live when the configured primary scout provider key exists.
-  // Presence of unrelated keys (e.g. XAI only) still fails anthropic-backed tiers.
-  const anthropicKey = process.env[cfg.providers.anthropic.apiKeyEnv];
-  const modelLive = Boolean(generate) && Boolean(anthropicKey && anthropicKey.length > 0);
-  path.push(modelLive ? "model_keys_present" : "model_keys_absent");
+  const modelLive = Boolean(generate);
+  path.push(modelLive ? `model_live:${generateSource}` : "model_keys_absent");
 
   const wiring: Record<CxTargetId, "live" | "offline"> = {
     artifacts: "offline",
@@ -223,17 +232,14 @@ export async function createCxRuntime(opts: CxRuntimeOpts): Promise<CxRuntime> {
   path.push("route:local");
   let local: CxTargetAdapter;
   if (wantLive && platformHealthy) {
-    // Prefer deterministic local generate unless we have working model keys —
-    // live platform bind must not depend on Anthropic for journey match/KPIs.
-    path.push(modelLive ? "wire:local:live" : "wire:local:live_deterministic");
+    // Always deterministic for live local bind — platform needs stable closed ids,
+    // not flaky model JSON. Models are used for artifacts/aws weak nodes only.
+    path.push("wire:local:live_deterministic");
     wiring.local = "live";
-    const localGenerate = modelLive && generate
-      ? generate
-      : async (prompt: string, _tier: Tier) => deterministicLocalGenerate(prompt);
     local = createLocalAdapter({
       cxRoot,
       now,
-      generate: localGenerate,
+      generate: async (prompt: string, _tier: Tier) => deterministicLocalGenerate(prompt),
       baseUrl: localBaseUrl,
       randomFn: Math.random,
     });

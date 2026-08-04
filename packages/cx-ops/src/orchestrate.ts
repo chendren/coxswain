@@ -21,6 +21,7 @@ import { DEFAULT_ONTOLOGY, recommendNba, type CxNbaContext } from "@cox/cx-core"
 import type { CxOpsReport } from "./report";
 import { generateReport } from "./report";
 import {
+  approveCxPhase,
   mergeDesignFromArtifacts,
   saveDeployment,
   type CxWorkspaceDeps,
@@ -112,6 +113,15 @@ export async function orchestrateBuild(
       if (targetId === "artifacts") {
         path.push("merge_design");
         current = await mergeDesignFromArtifacts(deps, current.spec.state.name, artifacts);
+        // Auto-approve design when artifacts produced a design doc (graph gate)
+        if (
+          current.spec.design?.journeyMaps?.length &&
+          current.spec.state.phases.requirements === "approved" &&
+          current.spec.state.phases.design !== "approved"
+        ) {
+          path.push("auto_approve_design");
+          current = await approveCxPhase(deps, current.spec.state.name, "design");
+        }
       }
 
       if (opts?.deploy !== false) {

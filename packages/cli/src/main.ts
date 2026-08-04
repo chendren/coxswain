@@ -38,6 +38,9 @@ import {
   runCxStatus,
   runCxTeardown,
   runCxWatch,
+  runCxDaemonStart,
+  runCxDaemonStop,
+  runCxDaemonStatus,
   type CxCommandContext,
 } from "./commands/cx";
 import { loadDeps, type LoadedDeps } from "./deps";
@@ -568,6 +571,40 @@ export function createProgram(io: CliIo = REAL_IO): Command {
         intervalMs: Number(opts.interval ?? 2000),
       }),
     );
+  });
+
+  const daemon = cx.command("daemon").description("long-running console watch daemon");
+  addGlobalOptions(
+    daemon
+      .command("start <name>")
+      .description("spawn detached watch daemon")
+      .option("--interval <ms>", "tick interval", "30000")
+      .option("--ticks <n>", "max ticks before exit", "120")
+      .option("--live", "prefer live platform")
+      .option("--base-url <url>", "local platform base URL"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { ticks?: string; interval?: string }>();
+    throw new CliExit(
+      await runCxDaemonStart(await cxCtx(command, f.pack, f), name, {
+        intervalMs: Number(opts.interval ?? 30_000),
+        maxTicks: Number(opts.ticks ?? 120),
+        live: f.live,
+        baseUrl: f.localBaseUrl,
+      }),
+    );
+  });
+  addGlobalOptions(
+    daemon.command("stop <name>").description("stop watch daemon"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxDaemonStop(await cxCtx(command, f.pack, f), name));
+  });
+  addGlobalOptions(
+    daemon.command("status <name>").description("daemon running?"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxDaemonStatus(await cxCtx(command, f.pack, f), name));
   });
 
   addGlobalOptions(

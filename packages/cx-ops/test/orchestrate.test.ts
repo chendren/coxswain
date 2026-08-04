@@ -53,6 +53,8 @@ describe("CXOS offline graph orchestration", () => {
 
     const reloaded = await loadCxWorkspace(ws, "billing-dispute");
     expect(reloaded?.spec.design?.journeyMaps.length).toBeGreaterThan(0);
+    expect(reloaded?.spec.state.phases.design).toBe("approved");
+    expect(built.path).toContain("auto_approve_design");
 
     const deps = await loadDeployments(ws, "billing-dispute");
     expect(deps.deployments.artifacts).toBeDefined();

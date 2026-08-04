@@ -10,3 +10,4 @@ export * from "./console";
 export * from "./proposals";
 export * from "./watch";
 export * from "./json-extract";
+export * from "./daemon";

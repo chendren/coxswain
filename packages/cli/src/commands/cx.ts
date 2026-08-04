@@ -12,11 +12,15 @@ import {
   approveCxPhase,
   clearDeployment,
   createCxSpec,
+  isDaemonRunning,
   listCxSpecs,
   loadCxWorkspace,
   loadDeployments,
   loadProposals,
   opsRecommendNba,
+  readDaemonMeta,
+  spawnWatchDaemon,
+  stopDaemon,
   orchestrateBuild,
   orchestrateReport,
   orchestrateSimulate,
@@ -682,4 +686,73 @@ export async function runCxProposalTransition(
   ctx.write(`${next.id} → ${next.status}`);
   ctx.write(`path: load_proposals → transition:${status} → emit`);
   return 0;
+}
+
+export async function runCxDaemonStart(
+  ctx: CxCommandContext,
+  name: string,
+  opts?: { intervalMs?: number; maxTicks?: number; live?: boolean; baseUrl?: string },
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const record = await loadCxWorkspace(rt.workspace, name);
+  if (!record) {
+    ctx.write(`CX spec "${name}" not found`);
+    return 1;
+  }
+  if (await isDaemonRunning(rt.workspace.cxRoot, name)) {
+    ctx.write(`daemon already running for ${name}`);
+    return 1;
+  }
+
+  // Resolve monorepo CLI entry + repo root (for tsx + pnpm layout)
+  const { fileURLToPath } = await import("node:url");
+  const { dirname, join, resolve } = await import("node:path");
+  const mainTs = resolve(dirname(fileURLToPath(import.meta.url)), "..", "main.ts");
+
+  const extra: string[] = [];
+  if (opts?.live || ctx.mode === "live" || ctx.mode === "hybrid") {
+    extra.push("--live");
+  }
+  if (opts?.baseUrl || ctx.localBaseUrl) {
+    extra.push("--base-url", opts?.baseUrl ?? ctx.localBaseUrl!);
+  }
+
+  try {
+    const meta = await spawnWatchDaemon({
+      cwd: ctx.cwd,
+      specName: name,
+      coxEntry: mainTs,
+      cxRoot: rt.workspace.cxRoot,
+      intervalMs: opts?.intervalMs ?? 30_000,
+      maxTicks: opts?.maxTicks ?? 120,
+      extraArgs: extra,
+    });
+    ctx.write(`daemon started pid=${meta.pid} spec=${name}`);
+    ctx.write(`intervalMs=${meta.intervalMs} maxTicks=${meta.maxTicks}`);
+    ctx.write(`path: ${meta.path.join(" → ")}`);
+    return 0;
+  } catch (e) {
+    ctx.write(e instanceof Error ? e.message : String(e));
+    return 1;
+  }
+}
+
+export async function runCxDaemonStop(ctx: CxCommandContext, name: string): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const result = await stopDaemon(rt.workspace.cxRoot, name);
+  ctx.write(`daemon stop stopped=${result.stopped}${result.pid ? ` pid=${result.pid}` : ""}`);
+  ctx.write(`path: ${result.path.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxDaemonStatus(ctx: CxCommandContext, name: string): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const running = await isDaemonRunning(rt.workspace.cxRoot, name);
+  const meta = await readDaemonMeta(rt.workspace.cxRoot, name);
+  ctx.write(`daemon ${name}: ${running ? "running" : "stopped"}`);
+  if (meta) {
+    ctx.write(`pid=${meta.pid} startedAt=${meta.startedAt} intervalMs=${meta.intervalMs}`);
+  }
+  ctx.write(`path: daemon_status → emit`);
+  return running ? 0 : 1;
 }

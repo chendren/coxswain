@@ -1,0 +1,12 @@
+{
+  "cx": {
+    "targets": {
+      "local": { "baseUrl": "http://127.0.0.1:3143" }
+    },
+    "defaultOpsMode": "console",
+    "watcherPollIntervalMs": 30000,
+    "budgets": {
+      "cxOpsUsd": 5
+    }
+  }
+}
