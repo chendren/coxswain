@@ -18,13 +18,16 @@ Decisions and deviations for the integrator.
 - `deps.generate` and `deps.baseUrl` are the only ways this package
   reaches a model or the platform — never import `@cox/agent`/
   `@cox/router`/`@cox/providers` directly, and never hardcode a URL.
-- `kpiPrompt()` (in `kpi.ts`) constrains generated KPI metric names to the
-  platform's real fixed vocabulary — `REAL_KPI_KEYS` in `kpi.ts`
-  (`total_contacts`, `sla_compliance_rate`, `avg_wait_time`,
-  `deflection_rate`, `avg_contact_value`, `high_priority_contacts`). The
-  platform's `/api/dashboard/kpis` response only ever uses these scalar
-  keys, so without this constraint `simulate()`'s `kpis[m.name]` lookup
-  would silently miss for model-invented names and report `achieved: 0`.
+- Journey and KPI closed sets come from `@cox/cx-core` ontology
+  (`LOCAL_PLATFORM_ONTOLOGY` / `DEFAULT_ONTOLOGY`). `JOURNEY_TYPE_KEYS`
+  is the deployable platform subset (5 commercial + 8 treasury pack);
+  `REAL_KPI_KEYS` is the platform dashboard subset of ontology KPIs.
+  Both assert membership at module load so adapters cannot drift.
+- `kpiPrompt()` constrains generated KPI metric names to `REAL_KPI_KEYS`.
+  The platform's `/api/dashboard/kpis` response only ever uses those
+  scalar keys, so without this constraint `simulate()`'s `kpis[m.name]`
+  lookup would silently miss for model-invented names and report
+  `achieved: 0`.
 - `status()` reports a simplified `level: "healthy"` — a disk-existence
   check plus a hit against the platform's general `/api/health/ready`
   endpoint — rather than the full healthy/degraded/down semantics keyed

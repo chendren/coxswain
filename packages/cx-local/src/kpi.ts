@@ -1,10 +1,11 @@
 import type { CxTargetId, KpiFrame } from "@cox/cx-core";
-import { createCxAdapterError } from "@cox/cx-core";
+import { createCxAdapterError, DEFAULT_ONTOLOGY, hasKpi } from "@cox/cx-core";
 
-// The real platform's `GET /api/dashboard/kpis` endpoint returns a fixed
-// vocabulary of scalar numeric keys (see NOTES.md). kpiPrompt() must
-// constrain generated metric names to these exact keys, or simulate()'s
-// `kpis[m.name]` lookup silently misses and reports `achieved: 0`.
+/**
+ * Platform dashboard KPI keys (fixed vocabulary from GET /api/dashboard/kpis).
+ * Each key must exist in DEFAULT_ONTOLOGY.kpis — ontology owns the closed set;
+ * this list is the platform-exposed subset used by simulate().
+ */
 export const REAL_KPI_KEYS = [
   "total_contacts",
   "sla_compliance_rate",
@@ -13,6 +14,12 @@ export const REAL_KPI_KEYS = [
   "avg_contact_value",
   "high_priority_contacts",
 ] as const;
+
+for (const key of REAL_KPI_KEYS) {
+  if (!hasKpi(DEFAULT_ONTOLOGY, key)) {
+    throw new Error(`cx-local: KPI "${key}" is missing from DEFAULT_ONTOLOGY`);
+  }
+}
 
 export function kpiPrompt(journeyType: string): string {
   return `Produce a JSON object with field "metrics" (array of {name, target: number, unit}) describing realistic operational KPI targets for the "${journeyType}" customer journey. Each metric's "name" MUST be exactly one of these real platform metric keys (do not invent new names): ${REAL_KPI_KEYS.join(", ")}. Pick 2-4 of the most relevant ones for this journey type and assign realistic numeric targets with appropriate units (rates and percentages as 0-100, counts as whole numbers, avg_wait_time in seconds, avg_contact_value as a currency amount). Respond with JSON only.`;

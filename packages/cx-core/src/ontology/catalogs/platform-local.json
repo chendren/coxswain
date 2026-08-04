@@ -1,0 +1,466 @@
+{
+  "version": "2026.08.0",
+  "source": "cx-local-platform",
+  "domains": [],
+  "journeys": [
+    {
+      "id": "treasury_check_replacement",
+      "name": "Treasury Check Replacement",
+      "triggerIntents": [],
+      "stages": [
+        {
+          "id": "initiated",
+          "name": "Initiated",
+          "nextStages": [
+            "verification"
+          ]
+        },
+        {
+          "id": "verification",
+          "name": "Identity Verification",
+          "nextStages": [
+            "processing",
+            "escalated"
+          ]
+        },
+        {
+          "id": "processing",
+          "name": "Replacement Processing",
+          "nextStages": [
+            "resolved"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "processing",
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "bond_redemption",
+      "name": "Bond Redemption",
+      "triggerIntents": [],
+      "stages": [
+        {
+          "id": "initiated",
+          "name": "Initiated",
+          "nextStages": [
+            "eligibility"
+          ]
+        },
+        {
+          "id": "eligibility",
+          "name": "Eligibility Check",
+          "nextStages": [
+            "processing",
+            "denied"
+          ]
+        },
+        {
+          "id": "processing",
+          "name": "Redemption Processing",
+          "nextStages": [
+            "resolved"
+          ]
+        },
+        {
+          "id": "denied",
+          "name": "Denied",
+          "nextStages": [
+            "escalated",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "processing",
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "debt_offset_dispute",
+      "name": "Debt Offset Dispute",
+      "triggerIntents": [],
+      "stages": [
+        {
+          "id": "initiated",
+          "name": "Initiated",
+          "nextStages": [
+            "under_review"
+          ]
+        },
+        {
+          "id": "under_review",
+          "name": "Under Review",
+          "nextStages": [
+            "offset_adjusted",
+            "escalated",
+            "denied"
+          ]
+        },
+        {
+          "id": "offset_adjusted",
+          "name": "Offset Adjusted",
+          "nextStages": [
+            "resolved"
+          ]
+        },
+        {
+          "id": "denied",
+          "name": "Denied",
+          "nextStages": [
+            "escalated",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "offset_adjusted",
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "treasury_account_recovery",
+      "name": "Treasury Account Recovery",
+      "triggerIntents": [],
+      "stages": [
+        {
+          "id": "initiated",
+          "name": "Initiated",
+          "nextStages": [
+            "identity_proof"
+          ]
+        },
+        {
+          "id": "identity_proof",
+          "name": "Identity Proof",
+          "nextStages": [
+            "recovery",
+            "escalated"
+          ]
+        },
+        {
+          "id": "recovery",
+          "name": "Account Recovery",
+          "nextStages": [
+            "resolved"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "recovery",
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "tax_identity_recovery",
+      "name": "Tax Identity Recovery",
+      "triggerIntents": [
+        "tax_services.identity_verification"
+      ],
+      "stages": [
+        {
+          "id": "initiated",
+          "name": "Initiated",
+          "nextStages": [
+            "identity_proof"
+          ]
+        },
+        {
+          "id": "identity_proof",
+          "name": "Identity Proof",
+          "nextStages": [
+            "recovery",
+            "escalated"
+          ]
+        },
+        {
+          "id": "recovery",
+          "name": "Identity Recovery",
+          "nextStages": [
+            "resolved"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "recovery",
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "tax_debt_resolution",
+      "name": "Tax Debt Resolution",
+      "triggerIntents": [
+        "tax_services.payment_plan",
+        "tax_services.tax_notice_inquiry"
+      ],
+      "stages": [
+        {
+          "id": "initiated",
+          "name": "Initiated",
+          "nextStages": [
+            "assessment"
+          ]
+        },
+        {
+          "id": "assessment",
+          "name": "Debt Assessment",
+          "nextStages": [
+            "payment_plan",
+            "escalated",
+            "resolved"
+          ]
+        },
+        {
+          "id": "payment_plan",
+          "name": "Payment Plan Setup",
+          "nextStages": [
+            "resolved",
+            "escalated"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "payment_plan",
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "audit_response",
+      "name": "Audit Response",
+      "triggerIntents": [
+        "tax_services.tax_notice_inquiry"
+      ],
+      "stages": [
+        {
+          "id": "initiated",
+          "name": "Initiated",
+          "nextStages": [
+            "document_collection"
+          ]
+        },
+        {
+          "id": "document_collection",
+          "name": "Document Collection",
+          "nextStages": [
+            "under_review",
+            "escalated"
+          ]
+        },
+        {
+          "id": "under_review",
+          "name": "Under Review",
+          "nextStages": [
+            "resolved",
+            "escalated"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "under_review",
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "foreign_compliance",
+      "name": "Foreign Compliance",
+      "triggerIntents": [],
+      "stages": [
+        {
+          "id": "initiated",
+          "name": "Initiated",
+          "nextStages": [
+            "assessment"
+          ]
+        },
+        {
+          "id": "assessment",
+          "name": "Compliance Assessment",
+          "nextStages": [
+            "remediation",
+            "escalated"
+          ]
+        },
+        {
+          "id": "remediation",
+          "name": "Remediation",
+          "nextStages": [
+            "resolved",
+            "escalated"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "remediation",
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    }
+  ],
+  "nbaRules": [],
+  "actionPolicies": {
+    "confidenceBands": {},
+    "escalationChains": {},
+    "actionSequenceTemplates": {},
+    "resolutionFactors": {
+      "weights": {}
+    },
+    "customerLifecycleStages": {}
+  },
+  "kpis": [],
+  "channels": [],
+  "sentiments": [],
+  "urgencies": [],
+  "actionTypes": []
+}

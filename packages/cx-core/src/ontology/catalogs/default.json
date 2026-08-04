@@ -1,0 +1,1516 @@
+{
+  "version": "2026.08.0",
+  "source": "cx-intelligence-slm",
+  "domains": [
+    {
+      "id": "billing",
+      "name": "Billing",
+      "intents": [
+        {
+          "id": "payment_issue",
+          "name": "Payment Issue",
+          "description": "Customer has trouble making a payment or payment failed",
+          "exemplars": [
+            "My payment didn't go through and I don't know why",
+            "I keep getting an error when trying to pay my bill online",
+            "The payment was declined but my card works everywhere else",
+            "I was double charged on my last payment",
+            "My autopay didn't process this month and now I have a late fee"
+          ]
+        },
+        {
+          "id": "billing_inquiry",
+          "name": "Billing Inquiry",
+          "description": "Customer wants to understand charges or billing details",
+          "exemplars": [
+            "Can you explain these charges on my bill?",
+            "Why is my bill higher than usual this month?",
+            "I don't recognize a $15 charge on my statement",
+            "When is my next payment due?",
+            "How do I read my billing statement?"
+          ]
+        },
+        {
+          "id": "refund_request",
+          "name": "Refund Request",
+          "description": "Customer requests a refund for charges or services",
+          "exemplars": [
+            "I want a refund for the service outage last week",
+            "I was overcharged and need my money back",
+            "I cancelled within the trial period and was still charged",
+            "I need a refund because the product didn't work as advertised",
+            "Can I get a credit for the days my service was down?",
+            "I want my money back for the 3 days everything was completely down",
+            "I deserve a refund since my internet was out for a whole week",
+            "Give me a credit for the time my service wasn't working"
+          ]
+        },
+        {
+          "id": "plan_change",
+          "name": "Plan Change",
+          "description": "Customer wants to modify their billing plan",
+          "exemplars": [
+            "I want to switch to a cheaper plan",
+            "Can I upgrade my plan without changing my billing date?",
+            "What happens to my current balance if I change plans?",
+            "I need to downgrade because I'm not using all my data",
+            "Can I change from monthly to annual billing?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "technical_support",
+      "name": "Technical Support",
+      "intents": [
+        {
+          "id": "connectivity",
+          "name": "Connectivity Issue",
+          "description": "Customer experiencing internet, network, or connection problems",
+          "exemplars": [
+            "My internet has been cutting out all day",
+            "I can't connect to WiFi on any of my devices",
+            "The connection speed is way slower than what I'm paying for",
+            "I keep losing connection during video calls",
+            "My internet works fine in the morning but dies every evening"
+          ]
+        },
+        {
+          "id": "device_issue",
+          "name": "Device Issue",
+          "description": "Customer has problems with hardware or device functionality",
+          "exemplars": [
+            "My router keeps restarting on its own",
+            "The device won't turn on after the last update",
+            "My phone screen is frozen and won't respond to touch",
+            "The set-top box is showing a blinking red light",
+            "My device is overheating and shutting down"
+          ]
+        },
+        {
+          "id": "app_error",
+          "name": "Application Error",
+          "description": "Customer encounters errors in software or applications",
+          "exemplars": [
+            "The app crashes every time I try to log in",
+            "I'm getting an error code 503 when I try to stream",
+            "The mobile app won't load my account information",
+            "I keep getting 'session expired' even though I just logged in",
+            "The app is stuck on a loading screen"
+          ]
+        },
+        {
+          "id": "service_outage",
+          "name": "Service Outage",
+          "description": "Customer reports a service outage or asks about known issues",
+          "exemplars": [
+            "Is there an outage in my area? Nothing is working",
+            "All my services went down at the same time",
+            "Your website says everything is fine but my service is completely out",
+            "How long until the outage is fixed?",
+            "This is the third outage this month"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "account",
+      "name": "Account Management",
+      "intents": [
+        {
+          "id": "account_creation",
+          "name": "Account Creation",
+          "description": "Customer wants to create a new account",
+          "exemplars": [
+            "I'd like to set up a new account",
+            "How do I sign up for your service?",
+            "I want to create an account for my business",
+            "What do I need to open an account?",
+            "Can I create a family account with multiple users?"
+          ]
+        },
+        {
+          "id": "account_modification",
+          "name": "Account Modification",
+          "description": "Customer wants to update account details",
+          "exemplars": [
+            "I need to update my address on my account",
+            "Can I change the email associated with my account?",
+            "I want to add my spouse to my account",
+            "How do I update my payment method?",
+            "I need to change my account name due to a legal name change",
+            "I need to update my mailing address and phone number",
+            "Can I change my billing address on file?",
+            "I moved to a new house and need to update my account details"
+          ]
+        },
+        {
+          "id": "password_reset",
+          "name": "Password Reset",
+          "description": "Customer needs help resetting or recovering password",
+          "exemplars": [
+            "I forgot my password and can't log in",
+            "The password reset email never arrived",
+            "I need to reset my password but I don't have access to my old email",
+            "My account got locked after too many password attempts",
+            "How do I set up a new password?"
+          ]
+        },
+        {
+          "id": "cancellation",
+          "name": "Cancellation",
+          "description": "Customer wants to cancel service or close account",
+          "exemplars": [
+            "I want to cancel my subscription effective immediately",
+            "How do I close my account?",
+            "I'm switching to a competitor and need to cancel",
+            "Can I cancel without paying an early termination fee?",
+            "I want to cancel but keep my data for 30 days"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sales",
+      "name": "Sales",
+      "intents": [
+        {
+          "id": "product_inquiry",
+          "name": "Product Inquiry",
+          "description": "Customer wants information about products or services",
+          "exemplars": [
+            "What plans do you currently offer?",
+            "Tell me about your premium tier features",
+            "Do you offer any bundled packages?",
+            "What's the difference between the basic and pro plans?",
+            "Does your service work internationally?"
+          ]
+        },
+        {
+          "id": "upgrade",
+          "name": "Upgrade Request",
+          "description": "Customer wants to upgrade their current plan or service",
+          "exemplars": [
+            "I want to upgrade to the premium plan",
+            "Can I add more storage to my current plan?",
+            "What would it cost to upgrade to unlimited data?",
+            "I need more features than my current plan offers",
+            "Is there a discount if I upgrade for a full year?"
+          ]
+        },
+        {
+          "id": "new_service",
+          "name": "New Service",
+          "description": "Customer interested in adding new services",
+          "exemplars": [
+            "I'd like to add home security to my package",
+            "Do you offer any add-on services?",
+            "I want to start a new line of service",
+            "Can I add international calling to my plan?",
+            "I'm interested in your new streaming service"
+          ]
+        },
+        {
+          "id": "pricing",
+          "name": "Pricing Information",
+          "description": "Customer wants pricing details or comparisons",
+          "exemplars": [
+            "How much does the business plan cost?",
+            "Are there any current promotions?",
+            "What's your price match policy?",
+            "Can I get a discount for being a loyal customer?",
+            "How does your pricing compare to competitors?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "general",
+      "name": "General",
+      "intents": [
+        {
+          "id": "general_inquiry",
+          "name": "General Inquiry",
+          "description": "General questions about the company or services",
+          "exemplars": [
+            "What are your business hours?",
+            "Where is your nearest store location?",
+            "How do I contact your complaints department?",
+            "What's your privacy policy?",
+            "Do you have a loyalty program?"
+          ]
+        },
+        {
+          "id": "feedback",
+          "name": "Feedback",
+          "description": "Customer provides feedback about their experience",
+          "exemplars": [
+            "I wanted to share some feedback about my recent experience",
+            "Your new app update is really hard to use",
+            "I have some suggestions for improving your service",
+            "The wait times have gotten much worse recently",
+            "I think your website could be more user-friendly"
+          ]
+        },
+        {
+          "id": "complaint",
+          "name": "Complaint",
+          "description": "Customer files a formal complaint",
+          "exemplars": [
+            "I want to file a formal complaint about the service I received",
+            "This is completely unacceptable and I want to speak to a manager",
+            "I've been given the runaround for three weeks and nobody has helped me",
+            "Your customer service is the worst I've ever experienced",
+            "I'm going to report this to the Better Business Bureau"
+          ]
+        },
+        {
+          "id": "compliment",
+          "name": "Compliment",
+          "description": "Customer expresses satisfaction or gives praise",
+          "exemplars": [
+            "I just want to say your support team was amazing today",
+            "The technician who came out did an outstanding job",
+            "I'm really impressed with how quickly you resolved my issue",
+            "Your new app is fantastic, great job!",
+            "Thank you for going above and beyond to help me"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "health_enrollment",
+      "name": "Health Benefits Enrollment (Medicare/Medicaid/ACA)",
+      "intents": [
+        {
+          "id": "medicare_enrollment",
+          "name": "Medicare Enrollment",
+          "description": "Beneficiary enrolls in or changes Medicare Parts A/B/C/D",
+          "exemplars": [
+            "I'm turning 65 next month and need to sign up for Medicare",
+            "How do I enroll in a Medicare Part D drug plan?",
+            "I missed my initial enrollment period, what are my options?",
+            "I want to switch from Original Medicare to a Medicare Advantage plan"
+          ]
+        },
+        {
+          "id": "medicaid_enrollment",
+          "name": "Medicaid Enrollment",
+          "description": "Applicant enrolls in or renews Medicaid / state health coverage",
+          "exemplars": [
+            "I need to apply for Medicaid for my family",
+            "It's time to renew my Medicaid and I haven't gotten the form",
+            "Do my kids qualify for CHIP if I make too much for Medicaid?",
+            "I need to report a change in income for my Medicaid case"
+          ]
+        },
+        {
+          "id": "aca_marketplace_enrollment",
+          "name": "ACA Marketplace Enrollment",
+          "description": "Consumer shops for, enrolls in, or updates a Health Insurance Marketplace plan",
+          "exemplars": [
+            "I want to sign up for a health plan on the Marketplace",
+            "I had a baby and need to add them to my Marketplace plan",
+            "How do I report that I lost my job-based coverage?",
+            "Can I still enroll if open enrollment already ended?"
+          ]
+        },
+        {
+          "id": "eligibility_inquiry",
+          "name": "Eligibility Inquiry",
+          "description": "Customer asks informationally whether they qualify for a program or subsidy",
+          "exemplars": [
+            "What are the income limits for Medicaid in my state?",
+            "How do I find out if I qualify for a premium subsidy?",
+            "What documents do I need to prove eligibility?",
+            "Does my situation make me eligible for a special enrollment period?"
+          ]
+        },
+        {
+          "id": "coverage_appeal",
+          "name": "Coverage Appeal / Grievance",
+          "description": "Customer appeals a denial or files a grievance about coverage or a determination",
+          "exemplars": [
+            "My claim was denied and I want to appeal the decision",
+            "How do I file an appeal for my Medicaid termination?",
+            "I disagree with my eligibility determination and want it reviewed",
+            "What's the deadline to appeal a coverage denial?"
+          ]
+        },
+        {
+          "id": "premium_payment",
+          "name": "Premium Payment",
+          "description": "Customer pays, asks about, or has trouble with a program premium",
+          "exemplars": [
+            "How do I pay my Medicare Part B premium?",
+            "My premium payment didn't go through this month",
+            "Why did my Marketplace premium go up this year?",
+            "Can I set up automatic premium payments?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tax_services",
+      "name": "IRS Taxpayer Services",
+      "intents": [
+        {
+          "id": "tax_notice_inquiry",
+          "name": "Tax Notice Inquiry",
+          "description": "Taxpayer asks about an IRS letter or notice they received",
+          "exemplars": [
+            "I got a CP2000 notice and don't understand what it means",
+            "The IRS sent me a letter saying I owe more money",
+            "What does notice CP14 mean and what do I do?",
+            "I received a notice about identity verification"
+          ]
+        },
+        {
+          "id": "refund_status",
+          "name": "Refund Status",
+          "description": "Taxpayer asks about the status of a tax refund",
+          "exemplars": [
+            "Where is my tax refund? It's been over a month",
+            "My refund is smaller than I expected, why?",
+            "The Where's My Refund tool says still processing",
+            "How long does a refund take after I verify my identity?"
+          ]
+        },
+        {
+          "id": "payment_plan",
+          "name": "Payment Plan / Installment",
+          "description": "Taxpayer wants to set up or modify a payment arrangement for a balance owed",
+          "exemplars": [
+            "I can't pay my whole tax bill, can I set up a payment plan?",
+            "How do I change my existing installment agreement?",
+            "What happens if I miss a payment on my plan?",
+            "Can I apply for an offer in compromise?"
+          ]
+        },
+        {
+          "id": "identity_verification",
+          "name": "Identity Verification",
+          "description": "Taxpayer needs to verify identity to proceed (e.g., ID.me / 5071C letter)",
+          "exemplars": [
+            "I need to verify my identity for my tax return",
+            "I got a 5071C letter asking me to verify who I am",
+            "I can't get my ID.me verification to work",
+            "How do I confirm my identity to release my refund?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "veterans_services",
+      "name": "Veterans Services (VA)",
+      "intents": [
+        {
+          "id": "va_benefits_claim",
+          "name": "VA Benefits Claim",
+          "description": "Veteran files or asks about a disability or benefits claim",
+          "exemplars": [
+            "I want to file a disability claim for my service injury",
+            "How do I add a dependent to my VA benefits?",
+            "What evidence do I need for an increased rating?",
+            "Can I file a claim for a condition that got worse?"
+          ]
+        },
+        {
+          "id": "va_healthcare_enrollment",
+          "name": "VA Healthcare Enrollment",
+          "description": "Veteran enrolls in or asks about VA health care",
+          "exemplars": [
+            "How do I enroll in VA health care?",
+            "I want to find a VA clinic near me",
+            "Am I able to use community care outside the VA?",
+            "How do I refill a prescription through the VA?"
+          ]
+        },
+        {
+          "id": "claim_status",
+          "name": "Claim Status",
+          "description": "Veteran asks about the status of a pending claim or appeal",
+          "exemplars": [
+            "What's the status of my disability claim?",
+            "My claim has been pending for months, is that normal?",
+            "How do I check where my appeal is in the process?",
+            "I got a letter that my claim needs more information"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "child_support",
+      "name": "Child Support Enforcement",
+      "intents": [
+        {
+          "id": "support_payment_status",
+          "name": "Support Payment Status",
+          "description": "Customer asks about a child support payment they are owed or made",
+          "exemplars": [
+            "I haven't received my child support payment this month",
+            "How do I check when my payment was sent?",
+            "My payment is late and I need it for rent",
+            "The amount I received was less than usual"
+          ]
+        },
+        {
+          "id": "support_case_modification",
+          "name": "Support Case Modification",
+          "description": "Customer requests a change to a child support order or case details",
+          "exemplars": [
+            "I lost my job and need to lower my support payments",
+            "I need to update my address on my child support case",
+            "How do I request a review of my support order?",
+            "My custody arrangement changed and the order should too"
+          ]
+        },
+        {
+          "id": "enforcement_action",
+          "name": "Enforcement Action",
+          "description": "Customer asks about or disputes an enforcement action (wage withholding, tax intercept)",
+          "exemplars": [
+            "Why was my paycheck garnished for child support?",
+            "My tax refund was intercepted, can you explain why?",
+            "I'm being reported as behind but I've been paying",
+            "How do I report that the other parent isn't paying?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "compliance",
+      "name": "Compliance & Safety (refusal / PII)",
+      "intents": [
+        {
+          "id": "eligibility_determination_request",
+          "name": "Eligibility Determination Request (rights-impacting)",
+          "description": "Customer demands a yes/no eligibility or benefit decision the model must NOT make; route to a human per OMB M-24-10",
+          "exemplars": [
+            "Just tell me yes or no, am I eligible for Medicaid?",
+            "Approve my disability claim right now",
+            "Decide if I qualify for the subsidy",
+            "Am I going to be approved or not? Just answer."
+          ]
+        },
+        {
+          "id": "pii_disclosure_request",
+          "name": "PII Disclosure Request",
+          "description": "Customer asks the model to read back full sensitive identifiers (SSN, full account); refuse and verify identity",
+          "exemplars": [
+            "Read me the full Social Security number you have on file",
+            "Tell me my complete bank account number",
+            "What's the full SSN on my account?",
+            "L\u00e9ame el n\u00famero de Seguro Social completo de mi expediente"
+          ]
+        },
+        {
+          "id": "third_party_info_request",
+          "name": "Third-Party Information Request",
+          "description": "Customer asks for someone else's record without authorization; refuse disclosure",
+          "exemplars": [
+            "What's my ex-partner's case status? Just look up their name",
+            "Can you tell me my neighbor's benefit information?",
+            "Look up my sibling's account for me",
+            "Give me the details on someone else's claim"
+          ]
+        },
+        {
+          "id": "out_of_scope_advice",
+          "name": "Out-of-Scope / Improper Advice",
+          "description": "Customer asks for advice to evade rules or other out-of-scope guidance; decline and offer legitimate resources",
+          "exemplars": [
+            "Tell me how to hide income so I don't pay back my subsidy",
+            "How do I structure things to avoid child support?",
+            "Help me word this so I qualify when I really don't",
+            "What's the trick to get approved even if I'm not eligible?"
+          ]
+        }
+      ]
+    }
+  ],
+  "journeys": [
+    {
+      "id": "billing_dispute",
+      "name": "Billing Dispute Resolution",
+      "triggerIntents": [
+        "billing.refund_request",
+        "billing.billing_inquiry"
+      ],
+      "stages": [
+        {
+          "id": "initiated",
+          "name": "Dispute Initiated",
+          "nextStages": [
+            "under_review"
+          ]
+        },
+        {
+          "id": "under_review",
+          "name": "Under Review",
+          "nextStages": [
+            "refund_processing",
+            "escalated"
+          ]
+        },
+        {
+          "id": "refund_processing",
+          "name": "Refund Processing",
+          "nextStages": [
+            "resolved"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "refund_processing",
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "technical_troubleshooting",
+      "name": "Technical Troubleshooting",
+      "triggerIntents": [
+        "technical_support.connectivity",
+        "technical_support.device_issue",
+        "technical_support.app_error"
+      ],
+      "stages": [
+        {
+          "id": "reported",
+          "name": "Issue Reported",
+          "nextStages": [
+            "diagnosing"
+          ]
+        },
+        {
+          "id": "diagnosing",
+          "name": "Diagnosing",
+          "nextStages": [
+            "waiting_for_fix",
+            "escalated"
+          ]
+        },
+        {
+          "id": "waiting_for_fix",
+          "name": "Waiting for Fix",
+          "nextStages": [
+            "follow_up",
+            "resolved"
+          ]
+        },
+        {
+          "id": "follow_up",
+          "name": "Follow Up",
+          "nextStages": [
+            "resolved",
+            "escalated"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "waiting_for_fix",
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "new_account_setup",
+      "name": "New Account Setup",
+      "triggerIntents": [
+        "account.account_creation",
+        "sales.new_service"
+      ],
+      "stages": [
+        {
+          "id": "started",
+          "name": "Setup Started",
+          "nextStages": [
+            "comparing_plans"
+          ]
+        },
+        {
+          "id": "comparing_plans",
+          "name": "Comparing Plans",
+          "nextStages": [
+            "profile_created"
+          ]
+        },
+        {
+          "id": "profile_created",
+          "name": "Profile Created",
+          "nextStages": [
+            "payment_setup"
+          ]
+        },
+        {
+          "id": "payment_setup",
+          "name": "Payment Setup",
+          "nextStages": [
+            "active",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "active",
+          "name": "Account Active",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "active",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "churn_prevention",
+      "name": "Churn Prevention",
+      "triggerIntents": [
+        "account.cancellation"
+      ],
+      "stages": [
+        {
+          "id": "cancel_requested",
+          "name": "Cancellation Requested",
+          "nextStages": [
+            "retention_offer"
+          ]
+        },
+        {
+          "id": "retention_offer",
+          "name": "Retention Offer Made",
+          "nextStages": [
+            "final_attempt",
+            "retained"
+          ]
+        },
+        {
+          "id": "final_attempt",
+          "name": "Final Retention Attempt",
+          "nextStages": [
+            "escalated",
+            "retained",
+            "cancelled"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated to Retention Specialist",
+          "nextStages": [
+            "retained",
+            "cancelled"
+          ]
+        },
+        {
+          "id": "retained",
+          "name": "Customer Retained",
+          "nextStages": []
+        },
+        {
+          "id": "cancelled",
+          "name": "Account Cancelled",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "retained",
+        "cancelled"
+      ]
+    },
+    {
+      "id": "service_upgrade",
+      "name": "Service Upgrade",
+      "triggerIntents": [
+        "sales.upgrade",
+        "sales.product_inquiry",
+        "sales.pricing"
+      ],
+      "stages": [
+        {
+          "id": "exploring",
+          "name": "Exploring Options",
+          "nextStages": [
+            "comparing"
+          ]
+        },
+        {
+          "id": "comparing",
+          "name": "Comparing Plans",
+          "nextStages": [
+            "processing"
+          ]
+        },
+        {
+          "id": "processing",
+          "name": "Processing Upgrade",
+          "nextStages": [
+            "payment_issue",
+            "completed"
+          ]
+        },
+        {
+          "id": "payment_issue",
+          "name": "Payment Issue During Upgrade",
+          "nextStages": [
+            "processing",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "completed",
+          "name": "Upgrade Completed",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "completed",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "benefits_enrollment",
+      "name": "Benefits Enrollment",
+      "triggerIntents": [
+        "health_enrollment.medicare_enrollment",
+        "health_enrollment.medicaid_enrollment",
+        "health_enrollment.aca_marketplace_enrollment",
+        "veterans_services.va_healthcare_enrollment"
+      ],
+      "stages": [
+        {
+          "id": "started",
+          "name": "Enrollment Started",
+          "nextStages": [
+            "eligibility_check"
+          ]
+        },
+        {
+          "id": "eligibility_check",
+          "name": "Checking Eligibility",
+          "nextStages": [
+            "documents_needed",
+            "selecting_plan"
+          ]
+        },
+        {
+          "id": "documents_needed",
+          "name": "Documents Needed",
+          "nextStages": [
+            "selecting_plan",
+            "escalated"
+          ]
+        },
+        {
+          "id": "selecting_plan",
+          "name": "Selecting Plan",
+          "nextStages": [
+            "enrolled",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated to Caseworker",
+          "nextStages": [
+            "enrolled",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "enrolled",
+          "name": "Enrolled",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "enrolled",
+        "abandoned"
+      ]
+    },
+    {
+      "id": "eligibility_appeal",
+      "name": "Eligibility Appeal / Grievance",
+      "triggerIntents": [
+        "health_enrollment.coverage_appeal",
+        "child_support.enforcement_action"
+      ],
+      "stages": [
+        {
+          "id": "filed",
+          "name": "Appeal Filed",
+          "nextStages": [
+            "under_review"
+          ]
+        },
+        {
+          "id": "under_review",
+          "name": "Under Review",
+          "nextStages": [
+            "hearing_scheduled",
+            "resolved",
+            "escalated"
+          ]
+        },
+        {
+          "id": "hearing_scheduled",
+          "name": "Hearing Scheduled",
+          "nextStages": [
+            "resolved",
+            "escalated"
+          ]
+        },
+        {
+          "id": "escalated",
+          "name": "Escalated",
+          "nextStages": [
+            "resolved",
+            "abandoned"
+          ]
+        },
+        {
+          "id": "resolved",
+          "name": "Resolved",
+          "nextStages": []
+        },
+        {
+          "id": "abandoned",
+          "name": "Abandoned",
+          "nextStages": []
+        }
+      ],
+      "terminalStages": [
+        "resolved",
+        "abandoned"
+      ]
+    }
+  ],
+  "nbaRules": [
+    {
+      "id": "CHURN_RISK_HIGH",
+      "name": "High Churn Risk Intervention",
+      "priority": 100,
+      "conditions": [
+        {
+          "field": "journey",
+          "op": "eq",
+          "value": "churn_prevention"
+        },
+        {
+          "field": "stage",
+          "op": "eq",
+          "value": "cancel_requested"
+        }
+      ],
+      "logic": "AND",
+      "action": "retention_offer",
+      "actionType": "retention",
+      "urgency": "critical"
+    },
+    {
+      "id": "CHURN_FINAL",
+      "name": "Final Churn Prevention Attempt",
+      "priority": 95,
+      "conditions": [
+        {
+          "field": "journey",
+          "op": "eq",
+          "value": "churn_prevention"
+        },
+        {
+          "field": "stage",
+          "op": "eq",
+          "value": "final_attempt"
+        }
+      ],
+      "logic": "AND",
+      "action": "escalate_retention_specialist",
+      "actionType": "escalation",
+      "urgency": "critical"
+    },
+    {
+      "id": "VIP_PRIORITY_ROUTING",
+      "name": "VIP Priority Routing",
+      "priority": 92,
+      "conditions": [
+        {
+          "field": "customer_tier",
+          "op": "in",
+          "value": [
+            "premium",
+            "enterprise"
+          ]
+        },
+        {
+          "field": "routing_priority",
+          "op": "gte",
+          "value": 8
+        }
+      ],
+      "logic": "AND",
+      "action": "priority_route_to_senior_agent",
+      "actionType": "routing",
+      "urgency": "high"
+    },
+    {
+      "id": "COMPLAINT_HANDLING",
+      "name": "Active Complaint Handler",
+      "priority": 90,
+      "conditions": [
+        {
+          "field": "intent",
+          "op": "eq",
+          "value": "general.complaint"
+        }
+      ],
+      "logic": "AND",
+      "action": "activate_complaint_protocol",
+      "actionType": "protocol",
+      "urgency": "high"
+    },
+    {
+      "id": "SLA_AT_RISK",
+      "name": "SLA At Risk Recovery",
+      "priority": 88,
+      "conditions": [
+        {
+          "field": "sla_status",
+          "op": "in",
+          "value": [
+            "at_risk",
+            "breached"
+          ]
+        }
+      ],
+      "logic": "AND",
+      "action": "queue_rebalance_and_escalate",
+      "actionType": "routing",
+      "urgency": "high"
+    },
+    {
+      "id": "CROSS_CHANNEL_FRUSTRATION",
+      "name": "Cross-Channel Frustration Detection",
+      "priority": 85,
+      "conditions": [
+        {
+          "field": "channels_used",
+          "op": "gte",
+          "value": 3
+        },
+        {
+          "field": "sentiment",
+          "op": "in",
+          "value": [
+            "negative",
+            "frustrated",
+            "angry"
+          ]
+        }
+      ],
+      "logic": "AND",
+      "action": "route_to_senior_omnichannel_specialist",
+      "actionType": "routing",
+      "urgency": "high"
+    },
+    {
+      "id": "BILLING_DISPUTE_STUCK",
+      "name": "Billing Dispute Stuck",
+      "priority": 80,
+      "conditions": [
+        {
+          "field": "journey",
+          "op": "eq",
+          "value": "billing_dispute"
+        },
+        {
+          "field": "sla_status",
+          "op": "in",
+          "value": [
+            "breached",
+            "at_risk"
+          ]
+        }
+      ],
+      "logic": "AND",
+      "action": "escalate_to_supervisor",
+      "actionType": "escalation",
+      "urgency": "high"
+    },
+    {
+      "id": "REPEATED_TECH_ISSUE",
+      "name": "Repeated Technical Issue",
+      "priority": 75,
+      "conditions": [
+        {
+          "field": "domain",
+          "op": "eq",
+          "value": "technical_support"
+        },
+        {
+          "field": "previous_interactions",
+          "op": "gt",
+          "value": 3
+        }
+      ],
+      "logic": "AND",
+      "action": "proactive_outreach_and_escalate",
+      "actionType": "proactive",
+      "urgency": "high"
+    },
+    {
+      "id": "HIGH_EFFORT_RECOVERY",
+      "name": "High Effort Recovery",
+      "priority": 74,
+      "conditions": [
+        {
+          "field": "customer_effort_score",
+          "op": "gte",
+          "value": 4
+        },
+        {
+          "field": "sentiment",
+          "op": "in",
+          "value": [
+            "negative",
+            "frustrated",
+            "angry"
+          ]
+        }
+      ],
+      "logic": "AND",
+      "action": "effort_recovery_protocol",
+      "actionType": "recovery",
+      "urgency": "high"
+    },
+    {
+      "id": "UPGRADE_OPPORTUNITY",
+      "name": "Upgrade Opportunity",
+      "priority": 60,
+      "conditions": [
+        {
+          "field": "domain",
+          "op": "eq",
+          "value": "sales"
+        },
+        {
+          "field": "intent_short",
+          "op": "in",
+          "value": [
+            "upgrade",
+            "product_inquiry"
+          ]
+        },
+        {
+          "field": "customer_tier",
+          "op": "neq",
+          "value": "enterprise"
+        }
+      ],
+      "logic": "AND",
+      "action": "present_upsell_offer",
+      "actionType": "sales",
+      "urgency": "medium"
+    },
+    {
+      "id": "DIGITAL_DEFLECTION",
+      "name": "Digital Self-Service Deflection",
+      "priority": 55,
+      "conditions": [
+        {
+          "field": "should_deflect",
+          "op": "eq",
+          "value": "true"
+        },
+        {
+          "field": "intent",
+          "op": "neq",
+          "value": "account.password_reset"
+        }
+      ],
+      "logic": "AND",
+      "action": "offer_self_service_portal",
+      "actionType": "deflection",
+      "urgency": "medium"
+    },
+    {
+      "id": "NEW_CUSTOMER_ONBOARDING",
+      "name": "New Customer Welcome",
+      "priority": 50,
+      "conditions": [
+        {
+          "field": "journey",
+          "op": "eq",
+          "value": "new_account_setup"
+        },
+        {
+          "field": "stage",
+          "op": "eq",
+          "value": "started"
+        },
+        {
+          "field": "previous_interactions",
+          "op": "lte",
+          "value": 2
+        }
+      ],
+      "logic": "AND",
+      "action": "activate_onboarding_guide",
+      "actionType": "onboarding",
+      "urgency": "medium"
+    },
+    {
+      "id": "PASSWORD_RESET_ASSIST",
+      "name": "Password Reset Self-Service",
+      "priority": 40,
+      "conditions": [
+        {
+          "field": "intent",
+          "op": "eq",
+          "value": "account.password_reset"
+        }
+      ],
+      "logic": "AND",
+      "action": "redirect_to_self_service_reset",
+      "actionType": "deflection",
+      "urgency": "low"
+    },
+    {
+      "id": "POSITIVE_FEEDBACK_FOLLOWUP",
+      "name": "Positive Feedback Follow-Up",
+      "priority": 30,
+      "conditions": [
+        {
+          "field": "intent",
+          "op": "eq",
+          "value": "general.compliment"
+        }
+      ],
+      "logic": "AND",
+      "action": "send_satisfaction_survey",
+      "actionType": "engagement",
+      "urgency": "low"
+    },
+    {
+      "id": "RIGHTS_IMPACTING_HUMAN_REVIEW",
+      "name": "Rights-Impacting Decision to Human Review",
+      "priority": 99,
+      "conditions": [
+        {
+          "field": "intent",
+          "op": "eq",
+          "value": "compliance.eligibility_determination_request"
+        }
+      ],
+      "logic": "AND",
+      "action": "escalate_to_human_eligibility_determination",
+      "actionType": "escalation",
+      "urgency": "high"
+    },
+    {
+      "id": "PII_PROTECTION",
+      "name": "PII Disclosure Protection",
+      "priority": 98,
+      "conditions": [
+        {
+          "field": "intent",
+          "op": "in",
+          "value": [
+            "compliance.pii_disclosure_request",
+            "compliance.third_party_info_request"
+          ]
+        }
+      ],
+      "logic": "AND",
+      "action": "refuse_and_verify_identity",
+      "actionType": "protocol",
+      "urgency": "high"
+    },
+    {
+      "id": "OUT_OF_SCOPE_REFUSAL",
+      "name": "Out-of-Scope Advice Refusal",
+      "priority": 97,
+      "conditions": [
+        {
+          "field": "intent",
+          "op": "eq",
+          "value": "compliance.out_of_scope_advice"
+        }
+      ],
+      "logic": "AND",
+      "action": "refuse_out_of_scope_advice",
+      "actionType": "protocol",
+      "urgency": "medium"
+    }
+  ],
+  "actionPolicies": {
+    "confidenceBands": {
+      "high": {
+        "min": 0.7,
+        "strategy": "act_immediately"
+      },
+      "medium": {
+        "min": 0.4,
+        "strategy": "act_with_verification"
+      },
+      "low": {
+        "min": 0.0,
+        "strategy": "gather_more_info"
+      }
+    },
+    "escalationChains": {
+      "standard": [
+        "self_service",
+        "agent",
+        "senior_agent",
+        "supervisor",
+        "manager"
+      ],
+      "technical": [
+        "self_service",
+        "tech_agent",
+        "senior_tech",
+        "engineering_escalation"
+      ],
+      "billing": [
+        "self_service",
+        "billing_agent",
+        "billing_supervisor",
+        "finance_review"
+      ],
+      "retention": [
+        "retention_agent",
+        "retention_specialist",
+        "retention_manager",
+        "executive_retention"
+      ]
+    },
+    "actionSequenceTemplates": {
+      "resolve_and_retain": {
+        "steps": [
+          "acknowledge",
+          "resolve_issue",
+          "offer_goodwill",
+          "schedule_followup"
+        ],
+        "applicableWhen": "churn_risk > 0.5 AND sentiment IN [angry, frustrated]"
+      },
+      "quick_resolution": {
+        "steps": [
+          "acknowledge",
+          "resolve_issue"
+        ],
+        "applicableWhen": "urgency IN [medium, low] AND sentiment NOT IN [angry, frustrated]"
+      },
+      "escalate_and_monitor": {
+        "steps": [
+          "acknowledge",
+          "escalate",
+          "set_sla_monitor",
+          "schedule_followup"
+        ],
+        "applicableWhen": "confidence < 0.4 OR multi_intent_detected"
+      },
+      "deflect_to_self_service": {
+        "steps": [
+          "offer_self_service",
+          "provide_instructions"
+        ],
+        "applicableWhen": "complexity = simple AND sentiment IN [neutral, satisfied]"
+      },
+      "proactive_outreach": {
+        "steps": [
+          "acknowledge",
+          "proactive_diagnosis",
+          "offer_resolution",
+          "confirm_satisfaction"
+        ],
+        "applicableWhen": "repeat_contact_count > 2"
+      }
+    },
+    "resolutionFactors": {
+      "weights": {
+        "intent_confidence": 0.25,
+        "sentiment_alignment": 0.2,
+        "journey_stage_match": 0.15,
+        "historical_success_rate": 0.2,
+        "customer_tier_fit": 0.1,
+        "channel_appropriateness": 0.1
+      }
+    },
+    "customerLifecycleStages": {
+      "new": {
+        "maxTenureDays": 30,
+        "priorities": [
+          "onboarding",
+          "education",
+          "satisfaction"
+        ]
+      },
+      "growing": {
+        "maxTenureDays": 180,
+        "priorities": [
+          "upsell",
+          "engagement",
+          "habit_formation"
+        ]
+      },
+      "established": {
+        "maxTenureDays": 730,
+        "priorities": [
+          "retention",
+          "loyalty",
+          "advocacy"
+        ]
+      },
+      "at_risk": {
+        "maxTenureDays": null,
+        "priorities": [
+          "retention",
+          "win_back",
+          "escalation"
+        ]
+      }
+    }
+  },
+  "kpis": [
+    {
+      "id": "total_contacts",
+      "name": "Total Contacts",
+      "unit": "count",
+      "description": "Contact volume in the measurement window"
+    },
+    {
+      "id": "sla_compliance_rate",
+      "name": "SLA Compliance Rate",
+      "unit": "percent",
+      "description": "Share of contacts meeting SLA (0-100)"
+    },
+    {
+      "id": "avg_wait_time",
+      "name": "Average Wait Time",
+      "unit": "seconds",
+      "description": "Mean queue wait before agent/bot connect"
+    },
+    {
+      "id": "deflection_rate",
+      "name": "Deflection Rate",
+      "unit": "percent",
+      "description": "Share of contacts resolved without live agent (0-100)"
+    },
+    {
+      "id": "avg_contact_value",
+      "name": "Average Contact Value",
+      "unit": "currency",
+      "description": "Mean revenue or cost associated with a contact"
+    },
+    {
+      "id": "high_priority_contacts",
+      "name": "High Priority Contacts",
+      "unit": "count",
+      "description": "Contacts tagged high priority or critical urgency"
+    },
+    {
+      "id": "fcr_rate",
+      "name": "First Contact Resolution Rate",
+      "unit": "percent",
+      "description": "Share of issues resolved on first contact (0-100)"
+    },
+    {
+      "id": "aht_seconds",
+      "name": "Average Handle Time",
+      "unit": "seconds",
+      "description": "Mean end-to-end handle time"
+    },
+    {
+      "id": "csat",
+      "name": "Customer Satisfaction",
+      "unit": "score",
+      "description": "CSAT score on a 0-100 scale"
+    }
+  ],
+  "channels": [
+    "chat",
+    "email",
+    "phone",
+    "phone_transcript",
+    "social_media",
+    "in_app",
+    "sms"
+  ],
+  "sentiments": [
+    "angry",
+    "frustrated",
+    "confused",
+    "neutral",
+    "satisfied",
+    "demanding"
+  ],
+  "urgencies": [
+    "critical",
+    "high",
+    "medium",
+    "low"
+  ],
+  "actionTypes": [
+    "escalation",
+    "routing",
+    "protocol",
+    "deflection",
+    "retention",
+    "proactive",
+    "recovery",
+    "sales",
+    "onboarding",
+    "engagement"
+  ]
+}

@@ -34,9 +34,24 @@ export interface AgentDefinition extends CxArtifactBase {
   tools: string[];
 }
 
+/** Single intent entry on a generated taxonomy artifact.
+ * Legacy adapters emit plain strings; rich form uses ontology ids. */
+export type IntentTaxonomyIntentEntry =
+  | string
+  | { id: string; name?: string; description?: string; exemplars?: string[] };
+
+/** Domain entry on a generated taxonomy artifact.
+ * Prefer `id` matching ontology domain ids when available. */
+export interface IntentTaxonomyDomain {
+  /** Ontology domain id when known (preferred). */
+  id?: string;
+  name: string;
+  intents: IntentTaxonomyIntentEntry[];
+}
+
 export interface IntentTaxonomy extends CxArtifactBase {
   kind: "intentTaxonomy";
-  domains: { name: string; intents: string[] }[];
+  domains: IntentTaxonomyDomain[];
 }
 
 export interface NbaRuleSet extends CxArtifactBase {
@@ -63,3 +78,14 @@ export type CxArtifact =
   | NbaRuleSet
   | KpiFrame
   | CxArchitectureDoc;
+
+/** Closed set of artifact kinds — also folded into CxOntology.artifactKinds. */
+export const CX_ARTIFACT_KINDS = [
+  "journeyMap",
+  "persona",
+  "agentDefinition",
+  "intentTaxonomy",
+  "nbaRuleSet",
+  "kpiFrame",
+  "architectureDoc",
+] as const satisfies readonly CxArtifact["kind"][];

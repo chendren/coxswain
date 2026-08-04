@@ -14,3 +14,9 @@ Decisions and deviations for the integrator.
   not a test-only subpath — the design doc's "test exports" phrasing
   notwithstanding. This is deliberate: every downstream lane's own test
   suite imports it directly, so it's public API, not an internal helper.
+- Closed-world CXOS taxonomies live in `src/ontology/` as `DEFAULT_ONTOLOGY`
+  (seeded from cx-intelligence-slm) plus merge packs like
+  `LOCAL_PLATFORM_ONTOLOGY`. Adapters must not hardcode journey/KPI/intent
+  vocabularies; they import lists from the ontology. Model calls may select
+  within the ontology; pure evaluators (`matchNbaRules`, `nextStages`,
+  `confidenceBand`) decide deterministically.

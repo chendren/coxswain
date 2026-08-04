@@ -7,3 +7,4 @@ export * from "./operate";
 export * from "./adapter";
 export * from "./events";
 export * from "./mock-adapter";
+export * from "./ontology";
