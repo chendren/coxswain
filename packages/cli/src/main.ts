@@ -18,6 +18,12 @@ import { runHookRun } from "./commands/hook";
 import { runLedgerReport } from "./commands/ledger";
 import { runModelsReport } from "./commands/models";
 import { runDoctor } from "./commands/doctor";
+import {
+  runCxNba,
+  runCxOntologyGraph,
+  runCxOntologyShow,
+  runCxOntologyValidate,
+} from "./commands/cx";
 import { loadDeps, type LoadedDeps } from "./deps";
 import { buildSession } from "./wire";
 import { runPrint } from "./print";
@@ -295,6 +301,52 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   ).action(async (file: string, _options: GlobalOpts, command: Command) => {
     const opts = command.optsWithGlobals<GlobalOpts>();
     await runReplay(file, { cwd: opts.cwd ?? process.cwd() });
+  });
+
+  // ── CXOS graph-node commands (deterministic strong-graph ops) ──
+  const cx = program.command("cx").description("CXOS — closed-world CX ontology and ops");
+  const ontology = cx.command("ontology").description("strong ontology catalog (graph-node AI)");
+
+  addGlobalOptions(
+    ontology
+      .command("show")
+      .description("inventory closed-world domains, journeys, KPIs, NBA rules")
+      .option("--pack <name>", "ontology pack: default|local", "default"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { pack?: string }>();
+    runCxOntologyShow({ write }, opts.pack);
+  });
+
+  addGlobalOptions(
+    ontology
+      .command("validate")
+      .description("validate catalog integrity and materialize strong graph")
+      .option("--pack <name>", "ontology pack: default|local", "default"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { pack?: string }>();
+    const code = runCxOntologyValidate({ write }, opts.pack);
+    throw new CliExit(code);
+  });
+
+  addGlobalOptions(
+    ontology
+      .command("graph")
+      .description("show strong-graph node/edge stats")
+      .option("--pack <name>", "ontology pack: default|local", "default"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { pack?: string }>();
+    runCxOntologyGraph({ write }, opts.pack);
+  });
+
+  addGlobalOptions(
+    cx
+      .command("nba [context...]")
+      .description("recommend next-best-action from strong-graph rules (journey= stage= …)")
+      .option("--pack <name>", "ontology pack: default|local", "default"),
+  ).action(async (context: string[], _o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { pack?: string }>();
+    const code = runCxNba({ write }, context, opts.pack);
+    throw new CliExit(code);
   });
 
   return program;

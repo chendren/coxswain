@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@cox/core": "workspace:*",
+    "@cox/cx-core": "workspace:*",
+    "@cox/cx-ops": "workspace:*",
     "@cox/tui": "workspace:*",
     "@cox/providers": "workspace:*",
     "@cox/router": "workspace:*",
