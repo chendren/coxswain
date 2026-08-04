@@ -19,10 +19,21 @@ import { runLedgerReport } from "./commands/ledger";
 import { runModelsReport } from "./commands/models";
 import { runDoctor } from "./commands/doctor";
 import {
+  runCxApprove,
+  runCxBuild,
+  runCxDeploy,
+  runCxList,
   runCxNba,
+  runCxNew,
   runCxOntologyGraph,
   runCxOntologyShow,
   runCxOntologyValidate,
+  runCxPlan,
+  runCxReport,
+  runCxSimulate,
+  runCxStatus,
+  runCxTeardown,
+  type CxCommandContext,
 } from "./commands/cx";
 import { loadDeps, type LoadedDeps } from "./deps";
 import { buildSession } from "./wire";
@@ -304,8 +315,18 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   });
 
   // ── CXOS graph-node commands (deterministic strong-graph ops) ──
-  const cx = program.command("cx").description("CXOS — closed-world CX ontology and ops");
+  const cx = program.command("cx").description("CXOS — closed-world build & operate");
   const ontology = cx.command("ontology").description("strong ontology catalog (graph-node AI)");
+
+  function cxCtx(command: Command, pack?: string): CxCommandContext {
+    const opts = command.optsWithGlobals<GlobalOpts>();
+    return {
+      cwd: resolveCwd(opts),
+      write,
+      pack,
+      mode: "offline",
+    };
+  }
 
   addGlobalOptions(
     ontology
@@ -347,6 +368,96 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     const opts = command.optsWithGlobals<GlobalOpts & { pack?: string }>();
     const code = runCxNba({ write }, context, opts.pack);
     throw new CliExit(code);
+  });
+
+  addGlobalOptions(
+    cx.command("new <name> [idea...]").description("create a CXOS spec under .cox/cx/"),
+  ).action(async (name: string, idea: string[], _o: GlobalOpts, command: Command) => {
+    throw new CliExit(await runCxNew(cxCtx(command), name, idea));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("approve <name> [phase]")
+      .description("approve requirements|design|tasks (default: next)"),
+  ).action(async (name: string, phase: string | undefined, _o: GlobalOpts, command: Command) => {
+    throw new CliExit(await runCxApprove(cxCtx(command), name, phase));
+  });
+
+  addGlobalOptions(
+    cx.command("list").description("list CX specs"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    throw new CliExit(await runCxList(cxCtx(command)));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("status [name]")
+      .description("show CX spec phases and deployment health")
+      .option("--target <list>", "artifacts,local,aws or all", "all"),
+  ).action(async (name: string | undefined, _o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
+    throw new CliExit(await runCxStatus(cxCtx(command), name, opts.target));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("plan <name>")
+      .description("show per-target build plans (no side effects)")
+      .option("--target <list>", "artifacts,local,aws or all", "all"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
+    throw new CliExit(await runCxPlan(cxCtx(command), name, opts.target));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("build <name>")
+      .description("plan+build+deploy targets (artifacts first; graph-ordered)")
+      .option("--target <list>", "artifacts,local,aws or all", "all"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
+    throw new CliExit(await runCxBuild(cxCtx(command), name, opts.target, true));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("deploy <name>")
+      .description("build and deploy targets")
+      .option("--target <list>", "artifacts,local,aws or all", "all"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
+    throw new CliExit(await runCxDeploy(cxCtx(command), name, opts.target));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("simulate <name>")
+      .description("run traffic simulation on deployed targets")
+      .option("--target <list>", "default: local", "local"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
+    throw new CliExit(await runCxSimulate(cxCtx(command), name, opts.target));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("report <name>")
+      .description("cross-target status report + graph NBA")
+      .option("--target <list>", "deployed targets or all", "all"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
+    throw new CliExit(await runCxReport(cxCtx(command), name, opts.target));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("teardown <name>")
+      .description("tear down deployments")
+      .option("--target <list>", "artifacts,local,aws or all", "all"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
+    throw new CliExit(await runCxTeardown(cxCtx(command), name, opts.target));
   });
 
   return program;

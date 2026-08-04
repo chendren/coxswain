@@ -296,13 +296,22 @@ offline commands verified live.
 **Next (M3):** live-API smoke — `cox explain`, a `--print` run, one full
 spec flow against `examples/demo-project` — then `v0.1.0`.
 
-**In design (CXOS):** Coxswain is being extended into a Customer Experience
-Operating / Building System: five new `cx-*` packages behind a frozen
-`@cox/cx-core` adapter contract, one CX spec fanning out to three build
-targets (platform-neutral artifacts, a local omnichannel platform, the AWS
-CX stack), and a per-target operate layer with `commands` / `console` /
-`autonomous` modes. Approved design:
-`docs/superpowers/specs/2026-07-22-cxos-design.md`.
+**CXOS (working offline loop):** closed-world ontology + strong graph, offline
+adapters for `artifacts` / `local` / `aws`, ops orchestration, and CLI:
+
+```bash
+pnpm cox cx new billing-dispute "reduce dispute handle time"
+pnpm cox cx approve billing-dispute requirements
+pnpm cox cx build billing-dispute --target all
+pnpm cox cx status billing-dispute
+pnpm cox cx simulate billing-dispute --target local
+pnpm cox cx report billing-dispute
+pnpm cox cx nba journey=churn_prevention stage=cancel_requested confidence=0.9
+```
+
+See `examples/cx-demo/README.md` and design docs under
+`docs/superpowers/specs/2026-07-22-cxos-design.md` and
+`2026-08-03-cxos-ontology-design.md`. Live platform/AWS mutation still plan-only offline.
 
 **v2 candidates:** MCP servers (the tool registry is shaped for it),
 watch-mode daemon for agent hooks, Grok-style parallel subagent fan-out (the
