@@ -31,10 +31,13 @@ import {
   runCxOntologyShow,
   runCxOntologyValidate,
   runCxPlan,
+  runCxProposalTransition,
+  runCxProposals,
   runCxReport,
   runCxSimulate,
   runCxStatus,
   runCxTeardown,
+  runCxWatch,
   type CxCommandContext,
 } from "./commands/cx";
 import { loadDeps, type LoadedDeps } from "./deps";
@@ -425,7 +428,13 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   }
 
   addGlobalOptions(
-    cx.command("doctor").description("CXOS runtime wiring + ontology health"),
+    cx
+      .command("doctor")
+      .description("CXOS runtime wiring + ontology health")
+      .option("--live", "probe platform and prefer live wiring")
+      .option("--mode <mode>", "offline|live|hybrid")
+      .option("--base-url <url>", "local platform base URL")
+      .option("--pack <name>", "ontology pack: default|local", "local"),
   ).action(async (_o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     throw new CliExit(await runCxDoctor(await cxCtx(command, f.pack, f)));
@@ -539,6 +548,59 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     throw new CliExit(await runCxConsole(await cxCtx(command, f.pack, f), name, f.target));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("watch <name>")
+      .description("bounded console watch loop; persists proposals")
+      .option("--target <list>", "deployed targets or all", "all")
+      .option("--ticks <n>", "max ticks", "3")
+      .option("--interval <ms>", "interval between ticks", "2000")
+      .option("--live", "prefer live platform health")
+      .option("--base-url <url>", "local platform base URL"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { ticks?: string; interval?: string }>();
+    throw new CliExit(
+      await runCxWatch(await cxCtx(command, f.pack, f), name, f.target, {
+        maxTicks: Number(opts.ticks ?? 3),
+        intervalMs: Number(opts.interval ?? 2000),
+      }),
+    );
+  });
+
+  addGlobalOptions(
+    cx
+      .command("proposals <name>")
+      .description("list CX proposals")
+      .option("--all", "include resolved/dismissed"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { all?: boolean }>();
+    throw new CliExit(
+      await runCxProposals(await cxCtx(command, f.pack, f), name, opts.all ? "all" : "open"),
+    );
+  });
+
+  addGlobalOptions(
+    cx
+      .command("proposal <name> <id> <status>")
+      .description("transition proposal: open|claimed|resolved|dismissed"),
+  ).action(async (name: string, id: string, status: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const allowed = ["open", "claimed", "resolved", "dismissed"];
+    if (!allowed.includes(status)) {
+      throw new CliExit(2, `status must be one of ${allowed.join("|")}`);
+    }
+    throw new CliExit(
+      await runCxProposalTransition(
+        await cxCtx(command, f.pack, f),
+        name,
+        id,
+        status as import("@cox/cx-ops").ProposalStatus,
+      ),
+    );
   });
 
   addGlobalOptions(

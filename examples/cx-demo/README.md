@@ -25,14 +25,21 @@ pnpm cox cx teardown billing-dispute
 
 Artifacts land under `.cox/cx/billing-dispute/`.
 
-## Hybrid / live (when available)
+## Hybrid / live (platform on :3143)
 
 ```bash
-# Prefer live models + platform if healthy; fall back offline per target
-pnpm cox cx build billing-dispute --live --target all
+# Start Nexus CX platform (separate repo)
+cd ~/Projects/cx-platform/omnichannel-cx-platform && npm start
 
-# Or force hybrid with explicit platform URL (default http://127.0.0.1:3143)
-pnpm cox cx build billing-dispute --mode hybrid --base-url http://127.0.0.1:3143
+# Hybrid: live local (deterministic bind) + offline artifacts/aws without API keys
+pnpm cox cx doctor --live --base-url http://127.0.0.1:3143
+pnpm cox cx build billing-dispute --live --base-url http://127.0.0.1:3143 --target all
+pnpm cox cx status billing-dispute --live --base-url http://127.0.0.1:3143
+pnpm cox cx simulate billing-dispute --live --target local
+pnpm cox cx console billing-dispute --live
+pnpm cox cx watch billing-dispute --ticks 3 --interval 2000 --live
+pnpm cox cx proposals billing-dispute
+pnpm cox cx proposal billing-dispute prop_… resolved
 ```
 
 `cox.config.json` (optional):

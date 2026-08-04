@@ -8,12 +8,14 @@ import {
   type CxTrafficProfile,
 } from "@cox/cx-core";
 import {
+  appendProposalsFromTick,
   approveCxPhase,
   clearDeployment,
   createCxSpec,
   listCxSpecs,
   loadCxWorkspace,
   loadDeployments,
+  loadProposals,
   opsRecommendNba,
   orchestrateBuild,
   orchestrateReport,
@@ -22,13 +24,16 @@ import {
   parseNbaContext,
   parseTargets,
   runConsoleTick,
+  runWatchLoop,
   saveCxWorkspace,
   seedDesignFromIdea,
   showOntology,
   showStrongGraph,
+  transitionProposal,
   validateOntologyPack,
   type OntologyPack,
   type CxPhase,
+  type ProposalStatus,
 } from "@cox/cx-ops";
 import type { CxRuntime, CxRuntimeMode } from "../cx/runtime";
 import { createCxRuntime, createOfflineCxRuntime } from "../cx/runtime";
@@ -565,6 +570,116 @@ export async function runCxConsole(
     ctx.write(`    path: ${p.path.join(" → ")}`);
   }
   ctx.write(`path: ${tick.path.join(" → ")}`);
+
+  // Persist non-none proposals for human follow-up
+  const persisted = await appendProposalsFromTick(rt.workspace, name, tick.proposals);
+  if (persisted.added.length > 0) {
+    ctx.write(`persisted ${persisted.added.length} proposal(s) (skipped ${persisted.skipped} dupes)`);
+    for (const p of persisted.added) {
+      ctx.write(`  + ${p.id} [${p.kind}] ${p.summary}`);
+    }
+  } else {
+    ctx.write("(no new proposals to persist)");
+  }
   ctx.write("(proposals are human-gated — no mutations applied)");
+  return 0;
+}
+
+export async function runCxWatch(
+  ctx: CxCommandContext,
+  name: string,
+  targetsRaw?: string,
+  opts?: { intervalMs?: number; maxTicks?: number },
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  printWiring(ctx, rt);
+  const record = await loadCxWorkspace(rt.workspace, name);
+  if (!record) {
+    ctx.write(`CX spec "${name}" not found`);
+    return 1;
+  }
+  const depsFile = await loadDeployments(rt.workspace, name);
+  const deployedKeys = Object.keys(depsFile.deployments) as import("@cox/cx-core").CxTargetId[];
+  if (deployedKeys.length === 0) {
+    ctx.write("no deployments — run cox cx build first");
+    return 1;
+  }
+  const targets = parseTargets(
+    targetsRaw ?? deployedKeys.join(","),
+  ).filter((t) => depsFile.deployments[t]);
+
+  const intervalMs = opts?.intervalMs ?? 2_000;
+  const maxTicks = opts?.maxTicks ?? 3;
+  ctx.write(`watching ${name} ticks=${maxTicks} intervalMs=${intervalMs}`);
+
+  const result = await runWatchLoop(
+    name,
+    targets.map((targetId) => ({
+      targetId,
+      adapter: rt.adapters[targetId]!,
+      dep: depsFile.deployments[targetId]!,
+      nbaContext: {
+        journey: record.spec.design?.journeyMaps[0]?.id ?? "billing_dispute",
+        stage: "under_review",
+        confidence: 0.7,
+      },
+    })),
+    {
+      ...rt.workspace,
+      ontology: rt.ontology,
+      intervalMs,
+      maxTicks,
+      onTick: (info) => {
+        ctx.write(
+          `tick ${info.tick}: proposals=${info.proposals.length} added=${info.added.length}`,
+        );
+        for (const a of info.added) {
+          ctx.write(`  + ${a.id} [${a.kind}] ${a.nbaRuleId ?? "-"}`);
+        }
+      },
+    },
+  );
+
+  ctx.write(`done ticks=${result.ticks} totalAdded=${result.totalAdded}`);
+  ctx.write(`path: ${result.path.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxProposals(
+  ctx: CxCommandContext,
+  name: string,
+  filter: "open" | "all" = "open",
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const all = await loadProposals(rt.workspace, name);
+  const list =
+    filter === "all" ? all : all.filter((p) => p.status === "open" || p.status === "claimed");
+  if (list.length === 0) {
+    ctx.write(`(no ${filter} proposals for ${name})`);
+    return 0;
+  }
+  for (const p of list) {
+    ctx.write(
+      `${p.id}  [${p.status}/${p.kind}] ${p.targetId}  ${p.nbaRuleId ?? "-"}  ${p.summary}`,
+    );
+  }
+  ctx.write(`path: load_proposals → emit`);
+  return 0;
+}
+
+export async function runCxProposalTransition(
+  ctx: CxCommandContext,
+  name: string,
+  id: string,
+  status: ProposalStatus,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const next = await transitionProposal(rt.workspace, name, id, status);
+  if (!next) {
+    ctx.write(`proposal ${id} not found`);
+    return 1;
+  }
+  ctx.write(`${next.id} → ${next.status}`);
+  ctx.write(`path: load_proposals → transition:${status} → emit`);
   return 0;
 }

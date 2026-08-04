@@ -7,3 +7,6 @@ export * from "./offline-adapters";
 export * from "./offline-artifacts";
 export * from "./orchestrate";
 export * from "./console";
+export * from "./proposals";
+export * from "./watch";
+export * from "./json-extract";

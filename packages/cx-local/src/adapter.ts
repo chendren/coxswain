@@ -112,14 +112,34 @@ export function createLocalAdapter(deps: LocalAdapterDeps): CxTargetAdapter {
         });
       }
 
-      await getJson(deps, "/api/health/ready", "status");
-      const journeys = (await getJson(deps, "/api/journeys", "status")) as { stats?: Record<string, { active?: number }> };
+      // Platform may return HTTP 503 on /ready when optional deps (ollama)
+      // are down while pipeline + persistence are fine — treat as degraded.
+      let platformLevel: "healthy" | "degraded" = "healthy";
+      try {
+        const health = (await getJson(deps, "/api/health/ready", "status")) as {
+          status?: string;
+          checks?: { pipeline?: boolean };
+        };
+        if (health.status && health.status !== "ok" && health.status !== "healthy") {
+          platformLevel = "degraded";
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("HTTP 503")) {
+          platformLevel = "degraded";
+        } else {
+          throw e;
+        }
+      }
+      const journeys = (await getJson(deps, "/api/journeys", "status")) as {
+        stats?: Record<string, { active?: number }>;
+      };
       const active = journeys.stats
         ? Object.values(journeys.stats).reduce((sum, s) => sum + (s.active ?? 0), 0)
         : 0;
       return {
         targetId: "local",
-        level: "healthy",
+        level: platformLevel,
         metrics: [{ name: "activeJourneys", value: active, unit: "count" }],
         checkedAt: deps.now(),
       };

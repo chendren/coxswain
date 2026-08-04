@@ -23,6 +23,7 @@ import {
   createOfflineAwsAdapter,
   createOfflineLocalAdapter,
   defaultCxRoot,
+  extractJsonText,
   type OrchestratorAdapters,
   type CxWorkspaceDeps,
 } from "@cox/cx-ops";
@@ -73,28 +74,73 @@ export async function generateFromModel(
   })) {
     if (event.type === "text_delta") text += event.text;
   }
-  // Strip accidental fences
-  const trimmed = text.trim();
-  if (trimmed.startsWith("```")) {
-    const lines = trimmed.split("\n");
-    const inner = lines.slice(1, lines[lines.length - 1]?.startsWith("```") ? -1 : undefined);
-    return inner.join("\n").trim();
-  }
-  return trimmed;
+  return extractJsonText(text);
 }
 
-export async function probeLocalPlatform(baseUrl: string, timeoutMs = 1500): Promise<boolean> {
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
-    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/health/ready`, {
-      signal: ctrl.signal,
+/**
+ * Deterministic weak-node stubs for live local when no ChatModel is wired.
+ * Returns closed-world journey/KPI JSON the local adapter can parse.
+ */
+export function deterministicLocalGenerate(prompt: string): string {
+  const lower = prompt.toLowerCase();
+  // KPI frame generation (check before journey — prompts mention journey types too)
+  if (
+    lower.includes("kpi") ||
+    lower.includes("metric") ||
+    lower.includes('"metrics"') ||
+    lower.includes("sla_compliance")
+  ) {
+    return JSON.stringify({
+      metrics: [
+        { name: "total_contacts", target: 100, unit: "count" },
+        { name: "sla_compliance_rate", target: 92, unit: "percent" },
+        { name: "avg_wait_time", target: 45, unit: "seconds" },
+        { name: "deflection_rate", target: 35, unit: "percent" },
+      ],
     });
-    clearTimeout(t);
-    return res.ok;
-  } catch {
-    return false;
   }
+  if (
+    lower.includes("journey type") ||
+    lower.includes("best match") ||
+    lower.includes("journeytype")
+  ) {
+    if (prompt.includes("billing_dispute")) {
+      return JSON.stringify({ journeyType: "billing_dispute" });
+    }
+    return JSON.stringify({ journeyType: "billing_dispute" });
+  }
+  // Safe default for unexpected prompts
+  return JSON.stringify({
+    metrics: [{ name: "total_contacts", target: 100, unit: "count" }],
+  });
+}
+
+export async function probeLocalPlatform(baseUrl: string, timeoutMs = 2500): Promise<boolean> {
+  const root = baseUrl.replace(/\/$/, "");
+  // Prefer journey definitions: /api/health/ready returns 503 when ollama is
+  // down even though the CX API and SQLite fabric are usable.
+  const paths = ["/api/journeys/definitions", "/api/health", "/api/health/ready"];
+  for (const p of paths) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      const res = await fetch(`${root}${p}`, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (res.status >= 200 && res.status < 300) return true;
+      // 503 from ready endpoint: still up if body says pipeline ok
+      if (res.status === 503 && p.includes("ready")) {
+        try {
+          const body = (await res.json()) as { checks?: { pipeline?: boolean } };
+          if (body.checks?.pipeline) return true;
+        } catch {
+          /* ignore */
+        }
+      }
+    } catch {
+      // try next path
+    }
+  }
+  return false;
 }
 
 function resolveLocalBaseUrl(opts: CxRuntimeOpts, cfg: CoxConfig): string {
@@ -136,6 +182,12 @@ export async function createCxRuntime(opts: CxRuntimeOpts): Promise<CxRuntime> {
   }
 
   const wantLive = mode === "live" || mode === "hybrid";
+  // Only treat models as live when the configured primary scout provider key exists.
+  // Presence of unrelated keys (e.g. XAI only) still fails anthropic-backed tiers.
+  const anthropicKey = process.env[cfg.providers.anthropic.apiKeyEnv];
+  const modelLive = Boolean(generate) && Boolean(anthropicKey && anthropicKey.length > 0);
+  path.push(modelLive ? "model_keys_present" : "model_keys_absent");
+
   const wiring: Record<CxTargetId, "live" | "offline"> = {
     artifacts: "offline",
     local: "offline",
@@ -145,7 +197,7 @@ export async function createCxRuntime(opts: CxRuntimeOpts): Promise<CxRuntime> {
   // ── artifacts ──────────────────────────────────────────────
   path.push("route:artifacts");
   let artifacts: CxTargetAdapter;
-  if (wantLive && generate) {
+  if (wantLive && modelLive && generate) {
     path.push("wire:artifacts:live");
     wiring.artifacts = "live";
     artifacts = createArtifactsAdapter({
@@ -160,21 +212,28 @@ export async function createCxRuntime(opts: CxRuntimeOpts): Promise<CxRuntime> {
     artifacts = createOfflineArtifactsAdapter({
       cxRoot,
       now,
-      generate,
+      generate: modelLive ? generate : undefined,
       ontology: DEFAULT_ONTOLOGY,
     });
   }
 
   // ── local ──────────────────────────────────────────────────
+  // Live platform does not require an LLM: deterministic graph-bound
+  // generate stubs journey/KPI JSON when tierModel is absent.
   path.push("route:local");
   let local: CxTargetAdapter;
-  if (wantLive && generate && platformHealthy) {
-    path.push("wire:local:live");
+  if (wantLive && platformHealthy) {
+    // Prefer deterministic local generate unless we have working model keys —
+    // live platform bind must not depend on Anthropic for journey match/KPIs.
+    path.push(modelLive ? "wire:local:live" : "wire:local:live_deterministic");
     wiring.local = "live";
+    const localGenerate = modelLive && generate
+      ? generate
+      : async (prompt: string, _tier: Tier) => deterministicLocalGenerate(prompt);
     local = createLocalAdapter({
       cxRoot,
       now,
-      generate,
+      generate: localGenerate,
       baseUrl: localBaseUrl,
       randomFn: Math.random,
     });
@@ -188,10 +247,10 @@ export async function createCxRuntime(opts: CxRuntimeOpts): Promise<CxRuntime> {
     });
   }
 
-  // ── aws (plan-only live when generate present) ─────────────
+  // ── aws (plan-only live when model keys present) ───────────
   path.push("route:aws");
   let aws: CxTargetAdapter;
-  if (wantLive && generate) {
+  if (wantLive && modelLive && generate) {
     path.push("wire:aws:live_plan_only");
     wiring.aws = "live";
     aws = createAwsAdapter({
@@ -204,7 +263,7 @@ export async function createCxRuntime(opts: CxRuntimeOpts): Promise<CxRuntime> {
     aws = createOfflineAwsAdapter({
       cxRoot,
       now,
-      generate,
+      generate: modelLive ? generate : undefined,
       ontology: DEFAULT_ONTOLOGY,
     });
   }
