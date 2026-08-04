@@ -20,6 +20,7 @@ describe("R7.1: command surface", () => {
     const names = program.commands.map((c) => c.name()).sort();
     expect(names).toEqual(
       [
+        "cx",
         "doctor",
         "explain",
         "hook",
