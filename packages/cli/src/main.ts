@@ -21,7 +21,9 @@ import { runDoctor } from "./commands/doctor";
 import {
   runCxApprove,
   runCxBuild,
+  runCxConsole,
   runCxDeploy,
+  runCxDoctor,
   runCxList,
   runCxNba,
   runCxNew,
@@ -38,6 +40,7 @@ import {
 import { loadDeps, type LoadedDeps } from "./deps";
 import { buildSession } from "./wire";
 import { runPrint } from "./print";
+import type { CxRuntimeMode } from "./cx/runtime";
 
 /** Thrown by command handlers to exit with a specific code without a stack trace dump. */
 export class CliExit extends Error {
@@ -318,13 +321,39 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   const cx = program.command("cx").description("CXOS — closed-world build & operate");
   const ontology = cx.command("ontology").description("strong ontology catalog (graph-node AI)");
 
-  function cxCtx(command: Command, pack?: string): CxCommandContext {
+  async function cxCtx(
+    command: Command,
+    pack?: string,
+    extra?: { live?: boolean; mode?: string; localBaseUrl?: string },
+  ): Promise<CxCommandContext> {
     const opts = command.optsWithGlobals<GlobalOpts>();
+    const cwd = resolveCwd(opts);
+    const wantLive = Boolean(extra?.live) || extra?.mode === "live" || extra?.mode === "hybrid";
+    let tierModel: CxCommandContext["tierModel"];
+    if (wantLive) {
+      try {
+        const bus = new EventBus();
+        const cfg = loadConfig(cwd);
+        const deps = await loadDeps(cfg, cwd, bus);
+        tierModel = deps.tierModel;
+      } catch (e) {
+        write(
+          `warning: live models unavailable (${e instanceof Error ? e.message : String(e)}); falling back offline`,
+        );
+      }
+    }
+    const mode: CxRuntimeMode | undefined = extra?.live
+      ? tierModel
+        ? "hybrid"
+        : "offline"
+      : (extra?.mode as CxRuntimeMode | undefined) ?? "offline";
     return {
-      cwd: resolveCwd(opts),
+      cwd,
       write,
       pack,
-      mode: "offline",
+      mode,
+      tierModel,
+      localBaseUrl: extra?.localBaseUrl,
     };
   }
 
@@ -370,10 +399,43 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     throw new CliExit(code);
   });
 
+  type CxCmdOpts = GlobalOpts & {
+    target?: string;
+    live?: boolean;
+    mode?: string;
+    pack?: string;
+    baseUrl?: string;
+  };
+
+  function cxFlags(command: Command): {
+    pack?: string;
+    live?: boolean;
+    mode?: string;
+    localBaseUrl?: string;
+    target?: string;
+  } {
+    const opts = command.optsWithGlobals<CxCmdOpts>();
+    return {
+      pack: opts.pack,
+      live: opts.live,
+      mode: opts.mode,
+      localBaseUrl: opts.baseUrl,
+      target: opts.target,
+    };
+  }
+
+  addGlobalOptions(
+    cx.command("doctor").description("CXOS runtime wiring + ontology health"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxDoctor(await cxCtx(command, f.pack, f)));
+  });
+
   addGlobalOptions(
     cx.command("new <name> [idea...]").description("create a CXOS spec under .cox/cx/"),
   ).action(async (name: string, idea: string[], _o: GlobalOpts, command: Command) => {
-    throw new CliExit(await runCxNew(cxCtx(command), name, idea));
+    const f = cxFlags(command);
+    throw new CliExit(await runCxNew(await cxCtx(command, f.pack, f), name, idea));
   });
 
   addGlobalOptions(
@@ -381,83 +443,114 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       .command("approve <name> [phase]")
       .description("approve requirements|design|tasks (default: next)"),
   ).action(async (name: string, phase: string | undefined, _o: GlobalOpts, command: Command) => {
-    throw new CliExit(await runCxApprove(cxCtx(command), name, phase));
+    const f = cxFlags(command);
+    throw new CliExit(await runCxApprove(await cxCtx(command, f.pack, f), name, phase));
   });
 
   addGlobalOptions(
     cx.command("list").description("list CX specs"),
   ).action(async (_o: GlobalOpts, command: Command) => {
-    throw new CliExit(await runCxList(cxCtx(command)));
+    const f = cxFlags(command);
+    throw new CliExit(await runCxList(await cxCtx(command, f.pack, f)));
   });
 
   addGlobalOptions(
     cx
       .command("status [name]")
       .description("show CX spec phases and deployment health")
-      .option("--target <list>", "artifacts,local,aws or all", "all"),
+      .option("--target <list>", "artifacts,local,aws or all", "all")
+      .option("--live", "prefer live models/platform when available")
+      .option("--mode <mode>", "offline|live|hybrid")
+      .option("--base-url <url>", "local platform base URL"),
   ).action(async (name: string | undefined, _o: GlobalOpts, command: Command) => {
-    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
-    throw new CliExit(await runCxStatus(cxCtx(command), name, opts.target));
+    const f = cxFlags(command);
+    throw new CliExit(await runCxStatus(await cxCtx(command, f.pack, f), name, f.target));
   });
 
   addGlobalOptions(
     cx
       .command("plan <name>")
       .description("show per-target build plans (no side effects)")
-      .option("--target <list>", "artifacts,local,aws or all", "all"),
+      .option("--target <list>", "artifacts,local,aws or all", "all")
+      .option("--live", "prefer live models/platform when available")
+      .option("--mode <mode>", "offline|live|hybrid"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
-    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
-    throw new CliExit(await runCxPlan(cxCtx(command), name, opts.target));
+    const f = cxFlags(command);
+    throw new CliExit(await runCxPlan(await cxCtx(command, f.pack, f), name, f.target));
   });
 
   addGlobalOptions(
     cx
       .command("build <name>")
       .description("plan+build+deploy targets (artifacts first; graph-ordered)")
-      .option("--target <list>", "artifacts,local,aws or all", "all"),
+      .option("--target <list>", "artifacts,local,aws or all", "all")
+      .option("--live", "prefer live models/platform when available")
+      .option("--mode <mode>", "offline|live|hybrid")
+      .option("--base-url <url>", "local platform base URL")
+      .option("--pack <name>", "ontology pack: default|local", "local"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
-    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
-    throw new CliExit(await runCxBuild(cxCtx(command), name, opts.target, true));
+    const f = cxFlags(command);
+    throw new CliExit(await runCxBuild(await cxCtx(command, f.pack, f), name, f.target, true));
   });
 
   addGlobalOptions(
     cx
       .command("deploy <name>")
       .description("build and deploy targets")
-      .option("--target <list>", "artifacts,local,aws or all", "all"),
+      .option("--target <list>", "artifacts,local,aws or all", "all")
+      .option("--live", "prefer live models/platform when available")
+      .option("--mode <mode>", "offline|live|hybrid")
+      .option("--base-url <url>", "local platform base URL"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
-    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
-    throw new CliExit(await runCxDeploy(cxCtx(command), name, opts.target));
+    const f = cxFlags(command);
+    throw new CliExit(await runCxDeploy(await cxCtx(command, f.pack, f), name, f.target));
   });
 
   addGlobalOptions(
     cx
       .command("simulate <name>")
       .description("run traffic simulation on deployed targets")
-      .option("--target <list>", "default: local", "local"),
+      .option("--target <list>", "default: local", "local")
+      .option("--live", "prefer live models/platform when available")
+      .option("--base-url <url>", "local platform base URL"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
-    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
-    throw new CliExit(await runCxSimulate(cxCtx(command), name, opts.target));
+    const f = cxFlags(command);
+    throw new CliExit(await runCxSimulate(await cxCtx(command, f.pack, f), name, f.target));
   });
 
   addGlobalOptions(
     cx
       .command("report <name>")
       .description("cross-target status report + graph NBA")
-      .option("--target <list>", "deployed targets or all", "all"),
+      .option("--target <list>", "deployed targets or all", "all")
+      .option("--live", "prefer live models for scout summary"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
-    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
-    throw new CliExit(await runCxReport(cxCtx(command), name, opts.target));
+    const f = cxFlags(command);
+    throw new CliExit(await runCxReport(await cxCtx(command, f.pack, f), name, f.target));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("console <name>")
+      .description("one console tick: poll status, propose gated NBA (no mutations)")
+      .option("--target <list>", "deployed targets or all", "all")
+      .option("--live", "prefer live platform health")
+      .option("--base-url <url>", "local platform base URL"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxConsole(await cxCtx(command, f.pack, f), name, f.target));
   });
 
   addGlobalOptions(
     cx
       .command("teardown <name>")
       .description("tear down deployments")
-      .option("--target <list>", "artifacts,local,aws or all", "all"),
+      .option("--target <list>", "artifacts,local,aws or all", "all")
+      .option("--live", "use live adapter teardown paths")
+      .option("--base-url <url>", "local platform base URL"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
-    const opts = command.optsWithGlobals<GlobalOpts & { target?: string }>();
-    throw new CliExit(await runCxTeardown(cxCtx(command), name, opts.target));
+    const f = cxFlags(command);
+    throw new CliExit(await runCxTeardown(await cxCtx(command, f.pack, f), name, f.target));
   });
 
   return program;

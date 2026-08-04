@@ -296,22 +296,23 @@ offline commands verified live.
 **Next (M3):** live-API smoke — `cox explain`, a `--print` run, one full
 spec flow against `examples/demo-project` — then `v0.1.0`.
 
-**CXOS (working offline loop):** closed-world ontology + strong graph, offline
-adapters for `artifacts` / `local` / `aws`, ops orchestration, and CLI:
+**CXOS (working loop):** closed-world ontology + strong graph, offline/live
+hybrid composition, ops orchestration, console proposals, CLI:
 
 ```bash
+pnpm cox cx doctor
 pnpm cox cx new billing-dispute "reduce dispute handle time"
 pnpm cox cx approve billing-dispute requirements
-pnpm cox cx build billing-dispute --target all
+pnpm cox cx build billing-dispute --target all          # offline default
+pnpm cox cx build billing-dispute --live --target all   # hybrid if platform/models up
 pnpm cox cx status billing-dispute
 pnpm cox cx simulate billing-dispute --target local
 pnpm cox cx report billing-dispute
+pnpm cox cx console billing-dispute                     # gated NBA proposals
 pnpm cox cx nba journey=churn_prevention stage=cancel_requested confidence=0.9
 ```
 
-See `examples/cx-demo/README.md` and design docs under
-`docs/superpowers/specs/2026-07-22-cxos-design.md` and
-`2026-08-03-cxos-ontology-design.md`. Live platform/AWS mutation still plan-only offline.
+See `examples/cx-demo/README.md`. AWS remains plan-only (no live mutation).
 
 **v2 candidates:** MCP servers (the tool registry is shaped for it),
 watch-mode daemon for agent hooks, Grok-style parallel subagent fan-out (the

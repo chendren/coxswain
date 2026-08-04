@@ -36,9 +36,18 @@ importers:
       '@cox/core':
         specifier: workspace:*
         version: link:../core
+      '@cox/cx-artifacts':
+        specifier: workspace:*
+        version: link:../cx-artifacts
+      '@cox/cx-aws':
+        specifier: workspace:*
+        version: link:../cx-aws
       '@cox/cx-core':
         specifier: workspace:*
         version: link:../cx-core
+      '@cox/cx-local':
+        specifier: workspace:*
+        version: link:../cx-local
       '@cox/cx-ops':
         specifier: workspace:*
         version: link:../cx-ops

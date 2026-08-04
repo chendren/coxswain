@@ -1,6 +1,7 @@
 /**
  * `cox cx …` — full CXOS command surface (graph-node orchestration).
  */
+import type { ChatModel, Tier } from "@cox/core";
 import {
   DEFAULT_ONTOLOGY,
   LOCAL_PLATFORM_ONTOLOGY,
@@ -20,6 +21,7 @@ import {
   orchestrateStatus,
   parseNbaContext,
   parseTargets,
+  runConsoleTick,
   saveCxWorkspace,
   seedDesignFromIdea,
   showOntology,
@@ -28,8 +30,8 @@ import {
   type OntologyPack,
   type CxPhase,
 } from "@cox/cx-ops";
-import type { CxRuntime } from "../cx/runtime";
-import { createCxRuntime } from "../cx/runtime";
+import type { CxRuntime, CxRuntimeMode } from "../cx/runtime";
+import { createCxRuntime, createOfflineCxRuntime } from "../cx/runtime";
 
 export interface CxWrite {
   write: (line: string) => void;
@@ -38,35 +40,41 @@ export interface CxWrite {
 export interface CxCommandContext {
   cwd: string;
   write: (line: string) => void;
-  /** Optional live model access. */
-  tierModel?: CxRuntime["generate"] extends undefined
-    ? undefined
-    : import("@cox/core").ChatModel extends never
-      ? never
-      : (tier: import("@cox/core").Tier) => import("@cox/core").ChatModel;
+  tierModel?: (tier: Tier) => ChatModel;
   pack?: string;
-  mode?: "offline" | "live";
+  mode?: CxRuntimeMode;
+  localBaseUrl?: string;
+  skipProbe?: boolean;
 }
 
 function packOf(raw?: string): OntologyPack {
-  if (!raw || raw === "default") return "default";
-  if (raw === "local") return "local";
+  if (!raw || raw === "default" || raw === "local") {
+    return (raw as OntologyPack) || "local";
+  }
   throw new Error(`unknown pack "${raw}" (default|local)`);
 }
 
-function runtimeFrom(ctx: CxCommandContext): CxRuntime {
+async function runtimeFrom(ctx: CxCommandContext): Promise<CxRuntime> {
+  const mode = ctx.mode ?? (ctx.tierModel ? "hybrid" : "offline");
+  if (mode === "offline" && !ctx.tierModel) {
+    return createOfflineCxRuntime({
+      cwd: ctx.cwd,
+      pack: packOf(ctx.pack),
+      localBaseUrl: ctx.localBaseUrl,
+    });
+  }
   return createCxRuntime({
     cwd: ctx.cwd,
-    mode: ctx.mode ?? "offline",
+    mode,
     pack: packOf(ctx.pack),
-    tierModel: ctx.tierModel as
-      | ((tier: import("@cox/core").Tier) => import("@cox/core").ChatModel)
-      | undefined,
+    tierModel: ctx.tierModel,
+    localBaseUrl: ctx.localBaseUrl,
+    skipProbe: ctx.skipProbe,
   });
 }
 
 export function runCxOntologyShow(deps: CxWrite, packRaw?: string): void {
-  const pack = packOf(packRaw);
+  const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "default");
   const show = showOntology(pack);
   deps.write(`CXOS ontology  pack=${show.pack}  version=${show.version}`);
   deps.write(`source: ${show.source}`);
@@ -79,7 +87,7 @@ export function runCxOntologyShow(deps: CxWrite, packRaw?: string): void {
 }
 
 export function runCxOntologyValidate(deps: CxWrite, packRaw?: string): number {
-  const pack = packOf(packRaw);
+  const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "default");
   const result = validateOntologyPack(pack);
   deps.write(`CXOS ontology validate  pack=${result.pack}  ok=${result.ok}`);
   deps.write(
@@ -98,7 +106,7 @@ export function runCxOntologyValidate(deps: CxWrite, packRaw?: string): number {
 }
 
 export function runCxOntologyGraph(deps: CxWrite, packRaw?: string): void {
-  const pack = packOf(packRaw);
+  const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "default");
   const g = showStrongGraph(pack);
   deps.write(`CXOS strong graph  pack=${g.pack}`);
   deps.write(`nodes=${g.stats.nodes} edges=${g.stats.edges} hubs=${g.stats.hubs}`);
@@ -114,7 +122,7 @@ export function runCxOntologyGraph(deps: CxWrite, packRaw?: string): void {
 }
 
 export function runCxNba(deps: CxWrite, pairs: string[], packRaw?: string): number {
-  const pack = packOf(packRaw);
+  const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "default");
   const context = parseNbaContext(pairs);
   if (Object.keys(context).length === 0) {
     deps.write("usage: cox cx nba journey=… stage=… [confidence=0.9] [field=value …]");
@@ -147,12 +155,32 @@ export function runCxNba(deps: CxWrite, pairs: string[], packRaw?: string): numb
   return 0;
 }
 
+function printWiring(ctx: CxCommandContext, rt: CxRuntime): void {
+  ctx.write(
+    `runtime mode=${rt.mode} platform=${rt.platformHealthy ? "up" : "down"} url=${rt.localBaseUrl ?? "-"}`,
+  );
+  ctx.write(
+    `wiring artifacts=${rt.wiring.artifacts} local=${rt.wiring.local} aws=${rt.wiring.aws}`,
+  );
+  ctx.write(`compose path: ${rt.path.join(" → ")}`);
+}
+
+export async function runCxDoctor(ctx: CxCommandContext): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  printWiring(ctx, rt);
+  const v = validateOntologyPack(ctx.pack === "default" ? "default" : "local");
+  ctx.write(`ontology ok=${v.ok} nodes=${v.graph.nodes} edges=${v.graph.edges}`);
+  const specs = await listCxSpecs(rt.workspace);
+  ctx.write(`specs: ${specs.length ? specs.join(", ") : "(none)"}`);
+  return v.ok ? 0 : 1;
+}
+
 export async function runCxNew(
   ctx: CxCommandContext,
   name: string,
   ideaParts: string[],
 ): Promise<number> {
-  const rt = runtimeFrom(ctx);
+  const rt = await runtimeFrom(ctx);
   const idea = ideaParts.join(" ").trim() || name;
   const existing = await loadCxWorkspace(rt.workspace, name);
   if (existing) {
@@ -174,7 +202,7 @@ export async function runCxApprove(
   name: string,
   phase?: string,
 ): Promise<number> {
-  const rt = runtimeFrom(ctx);
+  const rt = await runtimeFrom(ctx);
   const p = phase as CxPhase | undefined;
   try {
     const record = await approveCxPhase(rt.workspace, name, p);
@@ -189,7 +217,7 @@ export async function runCxApprove(
 }
 
 export async function runCxList(ctx: CxCommandContext): Promise<number> {
-  const rt = runtimeFrom(ctx);
+  const rt = await runtimeFrom(ctx);
   const names = await listCxSpecs(rt.workspace);
   if (names.length === 0) {
     ctx.write("(no CX specs under .cox/cx/)");
@@ -208,7 +236,7 @@ export async function runCxStatus(
   name?: string,
   targetsRaw?: string,
 ): Promise<number> {
-  const rt = runtimeFrom(ctx);
+  const rt = await runtimeFrom(ctx);
   if (!name) {
     return runCxList(ctx);
   }
@@ -262,7 +290,9 @@ export async function runCxBuild(
   targetsRaw?: string,
   deploy = true,
 ): Promise<number> {
-  const rt = runtimeFrom(ctx);
+  const rt = await runtimeFrom(ctx);
+  printWiring(ctx, rt);
+
   let record = await loadCxWorkspace(rt.workspace, name);
   if (!record) {
     ctx.write(`CX spec "${name}" not found — run cox cx new ${name} "<idea>"`);
@@ -273,7 +303,6 @@ export async function runCxBuild(
     return 1;
   }
 
-  // Seed design if missing so multi-target offline build can proceed after artifacts
   if (!record.spec.design?.journeyMaps?.length) {
     record = {
       ...record,
@@ -304,7 +333,7 @@ export async function runCxBuild(
     if (t.error) ctx.write(`  ${t.targetId}: FAIL ${t.error}`);
     else {
       ctx.write(
-        `  ${t.targetId}: ok steps=${t.planSteps ?? 0} artifacts=${t.artifacts?.length ?? 0} deployed=${Boolean(t.deployment)}`,
+        `  ${t.targetId}: ok steps=${t.planSteps ?? 0} artifacts=${t.artifacts?.length ?? 0} deployed=${Boolean(t.deployment)} wiring=${rt.wiring[t.targetId]}`,
       );
     }
   }
@@ -318,7 +347,6 @@ export async function runCxDeploy(
   name: string,
   targetsRaw?: string,
 ): Promise<number> {
-  // Deploy-only reuses build with deploy true; build already deploys by default.
   return runCxBuild(ctx, name, targetsRaw, true);
 }
 
@@ -327,7 +355,7 @@ export async function runCxSimulate(
   name: string,
   targetsRaw?: string,
 ): Promise<number> {
-  const rt = runtimeFrom(ctx);
+  const rt = await runtimeFrom(ctx);
   const record = await loadCxWorkspace(rt.workspace, name);
   if (!record) {
     ctx.write(`CX spec "${name}" not found`);
@@ -356,7 +384,7 @@ export async function runCxSimulate(
     if (t.error) ctx.write(`  ${t.targetId}: FAIL ${t.error}`);
     else {
       const outcomes = (t.sim?.outcomes ?? [])
-        .map((o) => `${o.kpiName}:${o.achieved.toFixed?.(1) ?? o.achieved}/${o.target}`)
+        .map((o) => `${o.kpiName}:${typeof o.achieved === "number" ? o.achieved.toFixed(1) : o.achieved}/${o.target}`)
         .join(" ");
       ctx.write(`  ${t.targetId}: ${outcomes || "(no outcomes)"}`);
     }
@@ -370,7 +398,7 @@ export async function runCxReport(
   name: string,
   targetsRaw?: string,
 ): Promise<number> {
-  const rt = runtimeFrom(ctx);
+  const rt = await runtimeFrom(ctx);
   const record = await loadCxWorkspace(rt.workspace, name);
   if (!record) {
     ctx.write(`CX spec "${name}" not found`);
@@ -428,7 +456,7 @@ export async function runCxTeardown(
   name: string,
   targetsRaw?: string,
 ): Promise<number> {
-  const rt = runtimeFrom(ctx);
+  const rt = await runtimeFrom(ctx);
   const depsFile = await loadDeployments(rt.workspace, name);
   const targets = parseTargets(targetsRaw ?? "all").filter((t) => depsFile.deployments[t]);
   let ok = true;
@@ -454,7 +482,7 @@ export async function runCxPlan(
   name: string,
   targetsRaw?: string,
 ): Promise<number> {
-  const rt = runtimeFrom(ctx);
+  const rt = await runtimeFrom(ctx);
   let record = await loadCxWorkspace(rt.workspace, name);
   if (!record) {
     ctx.write(`CX spec "${name}" not found`);
@@ -475,7 +503,7 @@ export async function runCxPlan(
     }
     try {
       const plan = await adapter.plan(record.spec);
-      ctx.write(`  ${t}: ${plan.steps.length} steps`);
+      ctx.write(`  ${t}: ${plan.steps.length} steps  wiring=${rt.wiring[t]}`);
       for (const s of plan.steps) {
         ctx.write(`    - ${s.id} → ${s.producesArtifactKind}`);
       }
@@ -484,5 +512,59 @@ export async function runCxPlan(
     }
   }
   ctx.write(`path: plan_all → emit`);
+  return 0;
+}
+
+/**
+ * Console tick: poll deployments, intent-route, propose NBA (no mutations).
+ */
+export async function runCxConsole(
+  ctx: CxCommandContext,
+  name: string,
+  targetsRaw?: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  printWiring(ctx, rt);
+  const record = await loadCxWorkspace(rt.workspace, name);
+  if (!record) {
+    ctx.write(`CX spec "${name}" not found`);
+    return 1;
+  }
+  const depsFile = await loadDeployments(rt.workspace, name);
+  const deployedKeys = Object.keys(depsFile.deployments) as import("@cox/cx-core").CxTargetId[];
+  if (deployedKeys.length === 0) {
+    ctx.write("no deployments — run cox cx build first");
+    return 1;
+  }
+  const targets = parseTargets(
+    targetsRaw ?? deployedKeys.join(","),
+  ).filter((t) => depsFile.deployments[t]);
+
+  const tick = await runConsoleTick(
+    targets.map((targetId) => ({
+      targetId,
+      adapter: rt.adapters[targetId]!,
+      dep: depsFile.deployments[targetId]!,
+      nbaContext: {
+        journey: record.spec.design?.journeyMaps[0]?.id ?? "billing_dispute",
+        stage: "under_review",
+        confidence: 0.7,
+      },
+    })),
+    { ontology: rt.ontology },
+  );
+
+  ctx.write(`console tick @ ${tick.polledAt}`);
+  for (const p of tick.proposals) {
+    ctx.write(`  [${p.kind}] ${p.summary}`);
+    if (p.nba?.primary) {
+      ctx.write(
+        `    nba: ${p.nba.primary.id} → ${p.nba.primary.action} (${p.nba.primary.urgency})`,
+      );
+    }
+    ctx.write(`    path: ${p.path.join(" → ")}`);
+  }
+  ctx.write(`path: ${tick.path.join(" → ")}`);
+  ctx.write("(proposals are human-gated — no mutations applied)");
   return 0;
 }
