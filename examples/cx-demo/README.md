@@ -43,18 +43,22 @@ Artifacts land under `.cox/cx/billing-dispute/`.
 ## Hybrid / live (platform on :3143)
 
 ```bash
-# Start Nexus CX platform (separate repo)
+# 1) Ollama — required for /api/health/ready → status ready + ollama:true
+ollama serve &
+ollama pull nomic-embed-text   # embeddings check (required for ready)
+ollama pull nemotron-mini      # optional LLM enrichment
+
+# 2) Nexus CX platform
 cd ~/Projects/cx-platform/omnichannel-cx-platform && npm start
 
-# Hybrid: live local (deterministic bind) + offline artifacts/aws without API keys
+# 3) Verify ready (HTTP 200, ollama:true)
+curl -s http://127.0.0.1:3143/api/health/ready
+
+# 4) Live CXOS
 pnpm cox cx doctor --live --base-url http://127.0.0.1:3143
 pnpm cox cx build billing-dispute --live --base-url http://127.0.0.1:3143 --target all
 pnpm cox cx status billing-dispute --live --base-url http://127.0.0.1:3143
-pnpm cox cx simulate billing-dispute --live --target local
-pnpm cox cx console billing-dispute --live
-pnpm cox cx watch billing-dispute --ticks 3 --interval 2000 --live
-pnpm cox cx proposals billing-dispute
-pnpm cox cx proposal billing-dispute prop_… resolved
+# expect: local: healthy
 ```
 
 `cox.config.json` (optional):
