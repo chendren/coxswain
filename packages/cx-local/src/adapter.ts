@@ -120,7 +120,9 @@ export function createLocalAdapter(deps: LocalAdapterDeps): CxTargetAdapter {
           status?: string;
           checks?: { pipeline?: boolean };
         };
-        if (health.status && health.status !== "ok" && health.status !== "healthy") {
+        // Platform ready probe returns status "ready" when all checks pass
+        const okStatuses = new Set(["ok", "healthy", "ready"]);
+        if (health.status && !okStatuses.has(health.status)) {
           platformLevel = "degraded";
         }
       } catch (e) {
