@@ -41,6 +41,9 @@ import {
   runCxDaemonStart,
   runCxDaemonStop,
   runCxDaemonStatus,
+  runCxApply,
+  runCxTasks,
+  runCxTaskTransition,
   type CxCommandContext,
 } from "./commands/cx";
 import { loadDeps, type LoadedDeps } from "./deps";
@@ -636,6 +639,48 @@ export function createProgram(io: CliIo = REAL_IO): Command {
         name,
         id,
         status as import("@cox/cx-ops").ProposalStatus,
+      ),
+    );
+  });
+
+  addGlobalOptions(
+    cx
+      .command("apply <name> <proposalId>")
+      .description("apply proposal → CX task + remediation note (human-gated)"),
+  ).action(async (name: string, proposalId: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxApply(await cxCtx(command, f.pack, f), name, proposalId));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("tasks <name>")
+      .description("list CX tasks from applied proposals")
+      .option("--all", "include done/cancelled"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { all?: boolean }>();
+    throw new CliExit(
+      await runCxTasks(await cxCtx(command, f.pack, f), name, opts.all ? "all" : "open"),
+    );
+  });
+
+  addGlobalOptions(
+    cx
+      .command("task <name> <id> <status>")
+      .description("transition task: pending|in_progress|done|cancelled"),
+  ).action(async (name: string, id: string, status: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const allowed = ["pending", "in_progress", "done", "cancelled"] as const;
+    if (!(allowed as readonly string[]).includes(status)) {
+      throw new CliExit(2, `status must be one of ${allowed.join("|")}`);
+    }
+    throw new CliExit(
+      await runCxTaskTransition(
+        await cxCtx(command, f.pack, f),
+        name,
+        id,
+        status as (typeof allowed)[number],
       ),
     );
   });

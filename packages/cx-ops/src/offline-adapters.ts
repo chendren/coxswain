@@ -30,6 +30,7 @@ import {
 } from "@cox/cx-core";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { buildCfnSkeleton } from "./cfn-skeleton";
 
 export interface OfflineDiskDeps {
   cxRoot: string;
@@ -301,6 +302,11 @@ export function createOfflineAwsAdapter(deps: OfflineDiskDeps): CxTargetAdapter 
       }
       const { journeyMap } = JSON.parse(step.description) as { journeyMap: JourneyMap };
       const journeyType = matchJourneyOffline(journeyMap, ontology);
+      const cfn = buildCfnSkeleton({
+        specName: plan.specName,
+        journeyType,
+        journeyMap,
+      });
 
       const architectureDoc = {
         kind: "architectureDoc" as const,
@@ -310,20 +316,8 @@ export function createOfflineAwsAdapter(deps: OfflineDiskDeps): CxTargetAdapter 
           phase: "design" as const,
           targetId: "aws" as const,
         },
-        title: `AWS CX stack for ${journeyType}`,
-        markdown: [
-          `# AWS CX plan-only architecture`,
-          ``,
-          `Journey: **${journeyType}** (strong-graph bind)`,
-          ``,
-          `## Resources (plan-only, no live mutation)`,
-          `- Amazon Connect contact flow skeleton`,
-          `- Lex intent bot mapped to ontology intents`,
-          `- Bedrock agent definition (offline)`,
-          ``,
-          `## Stages`,
-          ...journeyMap.stages.map((s) => `- ${s.id}: ${s.name}`),
-        ].join("\n"),
+        title: cfn.title,
+        markdown: cfn.markdown,
       };
 
       const agentDefinition: AgentDefinition = {
@@ -331,10 +325,11 @@ export function createOfflineAwsAdapter(deps: OfflineDiskDeps): CxTargetAdapter 
         id: "agentDefinition",
         provenance: { specName: plan.specName, phase: "design", targetId: "aws" },
         name: `${journeyType}-bedrock-agent`,
-        systemPrompt: `AWS offline agent for ${journeyType}. Use closed ontology only.`,
+        systemPrompt: `AWS plan-only agent for ${journeyType}. Closed ontology only. Human applies CFN template.yaml.`,
         tools: ["connect-transfer", "lex-fulfill", "knowledge-query"],
       };
 
+      // Stash yaml on architectureDoc via side channel for deploy() — re-derive from markdown if needed
       return [architectureDoc, agentDefinition];
     },
 
@@ -354,14 +349,58 @@ export function createOfflineAwsAdapter(deps: OfflineDiskDeps): CxTargetAdapter 
         await writeJson(dir, `${a.id}.json`, a);
         resources.push({ id: a.id, kind: "offline-aws-file", createdAt: deps.now() });
       }
+
+      // Always write applyable template.yaml from architectureDoc or skeleton
+      const arch = artifacts.find((a) => a.kind === "architectureDoc");
+      let yamlBody = "";
+      if (arch && arch.kind === "architectureDoc") {
+        const fence = "```yaml";
+        const start = arch.markdown.indexOf(fence);
+        if (start >= 0) {
+          const after = arch.markdown.slice(start + fence.length);
+          const end = after.indexOf("```");
+          yamlBody = (end >= 0 ? after.slice(0, end) : after).trim();
+        }
+      }
+      if (!yamlBody) {
+        yamlBody = buildCfnSkeleton({
+          specName,
+          journeyType: "billing_dispute",
+          journeyMap: {
+            kind: "journeyMap",
+            id: "billing_dispute",
+            name: "Billing Dispute",
+            provenance: { specName, phase: "design", targetId: "aws" },
+            stages: [{ id: "initiated", name: "Initiated", description: "", touchpoints: [] }],
+          },
+        }).yaml;
+      }
+      await writeFile(join(dir, "template.yaml"), yamlBody.endsWith("\n") ? yamlBody : `${yamlBody}\n`, "utf8");
+      resources.push({ id: "template.yaml", kind: "cloudformation-template", createdAt: deps.now() });
+
+      const applyHint = [
+        `# Apply this stack with your own AWS credentials (plan-only from Coxswain)`,
+        `aws cloudformation deploy \\`,
+        `  --template-file template.yaml \\`,
+        `  --stack-name cxos-${specName} \\`,
+        `  --capabilities CAPABILITY_IAM`,
+        ``,
+      ].join("\n");
+      await writeFile(join(dir, "APPLY.md"), applyHint, "utf8");
+      resources.push({ id: "APPLY.md", kind: "apply-instructions", createdAt: deps.now() });
+
       return { targetId: "aws", specName, deployedAt: deps.now(), resources };
     },
 
     async status(dep: CxDeployment): Promise<CxHealth> {
       let missing = 0;
       for (const r of dep.resources) {
+        const file =
+          r.id.endsWith(".yaml") || r.id.endsWith(".md") || r.id.includes(".")
+            ? join(root(dep.specName), r.id)
+            : join(root(dep.specName), `${r.id}.json`);
         try {
-          await readFile(join(root(dep.specName), `${r.id}.json`), "utf8");
+          await readFile(file, "utf8");
         } catch {
           missing++;
         }

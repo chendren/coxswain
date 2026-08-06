@@ -11,3 +11,6 @@ export * from "./proposals";
 export * from "./watch";
 export * from "./json-extract";
 export * from "./daemon";
+export * from "./stack-health";
+export * from "./cfn-skeleton";
+export * from "./tasks";

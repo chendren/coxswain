@@ -9,18 +9,22 @@ import {
 } from "@cox/cx-core";
 import {
   appendProposalsFromTick,
+  applyProposal,
   approveCxPhase,
   clearDeployment,
   createCxSpec,
   isDaemonRunning,
   listCxSpecs,
+  loadCxTasks,
   loadCxWorkspace,
   loadDeployments,
   loadProposals,
   opsRecommendNba,
+  probeStackHealth,
   readDaemonMeta,
   spawnWatchDaemon,
   stopDaemon,
+  transitionTask,
   orchestrateBuild,
   orchestrateReport,
   orchestrateSimulate,
@@ -179,6 +183,28 @@ export async function runCxDoctor(ctx: CxCommandContext): Promise<number> {
   printWiring(ctx, rt);
   const v = validateOntologyPack(ctx.pack === "default" ? "default" : "local");
   ctx.write(`ontology ok=${v.ok} nodes=${v.graph.nodes} edges=${v.graph.edges}`);
+
+  const stack = await probeStackHealth({
+    platformBaseUrl: ctx.localBaseUrl ?? rt.localBaseUrl,
+  });
+  ctx.write(
+    `ollama: ${stack.ollama.ok ? "up" : "down"} embed=${stack.ollama.hasEmbed} llm=${stack.ollama.hasLlm} models=${stack.ollama.models.join(",") || "-"}`,
+  );
+  if (stack.ollama.error) ctx.write(`  ollama error: ${stack.ollama.error}`);
+  ctx.write(
+    `platform: ${stack.platform.ok ? "ready" : "not-ready"} http=${stack.platform.httpStatus} status=${stack.platform.status ?? "-"}`,
+  );
+  if (stack.platform.checks) {
+    ctx.write(
+      `  checks: ${Object.entries(stack.platform.checks)
+        .map(([k, val]) => `${k}=${val}`)
+        .join(" ")}`,
+    );
+  }
+  if (stack.platform.error) ctx.write(`  platform error: ${stack.platform.error}`);
+  ctx.write(`stack ready for live local: ${stack.ready}`);
+  ctx.write(`stack path: ${stack.path.join(" → ")}`);
+
   const specs = await listCxSpecs(rt.workspace);
   ctx.write(`specs: ${specs.length ? specs.join(", ") : "(none)"}`);
   return v.ok ? 0 : 1;
@@ -755,4 +781,68 @@ export async function runCxDaemonStatus(ctx: CxCommandContext, name: string): Pr
   }
   ctx.write(`path: daemon_status → emit`);
   return running ? 0 : 1;
+}
+
+export async function runCxApply(
+  ctx: CxCommandContext,
+  name: string,
+  proposalId: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const proposals = await loadProposals(rt.workspace, name);
+  const prop = proposals.find((p) => p.id === proposalId);
+  if (!prop) {
+    ctx.write(`proposal ${proposalId} not found`);
+    return 1;
+  }
+  if (prop.status === "resolved" || prop.status === "dismissed") {
+    ctx.write(`proposal ${proposalId} is ${prop.status} — nothing to apply`);
+    return 1;
+  }
+  const result = await applyProposal(rt.workspace, name, prop);
+  ctx.write(`applied ${proposalId} → task ${result.task.id}`);
+  ctx.write(`remediation: ${result.remediationPath}`);
+  ctx.write(`path: ${result.path.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxTasks(
+  ctx: CxCommandContext,
+  name: string,
+  filter: "open" | "all" = "open",
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const tasks = await loadCxTasks(rt.workspace, name);
+  const list =
+    filter === "all"
+      ? tasks
+      : tasks.filter((t) => t.status === "pending" || t.status === "in_progress");
+  if (list.length === 0) {
+    ctx.write(`(no ${filter} tasks for ${name})`);
+    return 0;
+  }
+  for (const t of list) {
+    ctx.write(
+      `${t.id}  [${t.status}] ${t.targetId ?? "-"}  ${t.nbaAction ?? "-"}  ${t.title}`,
+    );
+  }
+  ctx.write(`path: load_tasks → emit`);
+  return 0;
+}
+
+export async function runCxTaskTransition(
+  ctx: CxCommandContext,
+  name: string,
+  taskId: string,
+  status: "pending" | "in_progress" | "done" | "cancelled",
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const next = await transitionTask(rt.workspace, name, taskId, status);
+  if (!next) {
+    ctx.write(`task ${taskId} not found`);
+    return 1;
+  }
+  ctx.write(`${next.id} → ${next.status}`);
+  ctx.write(`path: load_tasks → transition:${status} → emit`);
+  return 0;
 }

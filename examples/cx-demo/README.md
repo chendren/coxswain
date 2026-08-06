@@ -3,6 +3,13 @@
 End-to-end Customer Experience Operating System flow using **strong-graph**
 adapters. Default is fully offline (no live AWS or platform required).
 
+## Stack up (Ollama + platform)
+
+```bash
+./scripts/cx-stack-up.sh
+# then: pnpm cox cx doctor --live
+```
+
 ## Golden path (script)
 
 ```bash
@@ -12,6 +19,18 @@ adapters. Default is fully offline (no live AWS or platform required).
 # live platform + OpenAI/XAI weak generate when keys present
 ./examples/cx-demo/golden-path.sh --live
 ```
+
+## Operate loop (proposals → tasks)
+
+```bash
+pnpm cox cx console <spec> --live          # poll + persist proposals
+pnpm cox cx apply <spec> <proposalId>      # → task + remediation markdown
+pnpm cox cx tasks <spec>
+pnpm cox cx task <spec> <taskId> done
+pnpm cox cx proposal <spec> <proposalId> resolved
+```
+
+AWS plan-only writes `template.yaml` + `APPLY.md` under `.cox/cx/<spec>/aws/`.
 
 ## Offline (always works)
 
