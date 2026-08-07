@@ -44,6 +44,8 @@ import {
   type CxPhase,
   type ProposalStatus,
 } from "@cox/cx-ops";
+import { cp, mkdir, access, readFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import type { CxRuntime, CxRuntimeMode } from "../cx/runtime";
 import { createCxRuntime, createOfflineCxRuntime } from "../cx/runtime";
 
@@ -59,6 +61,8 @@ export interface CxCommandContext {
   mode?: CxRuntimeMode;
   localBaseUrl?: string;
   skipProbe?: boolean;
+  /** Explicit --live (prefer live wiring / stack readiness checks). */
+  live?: boolean;
   /** Prefer hybrid without an explicit --live (also CX_AUTO_LIVE=1). */
   autoLive?: boolean;
 }
@@ -218,7 +222,20 @@ export async function runCxDoctor(ctx: CxCommandContext): Promise<number> {
 
   const specs = await listCxSpecs(rt.workspace);
   ctx.write(`specs: ${specs.length ? specs.join(", ") : "(none)"}`);
-  return v.ok ? 0 : 1;
+
+  // Full doctor output always printed above. Offline: exit on ontology only.
+  // Live / hybrid / auto-live: also require stack.ready.
+  if (!v.ok) return 1;
+  const wantsLiveStack =
+    Boolean(ctx.live) ||
+    Boolean(ctx.autoLive) ||
+    process.env.CX_AUTO_LIVE === "1" ||
+    ctx.mode === "live" ||
+    ctx.mode === "hybrid" ||
+    rt.mode === "live" ||
+    rt.mode === "hybrid";
+  if (wantsLiveStack && !stack.ready) return 1;
+  return 0;
 }
 
 export async function runCxNew(
@@ -326,6 +343,16 @@ export async function runCxStatus(
       ctx.write(`  ${t.targetId}: ${t.health?.level}  ${m}`);
     }
   }
+  const summary = summarizeDeployments(
+    result.targets.map((t) => ({
+      targetId: t.targetId,
+      level: t.health?.level,
+      error: t.error,
+    })),
+  );
+  ctx.write(
+    `summary score: ${summary.score} (healthy=${summary.healthy} degraded=${summary.degraded} down=${summary.down} errors=${summary.errors})`,
+  );
   ctx.write(`path: ${result.path.join(" → ")}`);
   return result.ok ? 0 : 1;
 }
@@ -1032,4 +1059,67 @@ export async function runCxTaskTransition(
   ctx.write(`${next.id} → ${next.status}`);
   ctx.write(`path: load_tasks → transition:${status} → emit`);
   return 0;
+}
+
+const EXPORT_AWS_FILES = [
+  "template.yaml",
+  "APPLY.md",
+  "architectureDoc.json",
+] as const;
+
+/**
+ * Copy plan-only AWS artifacts out of the workspace for human CFN apply.
+ * Copies template.yaml, APPLY.md, and architectureDoc.json when present.
+ * Default outDir: ./cx-export/<name>-aws under cwd. Never mutates AWS.
+ */
+export async function runCxExportAws(
+  ctx: CxCommandContext,
+  name: string,
+  outDirRaw?: string,
+): Promise<number> {
+  if (!name || name.includes("/") || name.includes("..") || name.includes("\\")) {
+    ctx.write(`invalid CX spec name "${name}"`);
+    return 2;
+  }
+  const rt = await runtimeFrom(ctx);
+  const awsDir = join(rt.workspace.cxRoot, name, "aws");
+  const templateSrc = join(awsDir, "template.yaml");
+  try {
+    await access(templateSrc);
+  } catch {
+    ctx.write(
+      `aws artifacts not found for "${name}" (run: cox cx build ${name} --target aws)`,
+    );
+    return 1;
+  }
+
+  const outDir = resolve(ctx.cwd, outDirRaw?.trim() || join("cx-export", `${name}-aws`));
+  await mkdir(outDir, { recursive: true });
+
+  const copied: string[] = [];
+  for (const file of EXPORT_AWS_FILES) {
+    const src = join(awsDir, file);
+    try {
+      await access(src);
+      await cp(src, join(outDir, file));
+      copied.push(file);
+    } catch {
+      // APPLY.md / architectureDoc.json may be absent; template.yaml is required above
+    }
+  }
+  if (!copied.includes("template.yaml")) {
+    ctx.write(`no template.yaml under ${awsDir}`);
+    return 1;
+  }
+
+  const yaml = await readFile(join(outDir, "template.yaml"), "utf8");
+  const templateOk = yaml.includes("AWSTemplateFormatVersion");
+
+  ctx.write(`exported AWS plan-only for "${name}"`);
+  ctx.write(`out: ${outDir}`);
+  ctx.write(`files: ${copied.join(", ")}`);
+  ctx.write(`template AWSTemplateFormatVersion: ${templateOk ? "ok" : "missing"}`);
+  ctx.write(`path: load_aws_dir → copy → emit`);
+  ctx.write(`next: review APPLY.md then aws cloudformation deploy (human credentials)`);
+  return templateOk ? 0 : 1;
 }

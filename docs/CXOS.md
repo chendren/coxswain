@@ -300,6 +300,28 @@ writes plists to `~/Library/LaunchAgents`, and `launchctl load`s them.
 Still pull models once (`nomic-embed-text`, optional `nemotron-mini`) via
 `cx-stack-up.sh` or `ollama pull` before expecting `/api/health/ready` 200.
 
+### Operator package scripts
+
+From monorepo root:
+
+| Script | Action |
+|---|---|
+| `pnpm cx:doctor` | CXOS wiring + ontology (+ exit 1 if `--live` and stack not ready) |
+| `pnpm cx:stack-up` | One-shot Ollama + platform |
+| `pnpm cx:run -- <name> "idea"` | One-shot golden path |
+| `pnpm cx:golden` / `cx:golden:live` | Demo script using `cx run` + export-aws |
+
+### Export AWS (plan-only)
+
+```bash
+pnpm cox cx export-aws <spec> [outDir]
+# default: ./cx-export/<spec>-aws  (template.yaml, APPLY.md, …)
+# Human applies CFN; Coxswain never CreateStack.
+```
+
+`cox cx status <spec>` prints a one-line `summary score=` from
+`summarizeDeployments` (healthy=100, degraded=50, down/error=0).
+
 ---
 
 ## Package map (quick)

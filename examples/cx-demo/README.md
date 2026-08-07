@@ -51,6 +51,22 @@ pnpm cox cx proposal <spec> <proposalId> resolved
 ```
 
 AWS plan-only writes `template.yaml` + `APPLY.md` under `.cox/cx/<spec>/aws/`.
+Copy out for human CFN apply:
+
+```bash
+pnpm cox cx export-aws <spec> [outDir]
+```
+
+## Package scripts (monorepo root)
+
+| Script | Action |
+|---|---|
+| `pnpm cx:doctor` | wiring + ontology |
+| `pnpm cx:stack-up` | Ollama + platform |
+| `pnpm cx:run -- <name> "idea"` | one-shot golden path |
+| `pnpm cx:golden` / `cx:golden:live` | demo script (`cx run` + export-aws) |
+
+macOS always-on stack: `./scripts/macos/install-launchagents.sh`
 
 ## Offline (always works)
 

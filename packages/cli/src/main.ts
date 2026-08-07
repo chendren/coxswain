@@ -45,6 +45,7 @@ import {
   runCxApply,
   runCxTasks,
   runCxTaskTransition,
+  runCxExportAws,
   type CxCommandContext,
 } from "./commands/cx";
 import { loadDeps, type LoadedDeps } from "./deps";
@@ -385,6 +386,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       mode,
       tierModel,
       localBaseUrl,
+      live: Boolean(extra?.live),
       autoLive,
     };
   }
@@ -743,6 +745,17 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     throw new CliExit(await runCxTeardown(await cxCtx(command, f.pack, f), name, f.target));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("export-aws <name> [outDir]")
+      .description(
+        "copy .cox/cx/<name>/aws template.yaml + APPLY.md (and architectureDoc.json if present) to outDir (default ./cx-export/<name>-aws)",
+      ),
+  ).action(async (name: string, outDir: string | undefined, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxExportAws(await cxCtx(command, f.pack, f), name, outDir));
   });
 
   return program;
