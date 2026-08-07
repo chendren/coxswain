@@ -259,6 +259,7 @@ urgency:    pure score(kind, ageHours) → queue score= field
 | [`REAL-CXOS-SUMMARY.md`](./REAL-CXOS-SUMMARY.md) | Catalog / archive / snapshot wave |
 | [`WAVE4-SUMMARY.md`](./WAVE4-SUMMARY.md) | Claim / apply / task loop |
 | [`CXOS.md`](./CXOS.md) | Technical cheat sheet |
+| [`CXOS-OPERATOR-RUNBOOK.md`](./CXOS-OPERATOR-RUNBOOK.md) | Day-1 / day-2 procedures (SuperHeavy runbook lane) |
 | [`packages/cx-ops/README.md`](../packages/cx-ops/README.md) | Module + CLI mapping (includes fleet-queue, dashboard-html, graph-query) |
 
 ---
@@ -266,7 +267,6 @@ urgency:    pure score(kind, ageHours) → queue score= field
 ## Note
 
 This summary matches `main.ts` command descriptions and the `runCx*` handlers
-as of SuperHeavy land. Some workflow lanes (dedicated runbook, multi-program
-demo, broader e2e surface) may land in follow-on commits; core queue /
-dashboard / graph-find / scripts / urgency / superheavy tests are the product
-delta covered here. Commit only; do not push.
+as of SuperHeavy land. Core product delta: queue / dashboard / graph-find /
+scripts / urgency / superheavy tests; runbook and CXOS-COMPLETE inventory
+updates landed in sibling lanes. Commit only; do not push.
