@@ -135,6 +135,45 @@ describe("applyProposal + tasks", () => {
     await applyProposal({ cxRoot, now }, "demo", p, { resolve: true });
     expect((await loadProposals({ cxRoot, now }, "demo"))[0]?.status).toBe("resolved");
   });
+
+  it("transitionTask done with resolveSource:false leaves proposal claimed", async () => {
+    const { appendProposalsFromTick, loadProposals } = await import("../src/proposals");
+    await appendProposalsFromTick({ cxRoot, now }, "demo", [
+      {
+        targetId: "local",
+        kind: "investigate",
+        summary: "keep open",
+        nba: {
+          rules: [],
+          primary: {
+            id: "RULE_B",
+            name: "x",
+            priority: 1,
+            conditions: [],
+            logic: "AND",
+            action: "noop",
+            actionType: "other",
+            urgency: "low",
+          },
+        },
+        path: ["test"],
+      },
+    ]);
+    const p = (await loadProposals({ cxRoot, now }, "demo"))[0]!;
+    const result = await applyProposal({ cxRoot, now }, "demo", p);
+    expect((await loadProposals({ cxRoot, now }, "demo"))[0]?.status).toBe("claimed");
+
+    const done = await transitionTask(
+      { cxRoot, now },
+      "demo",
+      result.task.id,
+      "done",
+      { resolveSource: false },
+    );
+    expect(done?.status).toBe("done");
+    const after = (await loadProposals({ cxRoot, now }, "demo")).find((x) => x.id === p.id);
+    expect(after?.status).toBe("claimed");
+  });
 });
 
 describe("offline aws writes template.yaml", () => {
