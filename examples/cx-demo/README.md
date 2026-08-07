@@ -5,12 +5,22 @@ adapters. Default is fully offline (no live AWS or platform required).
 
 ## Stack up (Ollama + platform)
 
+From the **monorepo root** (not this directory):
+
 ```bash
 ./scripts/cx-stack-up.sh
 # then: pnpm cox cx doctor --live
 ```
 
+`scripts/cx-stack-up.sh` brings up Ollama (`nomic-embed-text` required for ready),
+starts the Nexus platform (`CX_PLATFORM_DIR`), and checks `/api/health/ready`.
+
+There is no `cox cx run` subcommand. Lifecycle is `new` → `approve` → `build`
+(plan+build+deploy), then operate with `status` / `simulate` / `console` / `apply`.
+
 ## Golden path (script)
+
+From monorepo root:
 
 ```bash
 # offline
@@ -62,7 +72,7 @@ Artifacts land under `.cox/cx/billing-dispute/`.
 ## Hybrid / live (platform on :3143)
 
 ```bash
-# 1) Ollama — required for /api/health/ready → status ready + ollama:true
+# 1) Ollama - required for /api/health/ready → status ready + ollama:true
 ollama serve &
 ollama pull nomic-embed-text   # embeddings check (required for ready)
 ollama pull nemotron-mini      # optional LLM enrichment
@@ -79,6 +89,26 @@ pnpm cox cx build billing-dispute --live --base-url http://127.0.0.1:3143 --targ
 pnpm cox cx status billing-dispute --live --base-url http://127.0.0.1:3143
 # expect: local: healthy
 ```
+
+### Auto-live ergonomics
+
+Skip typing `--live` every time:
+
+```bash
+# per-command
+pnpm cox cx doctor --auto-live
+pnpm cox cx build billing-dispute --auto-live --target all
+
+# or shell-wide
+export CX_AUTO_LIVE=1
+pnpm cox cx doctor
+pnpm cox cx status billing-dispute
+```
+
+`--mode offline` still forces offline even when `CX_AUTO_LIVE=1`.
+
+When `--base-url` is omitted, the CLI loads `cx.targets.local.baseUrl` from
+`cox.config.json` (via `loadConfig` → `resolveLocalBaseUrl`).
 
 `cox.config.json` (optional):
 
