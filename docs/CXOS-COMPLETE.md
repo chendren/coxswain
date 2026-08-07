@@ -1,187 +1,268 @@
-# CXOS Complete — Customer Experience Operating System
+# CXOS Complete: Customer Experience Operating System map
 
-This is the **system map** for a true CX OS on Coxswain: closed-world design,
-multi-target build, human-gated operate, fleet board, executive brief, CAB
-export, and audit trail. Technical detail: [`CXOS.md`](./CXOS.md). Personas:
-[`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md).
+This is the **complete system map** for CXOS on Coxswain: layers, every
+`cox cx` command by lifecycle, package map, offline/live wiring, human gates,
+workspace layout, control paths, and how personas map onto the surface.
+
+| Document | Role |
+|---|---|
+| **This file** | OS map (layers, full command inventory, packages, gates) |
+| [`CXOS.md`](./CXOS.md) | Technical north star (graph practice, runtime, cheat sheet) |
+| [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md) | Personas, jobs-to-be-done, playbooks, value spine |
+| [`packages/cx-ops/README.md`](../packages/cx-ops/README.md) | Operate-layer module API |
+| [`examples/cx-demo/README.md`](../examples/cx-demo/README.md) | Golden path and demo tracks |
+
+**Product promise:** turn a CX idea into multi-target artifacts and an AWS
+plan, then run a **human-gated** operate loop (health → proposal → task →
+done) without silent production mutation.
+
+Composition root: `@cox/cli` wires `cox cx …`. Contracts: `@cox/cx-core`.
+Adapters: `@cox/cx-artifacts`, `@cox/cx-local`, `@cox/cx-aws`. Operate:
+`@cox/cx-ops` (injected adapters only; never imports sibling adapters).
 
 ---
 
-## Operating system layers
+## 1. Operating system layers
 
-| Layer | Responsibility | Primary surface |
+Layers stack from closed catalog up through fleet and fabric. Every CLI
+command lives in exactly one primary layer.
+
+| Layer | Responsibility | Primary surface | Lifecycle bucket |
+|---|---|---|---|
+| **Catalog** | Closed ontology / strong graph | `ontology *`, `journeys`, `nba` | design (grounding) |
+| **Program** | Spec lifecycle + multi-target build | `init` `new` `approve` `list` `plan` `build` `deploy` `run` `teardown` | design + build |
+| **Observe** | Health, simulate, report, scores | `status` `simulate` `report` `doctor` | operate (read) |
+| **Operate** | Propose → claim → task → close | `console` `watch` `daemon` `proposals` `proposal` `apply` `tasks` `task` | operate |
+| **Fleet** | Multi-spec board | `board` | fleet |
+| **Govern** | Brief, audit, CAB package, AWS plan handoff | `brief` `audit` `cab-export` `export-aws` | govern |
+| **Fabric** | Local stack readiness | `cx:stack-up`, LaunchAgents, hybrid/live wiring | operate (platform) |
+
+### Kernel hard rules
+
+1. **No silent prod mutation.** Console, watch, and daemon **propose** only.
+2. **AWS is plan-only.** Coxswain writes `template.yaml` + `APPLY.md`; humans
+   apply CFN (`export-aws` / `cab-export`). Never CreateStack from Coxswain.
+3. **Offline-first.** Live/hybrid only when stack and optional keys are ready.
+4. **Strong graph first.** Weak models optional for generate only; NBA and
+   console routing are pure graph.
+5. **Import law.** `cx-*` packages import only `@cox/core` and `@cox/cx-core`.
+   Adapters never import each other or `cx-ops`. CLI is sole composition root.
+
+### Strong / weak graph practice
+
+| Kind | Where | Behavior |
 |---|---|---|
-| **Catalog** | Closed ontology / strong graph | `ontology *`, `journeys` |
-| **Program** | Spec lifecycle + multi-target build | `init` `new` `approve` `run` `build` `plan` |
-| **Observe** | Health, simulate, report, scores | `status` `simulate` `report` `doctor` |
-| **Operate** | Propose → claim → task → close | `console` `watch` `daemon` `proposals` `apply` `tasks` |
-| **Fleet** | Multi-spec board | `board` |
-| **Govern** | Brief, audit, CAB package, AWS plan handoff | `brief` `audit` `cab-export` `export-aws` |
-| **Fabric** | Local stack readiness | `cx:stack-up`, LaunchAgents, hybrid/live |
+| **Strong nodes** | Ontology catalog + `buildStrongGraph` | Deterministic: intents, journeys, NBA rules, KPIs, channels. Zero model calls. |
+| **Weak nodes** | Artifacts / AWS generate when keys present | LLM JSON constrained by ontology prompts; optional absorb into strong hubs. |
+| **Identity / absorb** | Live artifacts (`absorbWeak`) | Weak labels resolve into strong hub ids when possible. |
+| **Control path** | Every ops surface | Returns `path[]` audit (e.g. `load_strong → poll_status → route:… → propose_gated → emit`). |
+| **Intent router** | Console tick | `healthy` → none; `degraded` → investigate; `down` → remediate; always gated. |
+| **NBA** | `nba` / report / console | Pure `matchNbaRules` / `recommendNba` over the ontology pack. |
 
-Hard rules (OS kernel):
+Ontology packs:
 
-1. No silent prod mutation (console/daemon propose only).
-2. AWS is plan-only; humans apply CFN (`export-aws` / `cab-export`).
-3. Offline-first; live/hybrid when stack + optional keys are ready.
-4. Strong graph first; weak models optional for generate only.
+| Pack | Contents | Default for |
+|---|---|---|
+| `default` | Commercial seed catalog (`DEFAULT_ONTOLOGY`) | `ontology *`, pure `nba` |
+| `local` | Default merged with platform treasury journeys (`LOCAL_PLATFORM_ONTOLOGY`) | build, doctor, journeys |
 
----
-
-## Full CLI map (`cox cx …`)
-
-### Catalog
-| Command | Purpose |
-|---|---|
-| `ontology show\|validate\|graph` | Inventory / integrity / strong graph |
-| `ontology nba [k=v…]` | Pure NBA recommend |
-| `journeys [--pack]` | Closed journey inventory |
-
-### Program lifecycle
-| Command | Purpose |
-|---|---|
-| `init` | Ensure `.cox/cx`; seed `starter` if empty |
-| `new` `approve` `list` | Spec create + phase gates |
-| `plan` `build` `deploy` `teardown` | Multi-target (artifacts → local → aws) |
-| `run` | Golden path one-shot (+ phase path grouping) |
-
-### Observe
-| Command | Purpose |
-|---|---|
-| `doctor` | Wiring + ontology + stack; live fail-closed |
-| `status` | Health + summary score + path audit |
-| `simulate` `report` | Traffic sim + cross-target report |
-
-### Operate
-| Command | Purpose |
-|---|---|
-| `console` `watch` | Tick propose + persist |
-| `daemon start\|status\|stop` | Long-running watch + health line |
-| `proposals` `proposal` | List / legal transitions |
-| `apply [--resolve]` | Task + remediation; claim or resolve |
-| `tasks` `task` | Board rollup; done auto-resolves proposal |
-
-### Fleet + govern
-| Command | Purpose |
-|---|---|
-| `board` | Multi-spec ops board |
-| `fleet-status` | Board + status poll each deployed spec |
-| `brief [outFile]` | Executive markdown brief |
-| `audit [--limit]` | Append-only event trail |
-| `health-history` | Score samples from status polls |
-| `cab-export [outDir]` | CAB package (CFN + remediations + state + BRIEF) |
-| `snapshot [outDir]` | Full program snapshot (CAB + spec + health) |
-| `export-aws [outDir]` | AWS plan-only files only |
-| `archive` / `restore` | Soft-archive programs (dot-prefix hide) |
-
-### Catalog (deeper)
-| Command | Purpose |
-|---|---|
-| `catalog [all\|domains\|intents\|kpis\|nba\|channels]` | Full closed taxonomy browser |
-| `claim` | Ops alias for `apply` |
-| `operate` | One-shot console tick + board line |
+CLI: `--pack default|local`.
 
 ---
 
-## End-to-end OS loops
+## 2. CLI map by lifecycle
 
-### A. Stand up a program
+All commands: `pnpm cox cx …` or `pnpm cox --cwd <dir> cx …`.
+
+### Common flags
+
+| Flag | Meaning |
+|---|---|
+| `--target <list>` | `artifacts`, `local`, `aws`, comma list, or `all` |
+| `--live` | Prefer live models/platform wiring |
+| `--auto-live` | Hybrid without `--live` (or `CX_AUTO_LIVE=1`) |
+| `--mode offline\|live\|hybrid` | Explicit runtime mode |
+| `--base-url <url>` | Local platform base URL (else `cox.config.json` `cx.targets.local`) |
+| `--pack default\|local` | Ontology pack |
+
+Global Coxswain flags also apply: `--cwd`, `-m/--model`, `--print`, `--yolo`.
+
+---
+
+### 2.1 Design (catalog + program gates)
+
+Ground work in the closed world, then create and approve a CX program.
+
+| Command | Purpose | Notes |
+|---|---|---|
+| `ontology show [--pack]` | Inventory domains, journeys, KPIs, NBA rules | Strong-only; no models |
+| `ontology validate [--pack]` | Catalog integrity + materialize strong graph | Exit 1 on failure |
+| `ontology graph [--pack]` | Strong-graph node/edge stats | |
+| `nba [k=v…] [--pack]` | Pure NBA recommend (`journey=` `stage=` `confidence=` …) | Graph match only |
+| `journeys [--pack]` | Closed journey inventory | Default pack `local` |
+| `init` | Ensure `.cox/cx`; seed `starter` if empty | Workspace bootstrap |
+| `new <name> [idea…]` | Create CXOS spec under `.cox/cx/<name>/` | Seeds CX-EARS requirements |
+| `approve <name> [phase]` | Approve `requirements` \| `design` \| `tasks` | Default: next unapproved; ordered gates |
+| `list` | List CX specs | |
+
+**Design gate rule:** cannot approve `design` before `requirements`, or
+`tasks` before `design`. Build requires **requirements approved**. Successful
+artifacts merge that produces journey maps may auto-approve **design**.
+
 ```bash
-pnpm cx:init
-pnpm cox cx run billing "reduce dispute handle time"
-pnpm cox cx board
-pnpm cox cx brief billing
+pnpm cox cx ontology validate --pack local
+pnpm cox cx journeys --pack local
+pnpm cox cx init
+pnpm cox cx new billing-dispute "reduce dispute handle time"
+pnpm cox cx approve billing-dispute requirements
+# optional pure NBA while designing:
+pnpm cox cx nba journey=billing_dispute stage=intake confidence=0.9
 ```
 
-### B. Day-2 operate
+---
+
+### 2.2 Build (multi-target plan → deploy)
+
+One design fans out to three targets. Order is always **artifacts first**,
+then local and aws, so neutral context is shared.
+
+| Command | Purpose | Notes |
+|---|---|---|
+| `plan <name> [--target] [--live\|--mode]` | Per-target build plans, no side effects | |
+| `build <name> [--target] [--live\|--auto-live\|--mode] [--base-url] [--pack]` | Plan + build + deploy (graph-ordered) | Artifacts first; merges design into workspace |
+| `deploy <name> …` | Same path as build with deploy | Flags match build |
+| `run <name> [idea…] [--target] [--live\|--auto-live\|--mode] …` | Golden one-shot | create if missing → approve requirements → build all → status → simulate local → report + NBA |
+| `teardown <name> [--target] [--live] [--base-url]` | Tear down deployments | Clears deployment records |
+
+**Targets:** `artifacts` | `local` | `aws` | `all` (comma lists allowed).
+
+| Target | Adapter | Offline | Live / plan |
+|---|---|---|---|
+| `artifacts` | `@cox/cx-artifacts` or offline artifacts | Deterministic docs under `.cox/cx/<spec>/artifacts/` | Weak generate when model keys present; absorbWeak |
+| `local` | `@cox/cx-local` or offline local | Disk-backed status/sim under `local/` | HTTP bind to Nexus when platform healthy; deterministic closed-id stubs |
+| `aws` | `@cox/cx-aws` or offline AWS | Plan-only `template.yaml` + `APPLY.md` under `aws/` | Plan-only + model-assisted docs; **never** CreateStack |
+
+```bash
+pnpm cox cx plan billing-dispute --target all
+pnpm cox cx build billing-dispute --target all
+# or golden path:
+pnpm cox cx run billing-dispute "reduce dispute handle time"
+pnpm cox cx export-aws billing-dispute   # plan handoff (also under govern)
+```
+
+---
+
+### 2.3 Operate (observe + propose + human close-out)
+
+#### Observe (read-only health)
+
+| Command | Purpose | Notes |
+|---|---|---|
+| `doctor [--live] [--mode] [--base-url] [--pack local]` | Wiring + ontology + stack | Live fail-closed if stack not ready |
+| `status [name] [--target] [--live\|…]` | Phases + deployment health + summary score | Score: healthy=100, degraded=50, down/error=0 |
+| `simulate <name> [--target local] [--live] [--base-url]` | Traffic simulation | Default target `local` |
+| `report <name> [--target] [--live]` | Cross-target status (+ sim) + scout summary + graph NBA | |
+
+#### Propose (no mutations)
+
+| Command | Purpose | Notes |
+|---|---|---|
+| `console <name> [--target] [--live\|…]` | One tick: poll, route, NBA, propose, persist | Writes `proposals.json` only |
+| `watch <name> [--ticks 3] [--interval 2000] [--live\|…]` | Bounded console loop | Persists proposals each tick |
+| `daemon start <name> [--interval 30000] [--ticks 120] [--live] [--base-url]` | Detached watch | `daemon.pid` / `daemon.log` / `daemon.json` |
+| `daemon status <name>` | Health line | `running\|stopped pid ticks last proposals_open log=` |
+| `daemon stop <name>` | Stop daemon | |
+
+#### Human close-out (gates)
+
+| Command | Purpose | Notes |
+|---|---|---|
+| `proposals <name> [--all] [--status …]` | List proposals | Default open\|claimed; rows show `next=` + CLI hint |
+| `proposal <name> <id> <status>` | Legal transition | `open` \| `claimed` \| `resolved` \| `dismissed` |
+| `apply <name> <proposalId> [--resolve]` | Task + remediation note | Default proposal → **claimed**; `--resolve` → **resolved** |
+| `tasks <name> [--all] [--status …]` | Task board rollup | Shows `proposal=` + `remediation=` paths |
+| `task <name> <id> <status> [--no-resolve-source]` | Task transition | `done` auto-resolves source proposal unless `--no-resolve-source` |
+
 ```bash
 pnpm cox cx status billing --live
 pnpm cox cx console billing --live
+pnpm cox cx proposals billing
 pnpm cox cx apply billing prop_…
 pnpm cox cx tasks billing
 pnpm cox cx task billing task_… done
 pnpm cox cx audit billing
 ```
 
-### C. Change board / AWS handoff
+---
+
+### 2.4 Govern (evidence + change board)
+
+| Command | Purpose | Default output |
+|---|---|---|
+| `brief <name> [outFile]` | Executive markdown brief (no model) | stdout or path |
+| `audit <name> [--limit 30]` | Append-only event trail | `audit.jsonl` under spec |
+| `export-aws <name> [outDir]` | Plan-only AWS files only | `./cx-export/<name>-aws` |
+| `cab-export <name> [outDir]` | Full CAB package | `./cx-cab/<name>/` |
+
+**CAB package contents** (`cab-export`):
+
+```text
+MANIFEST.md
+BRIEF.md
+proposals.json
+tasks.json
+deployments.json
+aws/                 # template.yaml, APPLY.md, optional architecture/agent JSON
+remediations/        # operator notes from apply
+audit.jsonl?         # when present
+```
+
+**AWS human apply** (from `APPLY.md` or export):
+
 ```bash
+aws cloudformation deploy \
+  --template-file template.yaml \
+  --stack-name cxos-<spec> \
+  --capabilities CAPABILITY_IAM
+```
+
+Coxswain never runs this for you.
+
+```bash
+pnpm cox cx brief billing
+pnpm cox cx audit billing --limit 50
+pnpm cox cx export-aws billing ./exports/billing-aws
 pnpm cox cx cab-export billing
 # review cx-cab/billing/MANIFEST.md + aws/APPLY.md
-# human: aws cloudformation deploy …
 ```
 
-### D. Offline proof
+---
+
+### 2.5 Fleet (multi-spec)
+
+| Command | Purpose |
+|---|---|
+| `board` | Multi-spec ops board: phases, proposals, tasks, daemons |
+
 ```bash
-pnpm cx:golden
-OPENAI_API_KEY= pnpm --filter @cox/cx-ops test
+pnpm cox cx board
+# or
+pnpm cx:board
 ```
 
 ---
 
-## Workspace layout (complete)
+### 2.6 Full command inventory (flat)
 
-```
-.cox/cx/<spec>/
-  spec.json
-  deployments.json
-  proposals.json
-  tasks.json
-  audit.jsonl              # OS audit trail
-  remediations/<prop>.md
-  artifacts/ local/ aws/
-  daemon.{pid,log,json}
-```
-
-CAB export (`cx-cab/<spec>/` by default):
-
-```
-MANIFEST.md BRIEF.md proposals.json tasks.json deployments.json
-aws/ remediations/ audit.jsonl?
-```
-
----
-
-## Package map
-
-| Package | OS role |
+| Lifecycle | Commands |
 |---|---|
-| `cx-core` | Contracts, ontology, graph |
-| `cx-artifacts` / `cx-local` / `cx-aws` | Target adapters |
-| `cx-ops` | Workspace, orchestrate, board, brief, cab, audit, daemon, proposals, tasks |
-| `cli` | Composition root + all `cox cx` commands |
+| **Design** | `ontology show` `ontology validate` `ontology graph` `nba` `journeys` `init` `new` `approve` `list` |
+| **Build** | `plan` `build` `deploy` `run` `teardown` |
+| **Operate** | `doctor` `status` `simulate` `report` `console` `watch` `daemon start\|status\|stop` `proposals` `proposal` `apply` `tasks` `task` |
+| **Govern** | `brief` `audit` `export-aws` `cab-export` |
+| **Fleet** | `board` |
 
----
-
-## Completeness checklist
-
-| Capability | Status |
-|---|---|
-| Closed ontology + NBA | yes |
-| Spec phases + multi-target build | yes |
-| Offline + hybrid + live local | yes |
-| Plan-only AWS + export | yes |
-| Human-gated proposals/tasks | yes |
-| Legal transition graph | yes |
-| Metrics score + path audit | yes |
-| Daemon operate | yes |
-| Multi-spec board | yes |
-| Fleet status (poll each) | yes |
-| Executive brief | yes |
-| CAB package | yes |
-| Full snapshot | yes |
-| Audit log | yes |
-| Health history | yes |
-| Journey + catalog inventory | yes |
-| Soft archive / restore | yes |
-| Claim + operate one-shot | yes |
-| Workspace init | yes |
-| LaunchAgents / stack-up | yes |
-| Persona playbooks | yes (`CXOS-PERSONAS-USE-CASES.md`) |
-| CreateStack from Coxswain | **never** (by design) |
-
----
-
-## Package scripts
+Related monorepo scripts (not under `cox cx`, but OS fabric):
 
 | Script | Action |
 |---|---|
@@ -191,4 +272,432 @@ aws/ remediations/ audit.jsonl?
 | `pnpm cx:run -- <name> "idea"` | Golden one-shot |
 | `pnpm cx:journeys` | Journey catalog |
 | `pnpm cx:golden` / `cx:golden:live` | Demo script |
-| `pnpm cx:stack-up` | Ollama + platform |
+| `pnpm cx:stack-up` | Ollama + Nexus platform |
+| `./scripts/macos/install-launchagents.sh` | Always-on Ollama + Nexus |
+| `./scripts/macos/uninstall-launchagents.sh` | Remove LaunchAgents |
+
+---
+
+## 3. End-to-end OS loops
+
+### A. Stand up a program (design → build)
+
+```bash
+pnpm cx:init
+pnpm cox cx run billing "reduce dispute handle time"
+pnpm cox cx board
+pnpm cox cx brief billing
+```
+
+### B. Day-2 operate
+
+```bash
+pnpm cox cx status billing --live
+pnpm cox cx console billing --live
+pnpm cox cx apply billing prop_…
+pnpm cox cx tasks billing
+pnpm cox cx task billing task_… done
+pnpm cox cx audit billing
+```
+
+### C. Change board / AWS handoff (govern)
+
+```bash
+pnpm cox cx cab-export billing
+# review cx-cab/billing/MANIFEST.md + aws/APPLY.md
+# human: aws cloudformation deploy …
+```
+
+### D. Offline proof (CI / workshop)
+
+```bash
+pnpm cx:golden
+OPENAI_API_KEY= XAI_API_KEY= ANTHROPIC_API_KEY= pnpm --filter @cox/cx-ops test
+```
+
+### E. Live local stack
+
+```bash
+./scripts/cx-stack-up.sh
+pnpm cox cx doctor --live
+pnpm cox cx build billing --live --target local,artifacts
+pnpm cox cx simulate billing --target local --live
+```
+
+---
+
+## 4. Human gates (mutation control)
+
+CXOS treats mutation as a **human-owned** step. The system proposes and
+records; operators execute remediations outside auto-mutation of adapters or
+cloud.
+
+### 4.1 Spec phase gates (design / build)
+
+| Phase | Values | Gate |
+|---|---|---|
+| `requirements` | draft → approved | Must approve before build |
+| `design` | missing/draft → approved | After requirements; may auto-approve after artifacts journey maps |
+| `tasks` | missing/draft → approved | After design |
+
+Approve order is enforced by `approveCxPhase`. Illegal: design before
+requirements, tasks before design.
+
+### 4.2 Proposal legal graph (operate)
+
+Console / watch / daemon only **persist** proposals. Statuses and edges:
+
+```text
+open      → claimed | dismissed | resolved
+claimed   → resolved | dismissed | open   # open = release claim
+dismissed → open                          # reopen
+resolved  → (terminal)
+
+Same status is always idempotent.
+```
+
+| From | To |
+|---|---|
+| `open` | `claimed`, `dismissed`, `resolved` |
+| `claimed` | `resolved`, `dismissed`, `open` |
+| `dismissed` | `open` |
+| `resolved` | terminal only |
+
+`suggestedProposalNext`: open → apply; claimed → resolve; dismissed → reopen;
+resolved → none.
+
+### 4.3 Apply and task close-out
+
+| Step | Command | Effect |
+|---|---|---|
+| List | `proposals <spec>` | Open + claimed; `next=` + concrete CLI line |
+| Apply | `apply <spec> <prop_…>` | Task + `remediations/<id>.md`; proposal → **claimed** |
+| Apply+close | `apply <spec> <id> --resolve` | Same, proposal → **resolved** |
+| Work board | `tasks <spec>` | Rollup; rows show `proposal=` + `remediation=` |
+| Close task | `task <spec> <taskId> done` | Default **auto-resolves** source proposal; `--no-resolve-source` skips |
+
+**Task statuses:** `pending` | `in_progress` | `done` | `cancelled`.
+
+**What apply never does:** mutate local platform config, call AWS APIs, or
+change adapter deployments. Remediation markdown is the operator runbook.
+
+### 4.4 AWS / change board gate (govern)
+
+| Surface | Allowed | Forbidden |
+|---|---|---|
+| Offline / plan-only AWS adapter | Write `template.yaml`, `APPLY.md`, optional docs | CreateStack, UpdateStack, live Connect/Lex API |
+| `export-aws` | Copy plan files to outDir | Any cloud call |
+| `cab-export` | Filesystem package for CAB | Any cloud call |
+| Human | `aws cloudformation deploy …` with scoped creds | (Coxswain never does this) |
+
+### 4.5 Gate summary matrix
+
+| Action | Who | Artifact |
+|---|---|---|
+| Approve requirements/design/tasks | Human (PM / SA) | `spec.json` phases |
+| Propose remediation | System (console/watch/daemon) | `proposals.json` |
+| Claim / apply proposal | Human (Ops) | `tasks.json` + `remediations/*.md` |
+| Execute remediation on platform/AWS | Human outside Coxswain | Platform config / CFN deploy |
+| Mark task done | Human | task status; proposal auto-resolve |
+| Ship AWS stack | Human + scoped AWS | CloudFormation |
+
+---
+
+## 5. Offline / live / hybrid
+
+Runtime modes (`@cox/cli` `CxRuntimeMode` via `createCxRuntime`):
+
+| Mode | When | Behavior |
+|---|---|---|
+| **offline** | Default without `--live` / models | Offline adapters for all targets under `.cox/cx/` |
+| **live** | `--live` or `--mode live` with platform/models | Prefer real adapters when healthy / keys present |
+| **hybrid** | `--live` with tier models, or `--mode hybrid`, or `--auto-live` / `CX_AUTO_LIVE=1` | Live where ready; offline fallback elsewhere |
+
+### Wiring rules (composition root)
+
+1. **artifacts**: live only if weak generate available (Anthropic tier model or OpenAI-compat); else offline adapter.
+2. **local**: live when platform probe succeeds (`/api/journeys/definitions` preferred). Bind uses **deterministic** closed-id stubs (stable journey/KPI JSON), not freeform model output.
+3. **aws**: "live" means plan-only adapter with model-assisted docs when generate is available; still writes applyable CFN, no CreateStack.
+
+`cox cx doctor` prints `runtime mode=…`, per-target `wiring=live|offline`,
+Ollama + platform health, ontology ok, and known specs.
+
+### Stack for healthy live local
+
+```bash
+./scripts/cx-stack-up.sh
+pnpm cox cx doctor --live
+```
+
+`scripts/cx-stack-up.sh`: starts Ollama if needed, pulls `nomic-embed-text`
+(required for platform ready), optional `nemotron-mini`, starts Nexus
+platform (`CX_PLATFORM_DIR`, default `~/Projects/cx-platform/omnichannel-cx-platform`),
+checks `GET /api/health/ready` → HTTP 200.
+
+### Env and config
+
+| Variable / config | Default |
+|---|---|
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` |
+| `CX_LOCAL_BASE_URL` | `http://127.0.0.1:3143` |
+| `CX_PLATFORM_DIR` | `$HOME/Projects/cx-platform/omnichannel-cx-platform` |
+| `CX_AUTO_LIVE` | unset (set `1` for hybrid without `--live`) |
+| `cox.config.json` `cx` | local `baseUrl`, `defaultOpsMode`, `watcherPollIntervalMs`, `budgets.cxOpsUsd` |
+
+### macOS LaunchAgents (always-on fabric)
+
+| Item | Detail |
+|---|---|
+| Labels | `com.chendren.ollama`, `com.chendren.nexus-cx` |
+| Install | `./scripts/macos/install-launchagents.sh` |
+| Uninstall | `./scripts/macos/uninstall-launchagents.sh` |
+| Logs | `~/Library/Logs/coxswain/` |
+
+Still pull models once via `cx-stack-up.sh` or `ollama pull` before expecting
+ready 200.
+
+### Offline guarantees
+
+- Full golden path without API keys: `pnpm cx:golden`.
+- `cx-ops` tests with keys cleared: deterministic offline adapters.
+- Doctor without `--live` never requires platform or models.
+
+---
+
+## 6. Package map
+
+### 6.1 CXOS packages (product)
+
+| Package | OS role | Key modules |
+|---|---|---|
+| `@cox/cx-core` | Contracts, ontology, target adapter interface, mock adapter, events | `spec`, `target`, `artifacts`, `adapter`, `ontology/*`, `operate`, `build` |
+| `@cox/cx-artifacts` | Neutral document factory (journey maps, personas, intents, NBA, KPI, architecture) | plan / build / deploy disk under `artifacts/` |
+| `@cox/cx-local` | Live HTTP omnichannel / Nexus adapter | bind, deploy, status, simulate traffic, KPI match |
+| `@cox/cx-aws` | AWS plan-only (Connect / Lex / Bedrock planning) | template + agent/architecture docs; no CreateStack |
+| `@cox/cx-ops` | Workspace, orchestrate, console, proposals, tasks, daemon, board, brief, cab, audit, CFN skeleton, offline adapters | see module table below |
+| `@cox/cli` | Composition root: `cox cx` + `createCxRuntime` / offline wiring | `commands/cx.ts`, `cx/runtime.ts` |
+
+### 6.2 cx-ops modules (operate engine)
+
+| Module | Role |
+|---|---|
+| `workspace` | `.cox/cx/<spec>/` layout, phases, deployments, target parse (artifacts first) |
+| `orchestrate` | Multi-target build/status/sim/report |
+| `console` | One tick: poll → route → NBA → propose (no mutations) |
+| `proposals` | Persist + legal transitions + suggested next |
+| `tasks` | apply → task + remediation; rollup; done auto-resolves proposal |
+| `watch` / `daemon` | Bounded and detached watch loops |
+| `stack-health` | Ollama + platform probes for doctor |
+| `metrics-summary` | Health score rollup |
+| `path-audit` | Collapse/group control `path[]` |
+| `board` | Multi-spec fleet rollup |
+| `brief` | Executive markdown (no model) |
+| `cab-export` | CAB filesystem package |
+| `audit` | Append-only `audit.jsonl` |
+| `journeys` | Closed-world journey list |
+| `cfn-skeleton` | Deterministic CFN YAML + APPLY.md |
+| `offline-adapters` / `offline-artifacts` | Disk-backed offline target adapters |
+| `ontology` / `nba` | Pack resolve, show/validate/graph, pure recommend |
+| `status` / `report` | Adapter passthrough + cross-target report |
+
+### 6.3 Coxswain base packages (platform under CXOS)
+
+CXOS reuses the coding-agent fabric; model spend routes through the same
+router and ledger.
+
+| Package | Role relative to CXOS |
+|---|---|
+| `@cox/core` | Frozen types, config, events, pricing (never edit casually) |
+| `@cox/providers` | Anthropic + OpenAI-compat + mock models |
+| `@cox/router` | Tier classify / escalate / governor |
+| `@cox/ledger` | Cost JSONL + budgets |
+| `@cox/agent` | Tool loop, permissions, escalation |
+| `@cox/tools` | Host tools allowlist |
+| `@cox/spec` | Spec engine (coding specs; CX reuses phase patterns via cx-ops workspace) |
+| `@cox/steering` | Project steering docs |
+| `@cox/hooks` | Lifecycle hooks |
+| `@cox/tui` | Ink TUI (event stream; CX emits into same bus family) |
+
+### 6.4 Dependency / import law
+
+```text
+@cox/cli  (composition root)
+  ├── wires live/offline adapters
+  └── imports cx-core, cx-ops, cx-artifacts, cx-local, cx-aws, core, tui, …
+
+@cox/cx-ops     → @cox/core, @cox/cx-core only
+@cox/cx-artifacts → @cox/core, @cox/cx-core only
+@cox/cx-local   → @cox/core, @cox/cx-core only
+@cox/cx-aws     → @cox/core, @cox/cx-core only
+@cox/cx-core    → @cox/core only
+
+Adapters never import each other or cx-ops.
+```
+
+### 6.5 CLI → package entry mapping
+
+| CLI | Primary package entry |
+|---|---|
+| `new` / `approve` / `list` / `init` | `cx-ops` workspace |
+| `plan` / `build` / `deploy` / `status` / `simulate` / `report` / `run` / `teardown` | `cx-ops` orchestrate (+ adapters) |
+| `console` / `watch` / `daemon *` | `cx-ops` console, watch, daemon |
+| `proposals` / `proposal` / `apply` / `tasks` / `task` | `cx-ops` proposals, tasks |
+| `ontology *` / `nba` / `journeys` | `cx-ops` ontology, nba, journeys (+ `cx-core` catalogs) |
+| `doctor` | `cx-ops` stack-health + ontology + workspace list |
+| `board` / `brief` / `cab-export` / `audit` | `cx-ops` board, brief, cab-export, audit |
+| `export-aws` | CLI copy of plan-only aws/ files |
+
+---
+
+## 7. Workspace layout
+
+Root: `{cwd}/.cox/cx/` (`defaultCxRoot`). Per-spec:
+
+```text
+.cox/cx/<spec>/
+  spec.json              # CxWorkspaceRecord: idea, path audit, CxSpec (phases, design)
+  deployments.json       # Partial Record<targetId, CxDeployment>
+  proposals.json         # console/watch proposals (human-gated)
+  tasks.json             # tasks from applyProposal
+  audit.jsonl            # OS audit trail (append-only)
+  remediations/          # <proposalId>.md operator notes
+  artifacts/             # artifacts adapter disk
+  local/                 # local adapter disk
+  aws/                   # AWS plan-only outputs
+    template.yaml        # CloudFormation skeleton (human-applyable)
+    APPLY.md             # aws cloudformation deploy hint
+    architectureDoc.json
+    agentDefinition.json
+  daemon.pid             # watch daemon (when started)
+  daemon.log
+  daemon.json            # DaemonMeta (ticks, lastTickAt, …)
+```
+
+CAB export (`cx-cab/<spec>/` by default):
+
+```text
+MANIFEST.md BRIEF.md proposals.json tasks.json deployments.json
+aws/ remediations/ audit.jsonl?
+```
+
+AWS export (`cx-export/<spec>-aws` by default): plan-only files only.
+
+---
+
+## 8. Control paths (path audit)
+
+Typical `path: string[]` returned or recorded:
+
+| Surface | Path sketch |
+|---|---|
+| **build** | `load_workspace → route_targets → plan:artifacts → build:artifacts → merge_design → plan:local → … → emit` |
+| **console** | `load_strong → poll_status → target:local → health:… → route:… → recommend_nba → propose_gated → emit` |
+| **nba** | `load_strong → match_rules → confidence_band? → next_stages? → emit` |
+| **stack / doctor** | `probe_ollama → probe_platform → emit` |
+| **daemon** | `daemon_start → [watch ticks] → daemon_stop` |
+| **cab-export** | `load_workspace → copy_aws → copy_remediations → write_state → write_brief → emit` |
+| **runtime wire** | `load_config → weak_generate:… → probe_platform → route:artifacts|local|aws → wire:…` |
+
+Path audits make strong/weak routing and gate points inspectable without
+replaying models.
+
+---
+
+## 9. Personas (link)
+
+Personas are jobs-to-be-done, not org titles. Full playbooks, archetypes,
+value spine, and multi-role scenarios:
+
+**→ [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md)**
+
+Quick map of persona → home surface:
+
+| ID | Persona | Home commands |
+|---|---|---|
+| P1 | CX Product Manager | `new` `approve` `run` `report` `nba` `brief` |
+| P2 | Contact Center / CX SA | `plan` `build` `export-aws` `ontology` `cab-export` |
+| P3 | GenAI / Graph Engineer | `ontology *` packs, path audits, offline tests |
+| P4 | Journey Owner / Ops Lead | `status` `console` `watch` `daemon` `apply` `tasks` |
+| P5 | NOC / Platform SRE | `doctor` `cx:stack-up` LaunchAgents |
+| P6 | Change / Security / Compliance | `audit` `cab-export` APPLY.md, proposal history |
+| P7 | AWS PS / Partner | `cx:golden` multi-cwd `run` |
+| P8 | Workshop Facilitator | demo README, ontology, golden |
+| P9 | QA / Release | vitest e2e, `doctor --live` |
+| P10 | CX Executive / Sponsor | `status` score, `tasks` rollup, `brief`, `board` |
+| P11 | CS / Retention | `nba` churn contexts, console |
+| P12 | LOB Analyst | `ontology show` `validate` `journeys` |
+
+Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/README.md).
+
+---
+
+## 10. Completeness checklist
+
+| Capability | Status |
+|---|---|
+| Closed ontology + NBA | yes |
+| Spec phases + multi-target build | yes |
+| Offline + hybrid + live local | yes |
+| Plan-only AWS + export | yes |
+| Human-gated proposals / tasks | yes |
+| Legal proposal transition graph | yes |
+| Metrics score + path audit | yes |
+| Daemon operate | yes |
+| Multi-spec board | yes |
+| Executive brief | yes |
+| CAB package | yes |
+| Audit log | yes |
+| Journey inventory | yes |
+| Workspace init | yes |
+| LaunchAgents / stack-up | yes |
+| Persona playbooks | yes ([`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md)) |
+| CreateStack from Coxswain | **never** (by design) |
+
+---
+
+## 11. Related design history
+
+| Doc | Topic |
+|---|---|
+| `docs/superpowers/specs/2026-07-22-cxos-design.md` | Original CXOS design |
+| `docs/superpowers/specs/2026-07-24-cx-ops-design.md` | Ops layer |
+| `docs/superpowers/specs/2026-08-03-cxos-ontology-design.md` | Ontology / strong graph |
+| `docs/WAVE2-SUMMARY.md` … `WAVE4-SUMMARY.md` | Implementation waves |
+| `docs/01-ARCHITECTURE.md` | Coxswain base architecture |
+| `INTEGRATION-NOTES.md` | Cross-package contract notes |
+
+---
+
+## 12. One-page mental model
+
+```text
+                    ┌──────────── Catalog ────────────┐
+                    │ ontology · journeys · nba       │
+                    └───────────────┬─────────────────┘
+                                    │ grounds
+          ┌─────────────────────────▼─────────────────────────┐
+          │              Program (design + build)               │
+          │  init → new → approve → plan → build → run          │
+          │  targets: artifacts → local → aws (plan-only)       │
+          └─────────────────────────┬─────────────────────────┘
+                                    │ deploys records
+     ┌──────────────────────────────┼──────────────────────────────┐
+     │                              │                              │
+     ▼                              ▼                              ▼
+ Observe                      Operate                         Govern
+ status·sim·report·doctor     console·watch·daemon            brief·audit
+                              proposals → apply → tasks       cab-export
+                              (human gates only)              export-aws
+                                    │
+                                    ▼
+                                 Fleet
+                                 board
+                                    │
+                                    ▼
+                                 Fabric
+                          stack-up · LaunchAgents · offline|hybrid|live
+```
+
+**Closed loop:** design once under a closed catalog → build three targets →
+observe health → propose gated remediations → humans apply and close tasks →
+export evidence for change boards. No silent prod write anywhere on the loop.

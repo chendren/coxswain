@@ -6,6 +6,15 @@ import { access, rename } from "node:fs/promises";
 import { join } from "node:path";
 import type { CxWorkspaceDeps } from "./workspace";
 
+async function pathExists(p: string): Promise<boolean> {
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function archiveCxSpec(
   deps: CxWorkspaceDeps,
   name: string,
@@ -18,16 +27,11 @@ export async function archiveCxSpec(
   }
   const from = join(deps.cxRoot, name);
   const to = join(deps.cxRoot, `.archived-${name}`);
-  try {
-    await access(from);
-  } catch {
+  if (!(await pathExists(from))) {
     throw new Error(`CX spec "${name}" not found`);
   }
-  try {
-    await access(to);
+  if (await pathExists(to)) {
     throw new Error(`archive target already exists: .archived-${name}`);
-  } catch (e) {
-    if (e instanceof Error && e.message.includes("already exists")) throw e;
   }
   await rename(from, to);
   return {
@@ -42,18 +46,16 @@ export async function restoreCxSpec(
   name: string,
 ): Promise<{ from: string; to: string; path: string[] }> {
   const bare = name.startsWith(".archived-") ? name.slice(".archived-".length) : name;
+  if (!bare || bare.includes("/") || bare.includes("..")) {
+    throw new Error(`invalid CX spec name "${name}"`);
+  }
   const from = join(deps.cxRoot, `.archived-${bare}`);
   const to = join(deps.cxRoot, bare);
-  try {
-    await access(from);
-  } catch {
+  if (!(await pathExists(from))) {
     throw new Error(`archived spec ".archived-${bare}" not found`);
   }
-  try {
-    await access(to);
+  if (await pathExists(to)) {
     throw new Error(`active spec already exists: ${bare}`);
-  } catch (e) {
-    if (e instanceof Error && e.message.includes("already exists")) throw e;
   }
   await rename(from, to);
   return { from, to, path: ["restore_spec", "rename", "emit"] };

@@ -1408,15 +1408,14 @@ export async function runCxCatalog(
 export async function runCxArchive(ctx: CxCommandContext, name: string): Promise<number> {
   const rt = await runtimeFrom(ctx);
   try {
-    const r = await archiveCxSpec(rt.workspace, name);
+    // Audit BEFORE rename — appendAuditEvent mkdirs the spec dir and would recreate it after archive.
     await appendAuditEvent(rt.workspace, {
       kind: "archive",
       specName: name,
-      message: r.to,
-      path: r.path,
-    }).catch(() => {
-      /* audit under old path may fail after rename — write to archived path via direct */
+      message: `archiving → .archived-${name}`,
+      path: ["archive_spec", "pre_rename"],
     });
+    const r = await archiveCxSpec(rt.workspace, name);
     ctx.write(`archived ${name} → ${r.to}`);
     ctx.write(`path: ${r.path.join(" → ")}`);
     ctx.write(`next: cox cx restore ${name}`);

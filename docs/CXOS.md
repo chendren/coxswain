@@ -10,6 +10,14 @@ Composition root: `@cox/cli` wires `cox cx …`. Contracts live in `@cox/cx-core
 Adapters: `@cox/cx-artifacts`, `@cox/cx-local`, `@cox/cx-aws`. Operate layer:
 `@cox/cx-ops` (injected adapters only; never imports sibling adapters).
 
+**Navigation:**
+
+| Doc | Use when |
+|---|---|
+| **[`CXOS-COMPLETE.md`](./CXOS-COMPLETE.md)** | Full OS map: layers, every CLI command by lifecycle (design / build / operate / govern / fleet), package map, offline/live, human gates |
+| This file (`CXOS.md`) | Technical north star: graph practice, runtime wiring, operate cheat sheet |
+| [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md) | Personas, playbooks, value spine |
+
 ---
 
 ## What CXOS is
@@ -37,8 +45,10 @@ reviewers, AWS PS and partners, workshop facilitators, QA, CS/retention leads, a
 LOB analysts. Full jobs-to-be-done, multi-role scenarios, and value tables live in
 [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md).
 
-**Complete system map:** command surface by lifecycle (catalog → program → observe →
-operate → fleet → govern), CAB packages, board, brief, audit: [`CXOS-COMPLETE.md`](./CXOS-COMPLETE.md).
+**Complete system map:** layers, full command inventory by lifecycle
+(design / build / operate / govern / fleet), package map, offline/live, human
+gates, workspace layout, control paths:
+[`CXOS-COMPLETE.md`](./CXOS-COMPLETE.md).
 
 **Hard rules:**
 
@@ -381,7 +391,8 @@ packages/
 
 See also:
 
-- [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md) — personas, playbooks, value
+- **[`CXOS-COMPLETE.md`](./CXOS-COMPLETE.md)**: complete OS map (layers, all CLI by lifecycle, packages, gates)
+- [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md): personas, playbooks, value
 - `docs/superpowers/specs/2026-07-22-cxos-design.md`,
   `2026-07-24-cx-ops-design.md`, `2026-08-03-cxos-ontology-design.md`
 - `packages/cx-ops/README.md`, `examples/cx-demo/README.md`
