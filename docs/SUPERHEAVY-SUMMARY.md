@@ -112,10 +112,10 @@ Phases:
 | `build:dashboard-html` | `cx-ops` only | `dashboard-html.ts` + tests |
 | `build:graph-query` | `cx-ops` only | `graph-query.ts` + tests |
 | `build:cli-queue-dash` | `cli` only | wire `queue` / `dashboard` / `graph-find` in `main.ts` + `commands/cx.ts` |
-| `build:e2e-surface` | `cli/test` | offline OS surface e2e (optional follow-on) |
-| `build:runbook` | `docs` | operator runbook (optional follow-on) |
-| `build:multi-demo` | `examples/cx-demo` | multi-program demo (optional follow-on) |
-| `build:brief-health` | `cx-ops` brief | optional health history line |
+| `build:e2e-surface` | `cli/test` | offline OS surface e2e (`cx-os-surface` / expanded e2e) |
+| `build:runbook` | `docs` | `CXOS-OPERATOR-RUNBOOK.md` + COMPLETE map links |
+| `build:multi-demo` | `examples/cx-demo` | multi-program demo script + README |
+| `build:brief-health` | `cx-ops` brief | optional health history line on brief |
 | `build:urgency-score` | `proposals.ts` | `proposalUrgencyScore` |
 | `build:pkg-scripts` | root `package.json` | `cx:queue`, `cx:dashboard`, `cx:graph-find` |
 
@@ -264,9 +264,24 @@ urgency:    pure score(kind, ageHours) → queue score= field
 
 ---
 
+## Verify (2026-08-07)
+
+| Check | Result |
+|---|---|
+| Merge conflict markers (`<<<<<<<` etc.) | none |
+| `OPENAI_API_KEY= pnpm --filter @cox/cx-ops test` | **78/78** passed (19 files) |
+| `pnpm --filter @cox/cli typecheck` | **pass** (`tsc --noEmit`) |
+| `vitest run test/cx-e2e.test.ts test/cx-os-surface.test.ts` | **10/10** passed |
+| Docs: `CXOS-COMPLETE.md` queue / dashboard / graph-find | present (fleet section, inventory, scripts, control paths) |
+| Root scripts `cx:queue` `cx:dashboard` `cx:graph-find` | present in root `package.json` |
+
+No parallel-agent fallout remaining on `main`. Commit only; do not push.
+
+---
+
 ## Note
 
 This summary matches `main.ts` command descriptions and the `runCx*` handlers
 as of SuperHeavy land. Core product delta: queue / dashboard / graph-find /
 scripts / urgency / superheavy tests; runbook and CXOS-COMPLETE inventory
-updates landed in sibling lanes. Commit only; do not push.
+updates landed in sibling lanes. Verify gate above is the SuperHeavy close.
