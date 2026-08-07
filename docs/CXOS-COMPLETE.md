@@ -104,7 +104,9 @@ Ground work in the closed world, then create and approve a CX program.
 | `init` | Ensure `.cox/cx`; seed `starter` if empty | Workspace bootstrap |
 | `new <name> [idea…]` | Create CXOS spec under `.cox/cx/<name>/` | Seeds CX-EARS requirements |
 | `approve <name> [phase]` | Approve `requirements` \| `design` \| `tasks` | Default: next unapproved; ordered gates |
-| `list` | List CX specs | |
+| `list` | List CX specs | Active only (excludes `.archived-*`) |
+| `archive <name>` | Soft-archive program | Renames to `.archived-<name>`; see §2.6 |
+| `restore <name>` | Restore soft-archived program | Renames back; see §2.6 |
 
 **Design gate rule:** cannot approve `design` before `requirements`, or
 `tasks` before `design`. Build requires **requirements approved**. Successful
@@ -314,8 +316,8 @@ pnpm cx:archive -- billing
 
 | Lifecycle | Commands |
 |---|---|
-| **Design** | `catalog` `ontology show` `ontology validate` `ontology graph` `nba` `journeys` `init` `new` `approve` `list` |
-| **Build** | `plan` `build` `deploy` `run` `teardown` `archive` `restore` |
+| **Design** | `catalog` `ontology show` `ontology validate` `ontology graph` `nba` `journeys` `init` `new` `approve` `list` `archive` `restore` |
+| **Build** | `plan` `build` `deploy` `run` `teardown` |
 | **Operate** | `doctor` `status` `health-history` `simulate` `report` `console` `operate` `watch` `daemon start\|status\|stop` `proposals` `proposal` `claim` `apply` `tasks` `task` |
 | **Govern** | `brief` `audit` `export-aws` `cab-export` `snapshot` |
 | **Fleet** | `board` `fleet-status` |
@@ -370,7 +372,15 @@ pnpm cx:claim -- billing prop_…
 pnpm cx:health-history -- billing
 ```
 
-### C. Change board / AWS handoff (govern)
+### C. Fleet rollup
+
+```bash
+pnpm cox cx board
+pnpm cox cx fleet-status --live
+pnpm cx:fleet -- --live
+```
+
+### D. Change board / AWS handoff (govern)
 
 ```bash
 pnpm cox cx cab-export billing
@@ -380,15 +390,7 @@ pnpm cox cx snapshot billing
 pnpm cx:snapshot -- billing
 ```
 
-### F. Fleet rollup
-
-```bash
-pnpm cox cx board
-pnpm cox cx fleet-status --live
-pnpm cx:fleet -- --live
-```
-
-### G. Archive retired program
+### E. Archive retired program
 
 ```bash
 pnpm cox cx archive old-pilot
@@ -397,14 +399,14 @@ pnpm cox cx restore old-pilot
 pnpm cx:archive -- old-pilot
 ```
 
-### D. Offline proof (CI / workshop)
+### F. Offline proof (CI / workshop)
 
 ```bash
 pnpm cx:golden
 OPENAI_API_KEY= XAI_API_KEY= ANTHROPIC_API_KEY= pnpm --filter @cox/cx-ops test
 ```
 
-### E. Live local stack
+### G. Live local stack
 
 ```bash
 ./scripts/cx-stack-up.sh
