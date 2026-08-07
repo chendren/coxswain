@@ -363,6 +363,8 @@ Related monorepo scripts (root `package.json`; pass args after `--`):
 
 ### A. Stand up a program (design → build)
 
+Day-1 bootstrap by role: [`CXOS-OPERATOR-RUNBOOK.md`](./CXOS-OPERATOR-RUNBOOK.md) §1.
+
 ```bash
 pnpm cx:init
 pnpm cox cx run billing "reduce dispute handle time"
@@ -371,6 +373,10 @@ pnpm cox cx brief billing
 ```
 
 ### B. Day-2 operate
+
+Role procedures (PM, SA, Ops, SRE, Compliance) with exact commands:
+[`CXOS-OPERATOR-RUNBOOK.md`](./CXOS-OPERATOR-RUNBOOK.md) §2.
+Incident mini-loop: [`CXOS-INCIDENT.md`](./CXOS-INCIDENT.md).
 
 ```bash
 pnpm cox cx status billing --live

@@ -5,7 +5,8 @@ Short operator narrative for day-2 incidents: **status → operate → queue →
 CLI already exposes these commands (`cox cx status`, `operate`, `queue`, `claim`).
 This doc is the playbook only; no extra CLI helper is required.
 
-**Related:** full command map in [`CXOS-COMPLETE.md`](./CXOS-COMPLETE.md);
+**Related:** role runbook in [`CXOS-OPERATOR-RUNBOOK.md`](./CXOS-OPERATOR-RUNBOOK.md);
+full command map in [`CXOS-COMPLETE.md`](./CXOS-COMPLETE.md);
 personas scenario S2 in [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md);
 legal edges and apply semantics in [`CXOS.md`](./CXOS.md).
 

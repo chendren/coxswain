@@ -1,5 +1,6 @@
 /**
  * Self-contained HTML ops dashboard (no external CSS/JS CDNs).
+ * Pure: board + optional queue in, HTML string out. No I/O.
  */
 import type { OpsBoard } from "./board";
 import type { WorkQueue } from "./fleet-queue";
@@ -27,7 +28,7 @@ export function renderOpsDashboardHtml(
         <td>${esc(r.deployments.join(", ") || "-")}</td>
         <td>${r.proposalsOpen}+${r.proposalsClaimed}c</td>
         <td>${r.tasksOpen}</td>
-        <td>${r.daemonRunning ? "up" : "off"}</td>
+        <td class="${r.daemonRunning ? "ok" : "off"}">${r.daemonRunning ? "up" : "off"}</td>
         <td class="idea">${esc(r.idea.slice(0, 100))}</td>
       </tr>`;
     })
@@ -39,7 +40,7 @@ export function renderOpsDashboardHtml(
       .slice(0, 40)
       .map(
         (p) =>
-          `<tr><td>${esc(p.specName)}</td><td><code>${esc(p.id)}</code></td><td>${esc(p.status)}</td><td>${esc(p.urgency)}</td><td>${p.ageHours}h</td><td>${esc(p.summary.slice(0, 80))}</td></tr>`,
+          `<tr><td>${esc(p.specName)}</td><td><code>${esc(p.id)}</code></td><td>${esc(p.status)}</td><td class="urg-${esc(p.urgency)}">${esc(p.urgency)}</td><td>${p.ageHours}h</td><td>${esc(p.summary.slice(0, 80))}</td></tr>`,
       )
       .join("\n");
     const tasks = queue.tasks
@@ -65,7 +66,7 @@ export function renderOpsDashboardHtml(
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>CXOS Ops Dashboard</title>
 <style>
-  :root { --bg:#0b1020; --panel:#141a2e; --text:#e6ecff; --muted:#8b95b5; --accent:#5b8cff; --ok:#3dd68c; --warn:#f5a524; }
+  :root { --bg:#0b1020; --panel:#141a2e; --text:#e6ecff; --muted:#8b95b5; --accent:#5b8cff; --ok:#3dd68c; --warn:#f5a524; --off:#6b7280; --high:#f87171; }
   * { box-sizing: border-box; }
   body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:var(--bg); color:var(--text); padding:24px; }
   h1 { font-size:1.4rem; margin:0 0 4px; letter-spacing:0.02em; }
@@ -80,6 +81,11 @@ export function renderOpsDashboardHtml(
   th { color:var(--muted); font-weight:600; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; }
   tr:last-child td { border-bottom:none; }
   td.idea { color:var(--muted); max-width:280px; }
+  td.ok { color:var(--ok); }
+  td.off { color:var(--off); }
+  .urg-high { color:var(--high); font-weight:600; }
+  .urg-med { color:var(--warn); }
+  .urg-low { color:var(--muted); }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:0.82rem; color:#b8d0ff; }
   footer { margin-top:28px; color:var(--muted); font-size:0.75rem; }
 </style>
@@ -98,11 +104,11 @@ export function renderOpsDashboardHtml(
   <table>
     <thead><tr><th>Spec</th><th>Phases</th><th>Deps</th><th>Props</th><th>Tasks</th><th>Daemon</th><th>Idea</th></tr></thead>
     <tbody>
-      ${rows || "<tr><td colspan=7>(no specs — cox cx init)</td></tr>"}
+      ${rows || "<tr><td colspan=7>(no specs - cox cx init)</td></tr>"}
     </tbody>
   </table>
   ${queueHtml}
-  <footer>CXOS dashboard — offline-safe HTML · no external assets · never auto-mutates prod</footer>
+  <footer>CXOS dashboard - offline-safe HTML · no external assets · never auto-mutates prod</footer>
 </body>
 </html>
 `;

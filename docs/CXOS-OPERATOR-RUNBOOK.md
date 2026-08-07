@@ -7,6 +7,7 @@ Day-1 bootstrap and day-2 operate procedures for **PM**, **SA**, **Ops Lead**,
 | Related doc | Role |
 |---|---|
 | [`CXOS-COMPLETE.md`](./CXOS-COMPLETE.md) | Full OS map, layers, gates, inventory |
+| [`CXOS-INCIDENT.md`](./CXOS-INCIDENT.md) | Incident mode: status → operate → queue → claim |
 | [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md) | Persona jobs and value spine |
 | [`CXOS.md`](./CXOS.md) | Technical north star |
 
@@ -435,8 +436,8 @@ pnpm cox --cwd ~/cx/acme cx daemon start billing-dispute --live --interval 30000
 ./scripts/cx-stack-up.sh
 pnpm cox --cwd ~/cx/acme cx doctor --live
 
-# If live is broken mid-demo, force offline operate for workshop continuity
-pnpm cox --cwd ~/cx/acme cx operate billing-dispute --mode offline
+# If live is broken mid-demo, omit --live (offline is default for operate)
+pnpm cox --cwd ~/cx/acme cx operate billing-dispute
 ```
 
 **Escalation:** doctor live fail-closed is expected when platform is down; fix
@@ -526,6 +527,9 @@ pnpm cx:stack-up
 
 ## 4. Incident mini-playbooks
 
+Full narrative (status → operate → queue → claim, hard rules, compact script):
+[`CXOS-INCIDENT.md`](./CXOS-INCIDENT.md).
+
 ### 4.1 Health score degraded / down
 
 ```bash
@@ -533,6 +537,7 @@ pnpm cox --cwd ~/cx/acme cx status billing-dispute --live
 pnpm cox --cwd ~/cx/acme cx health-history billing-dispute
 pnpm cox --cwd ~/cx/acme cx doctor --live
 pnpm cox --cwd ~/cx/acme cx operate billing-dispute --live
+pnpm cox --cwd ~/cx/acme cx queue
 pnpm cox --cwd ~/cx/acme cx claim billing-dispute prop_…
 # follow remediations/*.md outside the CLI
 pnpm cox --cwd ~/cx/acme cx task billing-dispute task_… done
@@ -544,8 +549,10 @@ pnpm cox --cwd ~/cx/acme cx audit billing-dispute
 ```bash
 ./scripts/cx-stack-up.sh
 pnpm cox --cwd ~/cx/acme cx doctor --live
-# if still red, continue offline:
-pnpm cox --cwd ~/cx/acme cx operate billing-dispute --mode offline
+# if still red, continue offline (default; do not pass --live):
+pnpm cox --cwd ~/cx/acme cx operate billing-dispute
+# doctor can still be probed offline:
+pnpm cox --cwd ~/cx/acme cx doctor --mode offline
 ```
 
 ### 4.3 Change board package due
