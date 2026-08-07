@@ -11,7 +11,11 @@
   "scripts": {
     "typecheck": "pnpm -r --no-bail typecheck",
     "test": "pnpm -r --no-bail test",
-    "cox": "tsx packages/cli/src/main.ts"
+    "cox": "tsx packages/cli/src/main.ts",
+    "cx:doctor": "pnpm cox cx doctor",
+    "cx:stack-up": "bash scripts/cx-stack-up.sh",
+    "cx:golden": "bash examples/cx-demo/golden-path.sh",
+    "cx:golden:live": "bash examples/cx-demo/golden-path.sh --live"
   },
   "devDependencies": {
     "tsx": "^4.19.0",
