@@ -16,6 +16,7 @@ Adapters: `@cox/cx-artifacts`, `@cox/cx-local`, `@cox/cx-aws`. Operate layer:
 |---|---|
 | **[`CXOS-COMPLETE.md`](./CXOS-COMPLETE.md)** | Full OS map: layers, every CLI command by lifecycle (design / build / operate / govern / fleet), package map, offline/live, human gates |
 | This file (`CXOS.md`) | Technical north star: graph practice, runtime wiring, operate cheat sheet |
+| [`CXOS-INCIDENT.md`](./CXOS-INCIDENT.md) | Incident mode narrative: status → operate → queue → claim |
 | [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md) | Personas, playbooks, value spine |
 
 ---
