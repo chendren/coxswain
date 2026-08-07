@@ -42,16 +42,23 @@ import {
   summarizeDeployments,
   summarizeTasks,
   formatPathAudit,
+  formatPathByPhase,
   suggestedProposalNext,
   remediationFilePath,
   listOpenProposals,
   transitionProposal,
   validateOntologyPack,
+  buildOpsBoard,
+  renderExecBrief,
+  exportCabPackage,
+  appendAuditEvent,
+  loadAuditEvents,
+  listJourneys,
   type OntologyPack,
   type CxPhase,
   type ProposalStatus,
 } from "@cox/cx-ops";
-import { cp, mkdir, access, readFile } from "node:fs/promises";
+import { cp, mkdir, access, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { CxRuntime, CxRuntimeMode } from "../cx/runtime";
 import { createCxRuntime, createOfflineCxRuntime } from "../cx/runtime";
@@ -596,10 +603,14 @@ export async function runCxRun(
   }
 
   ctx.write(`ok=true deployments=${deployed.join(",") || "(none)"}`);
-  ctx.write(`path: ${audit.join(" → ")}`);
+  ctx.write(`path: ${formatPathByPhase(audit)}`);
+  ctx.write(`path_full: ${formatPathAudit(audit, 12)}`);
   ctx.write("next steps:");
   ctx.write(`  cox cx console ${name}     # poll status, propose gated NBA`);
   ctx.write(`  cox cx apply ${name} <id>   # apply a proposal → task`);
+  ctx.write(`  cox cx board               # multi-spec ops board`);
+  ctx.write(`  cox cx brief ${name}       # executive brief`);
+  ctx.write(`  cox cx cab-export ${name}  # CAB change package`);
   ctx.write(`  cox cx daemon start ${name} # long-running watch loop`);
   return 0;
 }
@@ -832,6 +843,13 @@ export async function runCxConsole(
     for (const p of persisted.added) {
       ctx.write(`  + ${p.id} [${p.kind}] ${p.summary}`);
       ctx.write(`  next: cox cx apply ${name} ${p.id}`);
+      await appendAuditEvent(rt.workspace, {
+        kind: "proposal_persisted",
+        specName: name,
+        message: p.summary,
+        ref: p.id,
+        path: p.path,
+      });
     }
   } else {
     ctx.write("(no new proposals to persist)");
@@ -1073,6 +1091,13 @@ export async function runCxApply(
     const result = await applyProposal(rt.workspace, name, prop, {
       resolve: Boolean(opts?.resolve),
     });
+    await appendAuditEvent(rt.workspace, {
+      kind: "proposal_applied",
+      specName: name,
+      message: `task=${result.task.id} resolve=${Boolean(opts?.resolve)}`,
+      ref: proposalId,
+      path: result.path,
+    });
     ctx.write(
       `applied ${proposalId} → task ${result.task.id} (proposal → ${opts?.resolve ? "resolved" : "claimed"})`,
     );
@@ -1145,7 +1170,150 @@ export async function runCxTaskTransition(
   if (status === "done" && next.sourceProposalId && opts?.resolveSource !== false) {
     ctx.write(`source proposal ${next.sourceProposalId} → resolved (default)`);
   }
+  await appendAuditEvent(rt.workspace, {
+    kind: "task_transition",
+    specName: name,
+    message: `${taskId} → ${status}`,
+    ref: taskId,
+    path: ["load_tasks", `transition:${status}`, "emit"],
+  });
   ctx.write(`path: load_tasks → transition:${status} → emit`);
+  return 0;
+}
+
+export async function runCxBoard(ctx: CxCommandContext): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const board = await buildOpsBoard(rt.workspace);
+  ctx.write(
+    `CXOS board  specs=${board.totals.specs} deployed=${board.totals.deployedSpecs} proposals_open=${board.totals.proposalsOpen} tasks_open=${board.totals.tasksOpen} daemons=${board.totals.daemonsRunning}`,
+  );
+  if (board.rows.length === 0) {
+    ctx.write("(no CX specs — cox cx new <name> or cox cx init)");
+    return 0;
+  }
+  for (const r of board.rows) {
+    const ph = `R=${r.phases.requirements[0]} D=${r.phases.design[0]} T=${r.phases.tasks[0]}`;
+    ctx.write(
+      `${r.name}  [${ph}] deps=${r.deployments.join(",") || "-"} prop=${r.proposalsOpen}+${r.proposalsClaimed}c tasks_open=${r.tasksOpen} done=${r.tasksDone} daemon=${r.daemonRunning ? "up" : "off"}`,
+    );
+    ctx.write(`  idea: ${r.idea.slice(0, 80)}`);
+  }
+  ctx.write(`path: ${board.path.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxBrief(
+  ctx: CxCommandContext,
+  name: string,
+  outFile?: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const record = await loadCxWorkspace(rt.workspace, name);
+  if (!record) {
+    ctx.write(`CX spec "${name}" not found`);
+    return 1;
+  }
+  const depsFile = await loadDeployments(rt.workspace, name);
+  const proposals = await loadProposals(rt.workspace, name);
+  const tasks = await loadCxTasks(rt.workspace, name);
+  const md = renderExecBrief({
+    name,
+    record,
+    deployments: depsFile.deployments,
+    proposals,
+    tasks,
+    generatedAt: rt.workspace.now(),
+  });
+  if (outFile) {
+    const dest = resolve(ctx.cwd, outFile);
+    await writeFile(dest, md, "utf8");
+    ctx.write(`wrote brief ${dest}`);
+  } else {
+    for (const line of md.split("\n")) ctx.write(line);
+  }
+  ctx.write(`path: load_workspace → render_brief → emit`);
+  return 0;
+}
+
+export async function runCxCabExport(
+  ctx: CxCommandContext,
+  name: string,
+  outDirRaw?: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const out = outDirRaw?.trim() || join("cx-cab", name);
+  try {
+    const result = await exportCabPackage(rt.workspace, name, out, ctx.cwd);
+    await appendAuditEvent(rt.workspace, {
+      kind: "cab_export",
+      specName: name,
+      message: result.outDir,
+      path: result.path,
+    });
+    ctx.write(`CAB package for "${name}"`);
+    ctx.write(`out: ${result.outDir}`);
+    ctx.write(`files: ${result.files.join(", ")}`);
+    ctx.write(`path: ${result.path.join(" → ")}`);
+    ctx.write(`next: review MANIFEST.md + aws/APPLY.md (human CFN only)`);
+    return 0;
+  } catch (e) {
+    ctx.write(e instanceof Error ? e.message : String(e));
+    return 1;
+  }
+}
+
+export async function runCxAudit(
+  ctx: CxCommandContext,
+  name: string,
+  limitRaw?: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const limit = Math.max(1, Number(limitRaw ?? 30) || 30);
+  const events = await loadAuditEvents(rt.workspace, name, limit);
+  if (events.length === 0) {
+    ctx.write(`(no audit events for ${name})`);
+    return 0;
+  }
+  ctx.write(`audit ${name} (last ${events.length})`);
+  for (const e of events) {
+    ctx.write(`${e.at}  ${e.kind}  ${e.ref ?? "-"}  ${e.message}`);
+  }
+  ctx.write(`path: load_audit → emit`);
+  return 0;
+}
+
+export async function runCxJourneys(ctx: CxCommandContext, packRaw?: string): Promise<number> {
+  const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "local");
+  const inv = listJourneys(pack);
+  ctx.write(`CXOS journeys  pack=${inv.pack}  count=${inv.journeys.length}`);
+  for (const j of inv.journeys) {
+    ctx.write(
+      `${j.id}  stages=${j.stages.length}  terminal=${j.terminalStages.join(",") || "-"}  triggers=${j.triggerIntents.slice(0, 4).join(",")}`,
+    );
+  }
+  ctx.write(`path: ${inv.path.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxInit(ctx: CxCommandContext): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  await mkdir(rt.workspace.cxRoot, { recursive: true });
+  const names = await listCxSpecs(rt.workspace);
+  ctx.write(`CXOS workspace ready: ${rt.workspace.cxRoot}`);
+  if (names.length === 0) {
+    const rec = await createCxSpec(
+      rt.workspace,
+      "starter",
+      "starter CX program — replace idea and run build",
+    );
+    ctx.write(`seeded sample spec "starter" (${rec.spec.requirements.length} requirements)`);
+    ctx.write(`next: cox cx approve starter && cox cx build starter`);
+    ctx.write(`next: cox cx run starter "your idea"`);
+  } else {
+    ctx.write(`existing specs: ${names.join(", ")}`);
+    ctx.write(`next: cox cx board`);
+  }
+  ctx.write(`path: ensure_cx_root → seed_optional → emit`);
   return 0;
 }
 

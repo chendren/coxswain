@@ -11,11 +11,16 @@ scenarios: [`docs/CXOS-PERSONAS-USE-CASES.md`](../../docs/CXOS-PERSONAS-USE-CASE
 
 | Track | Persona | Commands |
 |---|---|---|
-| Design once | PM / SA | `cx run` / `cx:golden` |
-| Catalog honesty | Graph eng / LOB | `cx ontology show\|validate\|graph` |
+| Design once | PM / SA | `cx init` / `cx run` / `cx:golden` |
+| Catalog honesty | Graph eng / LOB | `journeys` / `ontology show\|validate\|graph` |
 | Day-2 queue | Journey owner | `console` → `apply` → `tasks` → `task … done` |
-| Cloud handoff | SA / Change | `export-aws` (human CFN) |
+| Fleet view | Ops lead | `cx board` |
+| Exec read | Sponsor | `cx brief <name>` |
+| Change board | SA / Compliance | `cab-export` / `export-aws` |
+| Evidence | Security | `cx audit <name>` |
 | Live local | SRE | `cx:stack-up` + `doctor --live` |
+
+Complete OS map: [`docs/CXOS-COMPLETE.md`](../../docs/CXOS-COMPLETE.md).
 
 ## Stack up (Ollama + platform)
 

@@ -20,7 +20,12 @@ Public surface is re-exported from `src/index.ts`.
 | **daemon** | `daemonPaths`, `readDaemonMeta`, `isDaemonRunning`, `stopDaemon`, `runDaemonLoop`, `spawnWatchDaemon`, `recordDaemonLastTick`, types `DaemonPaths`, `DaemonMeta` | Detached watch: `daemon.pid` / `daemon.log` / `daemon.json` (lastTick/lastTickAt); CLI health line: running/stopped + pid/ticks/proposals_open |
 | **stack-health** | `probeOllama`, `probePlatformReady`, `probeStackHealth`, types `OllamaHealth`, `PlatformHealth`, `StackHealth` | Doctor probes: Ollama tags + embed/LLM models; platform `/api/health/ready` |
 | **metrics-summary** | `summarizeDeployments`, types `HealthEntry`, `MetricsSummary` | Pure health rollup for status: counts + score (healthy=100, degraded=50, down/error=0) |
-| **path-audit** | `formatPathAudit`, `PATH_AUDIT_DEFAULT_MAX` | Collapse long control-flow paths for CLI display (head 3 + `...` + tail 3 when length > 8) |
+| **path-audit** | `formatPathAudit`, `formatPathByPhase`, `PATH_AUDIT_DEFAULT_MAX` | Collapse long paths; group multi-stage `run` audits by phase |
+| **board** | `buildOpsBoard`, types `BoardRow`, `OpsBoard` | Multi-spec fleet rollup (phases, proposals, tasks, daemons) |
+| **brief** | `renderExecBrief` | Executive markdown brief (no model) |
+| **cab-export** | `exportCabPackage` | CAB package: CFN + remediations + state + BRIEF/MANIFEST |
+| **audit** | `appendAuditEvent`, `loadAuditEvents` | Append-only `audit.jsonl` evidence |
+| **journeys** | `listJourneys` | Closed-world journey inventory from ontology pack |
 | **cfn-skeleton** | `buildCfnSkeleton` | Deterministic CloudFormation YAML + APPLY markdown from journey map (plan-only; no CreateStack) |
 | **offline-adapters** | `createOfflineLocalAdapter`, `createOfflineAwsAdapter`, type `OfflineDiskDeps` | Disk-backed local (build/deploy/status/simulate/teardown) and AWS plan-only (writes `template.yaml`, `APPLY.md`) |
 | **offline-artifacts** | `createOfflineArtifactsAdapter`, type `OfflineArtifactsDeps` | Deterministic / optional-generate artifacts adapter for offline runtime |

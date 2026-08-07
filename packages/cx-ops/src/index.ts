@@ -16,3 +16,8 @@ export * from "./cfn-skeleton";
 export * from "./tasks";
 export * from "./metrics-summary";
 export * from "./path-audit";
+export * from "./audit";
+export * from "./board";
+export * from "./brief";
+export * from "./cab-export";
+export * from "./journeys";

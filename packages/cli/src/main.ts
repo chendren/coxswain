@@ -46,6 +46,12 @@ import {
   runCxTasks,
   runCxTaskTransition,
   runCxExportAws,
+  runCxBoard,
+  runCxBrief,
+  runCxCabExport,
+  runCxAudit,
+  runCxJourneys,
+  runCxInit,
   type CxCommandContext,
 } from "./commands/cx";
 import { loadDeps, type LoadedDeps } from "./deps";
@@ -783,6 +789,59 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   ).action(async (name: string, outDir: string | undefined, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     throw new CliExit(await runCxExportAws(await cxCtx(command, f.pack, f), name, outDir));
+  });
+
+  addGlobalOptions(
+    cx.command("board").description("multi-spec ops board (phases, proposals, tasks, daemons)"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxBoard(await cxCtx(command, f.pack, f)));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("brief <name> [outFile]")
+      .description("executive markdown brief for a CX program"),
+  ).action(async (name: string, outFile: string | undefined, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxBrief(await cxCtx(command, f.pack, f), name, outFile));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("cab-export <name> [outDir]")
+      .description("CAB change package: CFN + remediations + proposals/tasks + BRIEF.md"),
+  ).action(async (name: string, outDir: string | undefined, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxCabExport(await cxCtx(command, f.pack, f), name, outDir));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("audit <name>")
+      .description("show recent CXOS audit events for a spec")
+      .option("--limit <n>", "max events", "30"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { limit?: string }>();
+    throw new CliExit(await runCxAudit(await cxCtx(command, f.pack, f), name, opts.limit));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("journeys")
+      .description("list closed-world journeys from ontology pack")
+      .option("--pack <name>", "ontology pack: default|local", "local"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxJourneys(await cxCtx(command, f.pack, f), f.pack));
+  });
+
+  addGlobalOptions(
+    cx.command("init").description("ensure .cox/cx workspace; seed starter spec if empty"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxInit(await cxCtx(command, f.pack, f)));
   });
 
   return program;

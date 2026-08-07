@@ -37,6 +37,9 @@ reviewers, AWS PS and partners, workshop facilitators, QA, CS/retention leads, a
 LOB analysts. Full jobs-to-be-done, multi-role scenarios, and value tables live in
 [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md).
 
+**Complete system map:** command surface by lifecycle (catalog → program → observe →
+operate → fleet → govern), CAB packages, board, brief, audit: [`CXOS-COMPLETE.md`](./CXOS-COMPLETE.md).
+
 **Hard rules:**
 
 - No live AWS stack create from Coxswain. Deploy writes plan-only
