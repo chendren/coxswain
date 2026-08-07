@@ -102,13 +102,21 @@ describe("R13.1: M2 integration — full stack with a MockChatModel-backed regis
     expect(turnDone.stopReason).toBe("end_turn");
 
     // Two ledger lines: the router's self-ledgered classify call + the chat
-    // call written by the cli's ledger subscriber.
-    const ledgerRaw = await readFile(join(cwd, ".cox", "ledger.jsonl"), "utf8");
-    const entries = ledgerRaw
-      .split("\n")
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0)
-      .map((l) => JSON.parse(l) as { kind: string; sessionId: string });
+    // call written by the cli's ledger subscriber (async after model_call_finished).
+    // Poll: attachLedgerWriter records after turn_done may already have fired.
+    const ledgerPath = join(cwd, ".cox", "ledger.jsonl");
+    let entries: { kind: string; sessionId: string }[] = [];
+    const deadline = Date.now() + 3_000;
+    while (Date.now() < deadline) {
+      const ledgerRaw = await readFile(ledgerPath, "utf8");
+      entries = ledgerRaw
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0)
+        .map((l) => JSON.parse(l) as { kind: string; sessionId: string });
+      if (entries.length >= 2) break;
+      await new Promise((r) => setTimeout(r, 20));
+    }
     expect(entries).toHaveLength(2);
     expect(entries.map((e) => e.kind).sort()).toEqual(["chat", "classify"]);
     for (const entry of entries) {

@@ -22,6 +22,7 @@ import {
   opsRecommendNba,
   probeStackHealth,
   readDaemonMeta,
+  recordDaemonLastTick,
   spawnWatchDaemon,
   stopDaemon,
   transitionTask,
@@ -39,6 +40,7 @@ import {
   showOntology,
   showStrongGraph,
   summarizeDeployments,
+  formatPathAudit,
   transitionProposal,
   validateOntologyPack,
   type OntologyPack,
@@ -354,7 +356,7 @@ export async function runCxStatus(
   ctx.write(
     `summary score: ${summary.score} (healthy=${summary.healthy} degraded=${summary.degraded} down=${summary.down} errors=${summary.errors})`,
   );
-  ctx.write(`path: ${result.path.join(" → ")}`);
+  ctx.write(`path: ${formatPathAudit(result.path)}`);
   return result.ok ? 0 : 1;
 }
 
@@ -703,7 +705,7 @@ export async function runCxReport(
       `nba: ${result.nba.primary.id} → ${result.nba.primary.action} (${result.nba.primary.urgency})`,
     );
   }
-  ctx.write(`path: ${result.path.join(" → ")}`);
+  ctx.write(`path: ${formatPathAudit(result.path)}`);
   return 0;
 }
 
@@ -881,6 +883,7 @@ export async function runCxWatch(
         for (const a of info.added) {
           ctx.write(`  + ${a.id} [${a.kind}] ${a.nbaRuleId ?? "-"}`);
         }
+        void recordDaemonLastTick(rt.workspace.cxRoot, name, info.tick);
       },
     },
   );
@@ -893,14 +896,19 @@ export async function runCxWatch(
 export async function runCxProposals(
   ctx: CxCommandContext,
   name: string,
-  filter: "open" | "all" = "open",
+  opts: { all?: boolean; status?: ProposalStatus } = {},
 ): Promise<number> {
   const rt = await runtimeFrom(ctx);
   const all = await loadProposals(rt.workspace, name);
-  const list =
-    filter === "all" ? all : all.filter((p) => p.status === "open" || p.status === "claimed");
+  let list = all;
+  if (opts.status) {
+    list = all.filter((p) => p.status === opts.status);
+  } else if (!opts.all) {
+    list = all.filter((p) => p.status === "open" || p.status === "claimed");
+  }
+  const label = opts.status ?? (opts.all ? "all" : "open");
   if (list.length === 0) {
-    ctx.write(`(no ${filter} proposals for ${name})`);
+    ctx.write(`(no ${label} proposals for ${name})`);
     return 0;
   }
   for (const p of list) {
@@ -991,13 +999,26 @@ export async function runCxDaemonStatus(ctx: CxCommandContext, name: string): Pr
   const running = await isDaemonRunning(rt.workspace.cxRoot, name);
   const meta = await readDaemonMeta(rt.workspace.cxRoot, name);
   const logPath = join(rt.workspace.cxRoot, name, "daemon.log");
+  let logPresent = false;
+  try {
+    await access(logPath);
+    logPresent = true;
+  } catch {
+    /* log not created yet */
+  }
+
   ctx.write(`daemon ${name}: ${running ? "running" : "stopped"}`);
+  ctx.write(
+    `running=${running} pid=${meta?.pid ?? "-"} lastTickAt=${meta?.lastTickAt ?? "-"}`,
+  );
   if (meta) {
     ctx.write(
-      `pid=${meta.pid} startedAt=${meta.startedAt} intervalMs=${meta.intervalMs} maxTicks=${meta.maxTicks} targets=${meta.targets.join(",")}`,
+      `startedAt=${meta.startedAt} intervalMs=${meta.intervalMs} maxTicks=${meta.maxTicks} targets=${meta.targets.join(",")}${meta.lastTick != null ? ` lastTick=${meta.lastTick}` : ""}`,
     );
   }
-  ctx.write(`log: ${logPath}`);
+  if (logPresent) {
+    ctx.write(`log: ${logPath}`);
+  }
   if (!running) {
     ctx.write(`next: cox cx daemon start ${name}`);
   }
@@ -1018,7 +1039,7 @@ export async function runCxApply(
     return 1;
   }
   if (prop.status === "resolved" || prop.status === "dismissed") {
-    ctx.write(`proposal ${proposalId} is ${prop.status} — nothing to apply`);
+    ctx.write(`proposal ${proposalId} is ${prop.status} - nothing to apply`);
     return 1;
   }
   const result = await applyProposal(rt.workspace, name, prop);
@@ -1033,16 +1054,19 @@ export async function runCxApply(
 export async function runCxTasks(
   ctx: CxCommandContext,
   name: string,
-  filter: "open" | "all" = "open",
+  opts: { all?: boolean; status?: "pending" | "in_progress" | "done" | "cancelled" } = {},
 ): Promise<number> {
   const rt = await runtimeFrom(ctx);
   const tasks = await loadCxTasks(rt.workspace, name);
-  const list =
-    filter === "all"
-      ? tasks
-      : tasks.filter((t) => t.status === "pending" || t.status === "in_progress");
+  let list = tasks;
+  if (opts.status) {
+    list = tasks.filter((t) => t.status === opts.status);
+  } else if (!opts.all) {
+    list = tasks.filter((t) => t.status === "pending" || t.status === "in_progress");
+  }
+  const label = opts.status ?? (opts.all ? "all" : "open");
   if (list.length === 0) {
-    ctx.write(`(no ${filter} tasks for ${name})`);
+    ctx.write(`(no ${label} tasks for ${name})`);
     return 0;
   }
   for (const t of list) {

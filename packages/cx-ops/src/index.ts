@@ -15,3 +15,4 @@ export * from "./stack-health";
 export * from "./cfn-skeleton";
 export * from "./tasks";
 export * from "./metrics-summary";
+export * from "./path-audit";

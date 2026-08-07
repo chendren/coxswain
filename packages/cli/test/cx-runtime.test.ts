@@ -77,4 +77,16 @@ describe("runCxDoctor exit codes", () => {
     expect(out.some((l) => l.includes("ollama:"))).toBe(true);
     expect(out.some((l) => l.includes("platform:"))).toBe(true);
   });
+
+  it("live doctor returns 1 when stack is not ready", async () => {
+    const { write, out } = collect();
+    const code = await runCxDoctor({
+      cwd: "/tmp/cx-doctor-live",
+      write,
+      mode: "live",
+      localBaseUrl: "http://127.0.0.1:1",
+    });
+    expect(code).toBe(1);
+    expect(out.some((l) => l.includes("stack ready for live local: false"))).toBe(true);
+  });
 });

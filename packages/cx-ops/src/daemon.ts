@@ -36,6 +36,10 @@ export interface DaemonMeta {
   maxTicks: number;
   targets: CxTargetId[];
   path: string[];
+  /** ISO timestamp of the most recent completed watch tick, if any. */
+  lastTickAt?: string;
+  /** 1-based index of the most recent completed watch tick, if any. */
+  lastTick?: number;
 }
 
 export async function readDaemonMeta(
@@ -48,6 +52,33 @@ export async function readDaemonMeta(
   } catch {
     return null;
   }
+}
+
+export async function writeDaemonMeta(
+  cxRoot: string,
+  specName: string,
+  meta: DaemonMeta,
+): Promise<void> {
+  const paths = daemonPaths(cxRoot, specName);
+  await mkdir(paths.dir, { recursive: true });
+  await writeFile(paths.metaFile, JSON.stringify(meta, null, 2), "utf8");
+}
+
+/**
+ * Record a completed tick on daemon.json when a daemon meta file exists.
+ * No-op for plain `cox cx watch` without a daemon.
+ */
+export async function recordDaemonLastTick(
+  cxRoot: string,
+  specName: string,
+  tick: number,
+  at?: string,
+): Promise<void> {
+  const meta = await readDaemonMeta(cxRoot, specName);
+  if (!meta) return;
+  meta.lastTick = tick;
+  meta.lastTickAt = at ?? new Date().toISOString();
+  await writeDaemonMeta(cxRoot, specName, meta);
 }
 
 export async function isDaemonRunning(cxRoot: string, specName: string): Promise<boolean> {
@@ -145,6 +176,7 @@ export async function runDaemonLoop(opts: {
       signal: opts.signal,
       onTick: (info) => {
         log(`tick=${info.tick} proposals=${info.proposals.length} added=${info.added.length}`);
+        void recordDaemonLastTick(opts.cxRoot, opts.specName, info.tick, now());
       },
     });
     log(`daemon_stop ticks=${result.ticks} added=${result.totalAdded}`);
@@ -229,7 +261,7 @@ export async function spawnWatchDaemon(opts: {
 
   if (child.pid && child.pid > 0) {
     await writeFile(paths.pidFile, String(child.pid), "utf8");
-    await writeFile(paths.metaFile, JSON.stringify(meta, null, 2), "utf8");
+    await writeDaemonMeta(opts.cxRoot, opts.specName, meta);
   }
   return meta;
 }

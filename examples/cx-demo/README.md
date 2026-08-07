@@ -42,31 +42,57 @@ From monorepo root:
 
 ## Operate loop (proposals → tasks)
 
+Proposals are human-gated. Console/watch only write `proposals.json`.
+
+Statuses: `open` → `claimed` → `resolved` | `dismissed`.
+
 ```bash
-pnpm cox cx console <spec> --live          # poll + persist proposals
-pnpm cox cx apply <spec> <proposalId>      # → task + remediation markdown
-pnpm cox cx tasks <spec>
+pnpm cox cx console <spec> --live                    # poll + persist proposals
+pnpm cox cx proposals <spec>                         # open + claimed
+pnpm cox cx proposals <spec> --all                   # include resolved/dismissed
+pnpm cox cx proposals <spec> --status open           # single status filter
+pnpm cox cx proposal <spec> <id> claimed             # claim for work
+pnpm cox cx apply <spec> <proposalId>                # → task + remediation; proposal claimed
+pnpm cox cx tasks <spec>                             # pending + in_progress
+pnpm cox cx tasks <spec> --all
+pnpm cox cx tasks <spec> --status pending
+pnpm cox cx task <spec> <taskId> in_progress
 pnpm cox cx task <spec> <taskId> done
-pnpm cox cx proposal <spec> <proposalId> resolved
+pnpm cox cx proposal <spec> <proposalId> resolved    # close after remediation
+pnpm cox cx proposal <spec> <proposalId> dismissed   # drop without apply
+```
+
+After `apply`, the CLI suggests:
+
+```text
+next: cox cx task <spec> <taskId> in_progress
+next: cox cx proposal <spec> <proposalId> resolved
 ```
 
 AWS plan-only writes `template.yaml` + `APPLY.md` under `.cox/cx/<spec>/aws/`.
-Copy out for human CFN apply:
+Copy out for human CFN apply (default outDir `./cx-export/<spec>-aws`):
 
 ```bash
 pnpm cox cx export-aws <spec> [outDir]
 ```
 
-## Package scripts (monorepo root)
+## Operator scripts (monorepo root)
 
-| Script | Action |
+| Command | Action |
 |---|---|
-| `pnpm cx:doctor` | wiring + ontology |
-| `pnpm cx:stack-up` | Ollama + platform |
-| `pnpm cx:run -- <name> "idea"` | one-shot golden path |
-| `pnpm cx:golden` / `cx:golden:live` | demo script (`cx run` + export-aws) |
+| `pnpm cx:doctor` | wiring + ontology (`cox cx doctor`; exit 1 if `--live` and stack not ready) |
+| `pnpm cx:stack-up` | one-shot Ollama + platform (`scripts/cx-stack-up.sh`) |
+| `pnpm cox cx run <name> [idea...]` | one-shot golden path (new/approve/build/status/simulate/report) |
+| `pnpm cx:golden` / `cx:golden:live` | demo script (`cx run` + `export-aws`) |
+| `pnpm cox cx export-aws <spec> [outDir]` | copy plan-only CFN for human apply |
 
-macOS always-on stack: `./scripts/macos/install-launchagents.sh`
+macOS always-on stack (LaunchAgents for Ollama + Nexus CX):
+
+```bash
+./scripts/macos/install-launchagents.sh
+./scripts/macos/install-launchagents.sh --platform-dir ~/Projects/cx-platform/omnichannel-cx-platform
+# uninstall: ./scripts/macos/uninstall-launchagents.sh
+```
 
 ## Offline (always works)
 
@@ -88,6 +114,7 @@ pnpm cox cx daemon start billing-dispute --live   # detached long-running watch
 pnpm cox cx daemon status billing-dispute
 pnpm cox cx daemon stop billing-dispute
 pnpm cox cx proposals billing-dispute
+pnpm cox cx proposals billing-dispute --all
 pnpm cox cx nba journey=churn_prevention stage=cancel_requested confidence=0.9
 
 pnpm cox cx teardown billing-dispute

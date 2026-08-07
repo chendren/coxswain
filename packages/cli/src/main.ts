@@ -663,13 +663,21 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   addGlobalOptions(
     cx
       .command("proposals <name>")
-      .description("list CX proposals")
-      .option("--all", "include resolved/dismissed"),
+      .description("list CX proposals (default: open|claimed)")
+      .option("--all", "include resolved/dismissed")
+      .option("--status <status>", "filter: open|claimed|resolved|dismissed"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
-    const opts = command.optsWithGlobals<CxCmdOpts & { all?: boolean }>();
+    const opts = command.optsWithGlobals<CxCmdOpts & { all?: boolean; status?: string }>();
+    const allowed = ["open", "claimed", "resolved", "dismissed"] as const;
+    if (opts.status && !(allowed as readonly string[]).includes(opts.status)) {
+      throw new CliExit(2, `status must be one of ${allowed.join("|")}`);
+    }
     throw new CliExit(
-      await runCxProposals(await cxCtx(command, f.pack, f), name, opts.all ? "all" : "open"),
+      await runCxProposals(await cxCtx(command, f.pack, f), name, {
+        all: opts.all,
+        status: opts.status as (typeof allowed)[number] | undefined,
+      }),
     );
   });
 
@@ -705,13 +713,21 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   addGlobalOptions(
     cx
       .command("tasks <name>")
-      .description("list CX tasks from applied proposals")
-      .option("--all", "include done/cancelled"),
+      .description("list CX tasks from applied proposals (default: pending|in_progress)")
+      .option("--all", "include done/cancelled")
+      .option("--status <status>", "filter: pending|in_progress|done|cancelled"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
-    const opts = command.optsWithGlobals<CxCmdOpts & { all?: boolean }>();
+    const opts = command.optsWithGlobals<CxCmdOpts & { all?: boolean; status?: string }>();
+    const allowed = ["pending", "in_progress", "done", "cancelled"] as const;
+    if (opts.status && !(allowed as readonly string[]).includes(opts.status)) {
+      throw new CliExit(2, `status must be one of ${allowed.join("|")}`);
+    }
     throw new CliExit(
-      await runCxTasks(await cxCtx(command, f.pack, f), name, opts.all ? "all" : "open"),
+      await runCxTasks(await cxCtx(command, f.pack, f), name, {
+        all: opts.all,
+        status: opts.status as (typeof allowed)[number] | undefined,
+      }),
     );
   });
 

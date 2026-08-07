@@ -19,6 +19,8 @@ Public surface is re-exported from `src/index.ts`.
 | **watch** | `runWatchLoop`, types `WatchTarget`, `WatchLoopDeps`, `WatchLoopResult` | Bounded console loop with interval/maxTicks; persists proposals via proposal store |
 | **daemon** | `daemonPaths`, `readDaemonMeta`, `isDaemonRunning`, `stopDaemon`, `runDaemonLoop`, `spawnWatchDaemon`, types `DaemonPaths`, `DaemonMeta` | Detached watch: `daemon.pid` / `daemon.log` / `daemon.json` under the spec dir |
 | **stack-health** | `probeOllama`, `probePlatformReady`, `probeStackHealth`, types `OllamaHealth`, `PlatformHealth`, `StackHealth` | Doctor probes: Ollama tags + embed/LLM models; platform `/api/health/ready` |
+| **metrics-summary** | `summarizeDeployments`, types `HealthEntry`, `MetricsSummary` | Pure health rollup for status: counts + score (healthy=100, degraded=50, down/error=0) |
+| **path-audit** | `formatPathAudit`, `PATH_AUDIT_DEFAULT_MAX` | Collapse long control-flow paths for CLI display (head 3 + `...` + tail 3 when length > 8) |
 | **cfn-skeleton** | `buildCfnSkeleton` | Deterministic CloudFormation YAML + APPLY markdown from journey map (plan-only; no CreateStack) |
 | **offline-adapters** | `createOfflineLocalAdapter`, `createOfflineAwsAdapter`, type `OfflineDiskDeps` | Disk-backed local (build/deploy/status/simulate/teardown) and AWS plan-only (writes `template.yaml`, `APPLY.md`) |
 | **offline-artifacts** | `createOfflineArtifactsAdapter`, type `OfflineArtifactsDeps` | Deterministic / optional-generate artifacts adapter for offline runtime |
@@ -59,7 +61,7 @@ daemon:   daemon_start → [watch ticks] → daemon_stop
 | CLI | cx-ops entry |
 |---|---|
 | `cox cx new` / `approve` / `list` | workspace |
-| `cox cx build` / `deploy` / `status` / `simulate` / `report` | orchestrate (+ status/report) |
+| `cox cx build` / `deploy` / `status` / `simulate` / `report` | orchestrate (+ status/report); status uses `summarizeDeployments` for `summary score=` |
 | `cox cx plan` | adapter `plan` via CLI (workspace + adapters) |
 | `cox cx console` | console + proposals |
 | `cox cx watch` | watch |
@@ -69,6 +71,32 @@ daemon:   daemon_start → [watch ticks] → daemon_stop
 | `cox cx ontology *` / `nba` | ontology / nba |
 | `cox cx doctor` | stack-health + ontology + workspace list |
 | `cox cx teardown` | status `runTeardown` / adapter teardown + `clearDeployment` |
+
+## Proposals lifecycle (human-gated)
+
+Console/watch only **persist** proposals. No adapter mutations. Statuses:
+
+`open` → `claimed` → `resolved` | `dismissed`
+
+| Command | Effect |
+|---|---|
+| `cox cx proposals <name>` | list open + claimed (default) |
+| `cox cx proposals <name> --all` | include resolved/dismissed |
+| `cox cx proposals <name> --status <s>` | filter one status (`open`\|`claimed`\|`resolved`\|`dismissed`) |
+| `cox cx proposal <name> <id> claimed` | claim for work |
+| `cox cx proposal <name> <id> resolved` | mark done after remediation |
+| `cox cx proposal <name> <id> dismissed` | drop without apply |
+| `cox cx apply <name> <proposalId>` | create task + remediation note; proposal → `claimed` |
+
+After apply, CLI prints next steps:
+
+```text
+next: cox cx task <name> <taskId> in_progress
+next: cox cx proposal <name> <proposalId> resolved
+```
+
+Tasks mirror list filters: `cox cx tasks <name> [--all] [--status pending|in_progress|done|cancelled]`.
+Transitions: `cox cx task <name> <id> pending|in_progress|done|cancelled`.
 
 Product narrative and cheat sheet: [`docs/CXOS.md`](../../docs/CXOS.md).
 Demo: [`examples/cx-demo/README.md`](../../examples/cx-demo/README.md).
