@@ -993,12 +993,8 @@ export async function runCxDaemonStatus(ctx: CxCommandContext, name: string): Pr
   const logPath = join(rt.workspace.cxRoot, name, "daemon.log");
   ctx.write(`daemon ${name}: ${running ? "running" : "stopped"}`);
   if (meta) {
-    const extra = Object.entries(meta)
-      .filter(([k]) => !["pid", "startedAt", "intervalMs"].includes(k))
-      .map(([k, v]) => `${k}=${String(v)}`)
-      .join(" ");
     ctx.write(
-      `pid=${meta.pid} startedAt=${meta.startedAt} intervalMs=${meta.intervalMs}${extra ? ` ${extra}` : ""}`,
+      `pid=${meta.pid} startedAt=${meta.startedAt} intervalMs=${meta.intervalMs} maxTicks=${meta.maxTicks} targets=${meta.targets.join(",")}`,
     );
   }
   ctx.write(`log: ${logPath}`);
