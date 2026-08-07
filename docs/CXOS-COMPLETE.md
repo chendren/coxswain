@@ -383,12 +383,14 @@ Incident mini-loop: [`CXOS-INCIDENT.md`](./CXOS-INCIDENT.md).
 pnpm cox cx status billing --live
 pnpm cox cx health-history billing
 pnpm cox cx operate billing --live
+pnpm cox cx queue
 pnpm cox cx claim billing prop_…
 pnpm cox cx tasks billing
 pnpm cox cx task billing task_… done
 pnpm cox cx audit billing
 # scripts:
 pnpm cx:operate -- billing
+pnpm cx:queue
 pnpm cx:claim -- billing prop_…
 pnpm cx:health-history -- billing
 ```
