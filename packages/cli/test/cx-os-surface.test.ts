@@ -1,19 +1,26 @@
 /**
- * Offline CXOS surface coverage: init, run, board, catalog, graph-find,
- * dashboard write, queue. Temp cwd; no cloud LLM keys.
+ * Offline CXOS surface e2e: init, run, board, catalog, brief, cab-export,
+ * status/health-history, snapshot, archive/restore. Temp cwd; no cloud LLM keys.
  */
 import { access, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
+  runCxArchive,
   runCxBoard,
+  runCxBrief,
+  runCxCabExport,
   runCxCatalog,
   runCxDashboard,
   runCxGraphFind,
+  runCxHealthHistory,
   runCxInit,
   runCxQueue,
+  runCxRestore,
   runCxRun,
+  runCxSnapshot,
+  runCxStatus,
   type CxCommandContext,
 } from "../src/commands/cx";
 
@@ -59,9 +66,10 @@ describe("CXOS offline surface", () => {
     };
   }
 
-  it("init → run → board → catalog → graph-find → dashboard → queue", async () => {
+  it("init → run → board → catalog → brief → cab-export → health-history → snapshot → archive/restore", async () => {
     const { write, out } = lines();
     const c = ctx(write);
+    const name = "surface-demo";
 
     // init: seed workspace + starter spec when empty
     expect(await runCxInit(c)).toBe(0);
@@ -70,7 +78,7 @@ describe("CXOS offline surface", () => {
 
     // run: create/approve/build path for a named program
     out.length = 0;
-    expect(await runCxRun(c, "surface-demo", ["surface test idea"], "all")).toBe(0);
+    expect(await runCxRun(c, name, ["surface test idea"], "all")).toBe(0);
     const runOut = out.join("\n");
     expect(runOut).toMatch(/creating CX spec|already exists/);
     expect(runOut).toMatch(/build artifacts: ok/);
@@ -92,29 +100,79 @@ describe("CXOS offline surface", () => {
     expect(catOut).toMatch(/kpis/);
     expect(catOut).toMatch(/nbaRules|channels/);
 
-    // graph-find: strong-graph node lookup
+    // brief: executive markdown (stdout + optional file)
     out.length = 0;
-    expect(await runCxGraphFind(c, "billing", "local")).toBe(0);
-    const gfOut = out.join("\n");
-    expect(gfOut).toMatch(/CXOS graph-find/);
-    expect(gfOut).toMatch(/query="billing"/);
-    expect(gfOut).toMatch(/hits=\d+/);
+    expect(await runCxBrief(c, name)).toBe(0);
+    const briefStdout = out.join("\n");
+    expect(briefStdout).toMatch(/CXOS Executive Brief|Executive Brief|# /);
+    expect(briefStdout).toMatch(/surface-demo|surface test idea|plan-only/);
+    expect(briefStdout).toMatch(/path: load_workspace → render_brief → emit/);
 
-    // dashboard: write self-contained HTML
     out.length = 0;
-    const dashFile = "cxos-dashboard.html";
-    expect(await runCxDashboard(c, dashFile)).toBe(0);
-    expect(out.join("\n")).toMatch(/wrote CXOS dashboard/);
-    const dashPath = join(cwd, dashFile);
-    await access(dashPath);
-    const html = await readFile(dashPath, "utf8");
-    expect(html).toMatch(/<!DOCTYPE html>|<html/i);
-    expect(html.length).toBeGreaterThan(100);
+    const briefFile = "surface-brief.md";
+    expect(await runCxBrief(c, name, briefFile)).toBe(0);
+    expect(out.join("\n")).toMatch(/wrote brief/);
+    const briefPath = join(cwd, briefFile);
+    await access(briefPath);
+    const briefMd = await readFile(briefPath, "utf8");
+    expect(briefMd).toMatch(/surface-demo|surface test idea/);
+    expect(briefMd.length).toBeGreaterThan(40);
 
-    // queue: cross-spec work queue (may be empty after build-only path)
+    // cab-export: filesystem change package (no AWS mutate)
     out.length = 0;
-    expect(await runCxQueue(c)).toBe(0);
-    expect(out.join("\n")).toMatch(/CXOS queue/);
+    const cabDir = "cx-cab-out";
+    expect(await runCxCabExport(c, name, cabDir)).toBe(0);
+    const cabOut = out.join("\n");
+    expect(cabOut).toMatch(/CAB package for "surface-demo"/);
+    expect(cabOut).toMatch(/files: /);
+    expect(cabOut).toMatch(/MANIFEST\.md|BRIEF\.md|proposals\.json/);
+    await access(join(cwd, cabDir, "BRIEF.md"));
+    await access(join(cwd, cabDir, "MANIFEST.md"));
+    const cabBrief = await readFile(join(cwd, cabDir, "BRIEF.md"), "utf8");
+    expect(cabBrief).toMatch(/surface-demo/);
+
+    // status writes health-history; health-history lists samples
+    out.length = 0;
+    expect(await runCxStatus(c, name)).toBe(0);
+    expect(out.join("\n")).toMatch(/summary score:/);
+
+    out.length = 0;
+    expect(await runCxHealthHistory(c, name)).toBe(0);
+    const histOut = out.join("\n");
+    expect(histOut).toMatch(/health history surface-demo/);
+    expect(histOut).toMatch(/score=\d+/);
+    expect(histOut).toMatch(/path: load_health_history → emit/);
+
+    // snapshot: full program package
+    out.length = 0;
+    const snapDir = "cx-snap-out";
+    expect(await runCxSnapshot(c, name, snapDir)).toBe(0);
+    const snapOut = out.join("\n");
+    expect(snapOut).toMatch(/snapshot "surface-demo"/);
+    expect(snapOut).toMatch(/files: /);
+    expect(snapOut).toMatch(/SNAPSHOT\.md|spec\.json|BRIEF\.md/);
+    await access(join(cwd, snapDir, "SNAPSHOT.md"));
+    await access(join(cwd, snapDir, "spec.json"));
+    const snapMd = await readFile(join(cwd, snapDir, "SNAPSHOT.md"), "utf8");
+    expect(snapMd.length).toBeGreaterThan(20);
+
+    // archive / restore (soft rename; hide from board then bring back)
+    out.length = 0;
+    expect(await runCxArchive(c, name)).toBe(0);
+    expect(out.join("\n")).toMatch(/archived surface-demo/);
+    expect(out.join("\n")).toMatch(/next: cox cx restore surface-demo/);
+
+    out.length = 0;
+    expect(await runCxBoard(c)).toBe(0);
+    expect(out.join("\n")).not.toMatch(/\bsurface-demo\b/);
+
+    out.length = 0;
+    expect(await runCxRestore(c, name)).toBe(0);
+    expect(out.join("\n")).toMatch(/restored surface-demo/);
+
+    out.length = 0;
+    expect(await runCxBoard(c)).toBe(0);
+    expect(out.join("\n")).toMatch(/\bsurface-demo\b/);
   });
 
   it("init is idempotent when specs already exist", async () => {
@@ -176,5 +234,19 @@ describe("CXOS offline surface", () => {
     expect(Array.isArray(board.rows)).toBe(true);
     expect(board.path).toEqual(["list_specs", "load_each", "rollup", "emit"]);
     expect(out[0]).not.toMatch(/CXOS board/);
+  });
+
+  it("health-history empty before status; brief missing spec fails", async () => {
+    const { write, out } = lines();
+    const c = ctx(write);
+    expect(await runCxInit(c)).toBe(0);
+
+    out.length = 0;
+    expect(await runCxHealthHistory(c, "starter")).toBe(0);
+    expect(out.join("\n")).toMatch(/no health history for starter/);
+
+    out.length = 0;
+    expect(await runCxBrief(c, "no-such-program")).toBe(1);
+    expect(out.join("\n")).toMatch(/not found/);
   });
 });
