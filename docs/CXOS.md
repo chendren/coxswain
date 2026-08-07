@@ -118,8 +118,9 @@ Common flags (where registered):
 |---|---|
 | `--target <list>` | `artifacts`, `local`, `aws`, comma list, or `all` |
 | `--live` | Prefer live models/platform wiring |
+| `--auto-live` | Hybrid without `--live` (or `CX_AUTO_LIVE=1`) |
 | `--mode offline\|live\|hybrid` | Explicit runtime mode |
-| `--base-url <url>` | Local platform base URL |
+| `--base-url <url>` | Local platform base URL (else `cox.config.json` `cx.targets.local`) |
 | `--pack default\|local` | Ontology pack |
 
 ### Ontology and doctor
@@ -139,8 +140,11 @@ pnpm cox cx new <name> [idea...]
 pnpm cox cx approve <name> [requirements|design|tasks]   # default: next unapproved
 pnpm cox cx list
 pnpm cox cx plan <name> [--target all] [--live]
-pnpm cox cx build <name> [--target all] [--live] [--base-url …] [--pack local]
+pnpm cox cx build <name> [--target all] [--live|--auto-live] [--base-url …] [--pack local]
 pnpm cox cx deploy <name> …   # same path as build with deploy=true
+pnpm cox cx run <name> [idea...] [--target all] [--live|--auto-live]
+  # golden path: create if missing → approve requirements → build all →
+  # status → simulate local → report + design-grounded NBA
 ```
 
 Notes:
@@ -149,8 +153,8 @@ Notes:
 - `build` requires **requirements approved**. Seeds design from idea if missing;
   runs **artifacts first**, merges design into the workspace, auto-approves
   design when journey maps land, then local and aws.
-- There is **no** `cox cx run` subcommand. Execution of gated work after ops
-  proposals is `apply` + `task` (and optional human platform/AWS apply).
+- `run` is the product one-shot. After ops proposals, use `apply` + `task`
+  (and optional human platform/AWS CFN apply).
 
 ### Operate
 
