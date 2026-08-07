@@ -7,6 +7,7 @@ workspace layout, control paths, and how personas map onto the surface.
 | Document | Role |
 |---|---|
 | **This file** | OS map (layers, full command inventory, packages, gates) |
+| [`CXOS-OPERATOR-RUNBOOK.md`](./CXOS-OPERATOR-RUNBOOK.md) | Day-1 bootstrap and day-2 operate by role (PM, SA, Ops, SRE, Compliance) |
 | [`CXOS.md`](./CXOS.md) | Technical north star (graph practice, runtime, cheat sheet) |
 | [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md) | Personas, jobs-to-be-done, playbooks, value spine |
 | [`packages/cx-ops/README.md`](../packages/cx-ops/README.md) | Operate-layer module API |
