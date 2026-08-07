@@ -29,12 +29,12 @@ command lives in exactly one primary layer.
 
 | Layer | Responsibility | Primary surface | Lifecycle bucket |
 |---|---|---|---|
-| **Catalog** | Closed ontology / strong graph | `ontology *`, `journeys`, `nba` | design (grounding) |
-| **Program** | Spec lifecycle + multi-target build | `init` `new` `approve` `list` `plan` `build` `deploy` `run` `teardown` | design + build |
-| **Observe** | Health, simulate, report, scores | `status` `simulate` `report` `doctor` | operate (read) |
-| **Operate** | Propose → claim → task → close | `console` `watch` `daemon` `proposals` `proposal` `apply` `tasks` `task` | operate |
-| **Fleet** | Multi-spec board | `board` | fleet |
-| **Govern** | Brief, audit, CAB package, AWS plan handoff | `brief` `audit` `cab-export` `export-aws` | govern |
+| **Catalog** | Closed ontology / strong graph | `catalog`, `ontology *`, `journeys`, `nba` | design (grounding) |
+| **Program** | Spec lifecycle + multi-target build | `init` `new` `approve` `list` `plan` `build` `deploy` `run` `teardown` `archive` `restore` | design + build |
+| **Observe** | Health, simulate, report, scores | `status` `health-history` `simulate` `report` `doctor` | operate (read) |
+| **Operate** | Propose → claim → task → close | `console` `watch` `daemon` `operate` `proposals` `proposal` `claim`/`apply` `tasks` `task` | operate |
+| **Fleet** | Multi-spec board + health poll | `board` `fleet-status` | fleet |
+| **Govern** | Brief, audit, CAB/snapshot, AWS plan handoff | `brief` `audit` `cab-export` `snapshot` `export-aws` | govern |
 | **Fabric** | Local stack readiness | `cx:stack-up`, LaunchAgents, hybrid/live wiring | operate (platform) |
 
 ### Kernel hard rules
@@ -95,9 +95,11 @@ Ground work in the closed world, then create and approve a CX program.
 
 | Command | Purpose | Notes |
 |---|---|---|
+| `catalog [section] [--pack]` | Closed catalog browser | `all` (default) \| `domains` \| `intents` \| `kpis` \| `nba` \| `channels`; strong-only |
 | `ontology show [--pack]` | Inventory domains, journeys, KPIs, NBA rules | Strong-only; no models |
 | `ontology validate [--pack]` | Catalog integrity + materialize strong graph | Exit 1 on failure |
 | `ontology graph [--pack]` | Strong-graph node/edge stats | |
+| `catalog [section] [--pack]` | Full closed taxonomy browser | Section: `all`\|`domains`\|`intents`\|`kpis`\|`nba`\|`channels`; default pack `local` |
 | `nba [k=v…] [--pack]` | Pure NBA recommend (`journey=` `stage=` `confidence=` …) | Graph match only |
 | `journeys [--pack]` | Closed journey inventory | Default pack `local` |
 | `init` | Ensure `.cox/cx`; seed `starter` if empty | Workspace bootstrap |
@@ -110,6 +112,9 @@ Ground work in the closed world, then create and approve a CX program.
 artifacts merge that produces journey maps may auto-approve **design**.
 
 ```bash
+pnpm cox cx catalog --pack local
+pnpm cox cx catalog domains --pack local
+pnpm cox cx catalog nba
 pnpm cox cx ontology validate --pack local
 pnpm cox cx journeys --pack local
 pnpm cox cx init
@@ -117,6 +122,9 @@ pnpm cox cx new billing-dispute "reduce dispute handle time"
 pnpm cox cx approve billing-dispute requirements
 # optional pure NBA while designing:
 pnpm cox cx nba journey=billing_dispute stage=intake confidence=0.9
+# or via monorepo script:
+pnpm cx:catalog
+pnpm cx:catalog -- domains
 ```
 
 ---
@@ -159,7 +167,8 @@ pnpm cox cx export-aws billing-dispute   # plan handoff (also under govern)
 | Command | Purpose | Notes |
 |---|---|---|
 | `doctor [--live] [--mode] [--base-url] [--pack local]` | Wiring + ontology + stack | Live fail-closed if stack not ready |
-| `status [name] [--target] [--live\|…]` | Phases + deployment health + summary score | Score: healthy=100, degraded=50, down/error=0 |
+| `status [name] [--target] [--live\|…]` | Phases + deployment health + summary score | Score: healthy=100, degraded=50, down/error=0; **appends** `health-history.jsonl` |
+| `health-history <name> [--limit 20]` | Recent health score samples from status polls | Reads `.cox/cx/<name>/health-history.jsonl`; empty if never polled |
 | `simulate <name> [--target local] [--live] [--base-url]` | Traffic simulation | Default target `local` |
 | `report <name> [--target] [--live]` | Cross-target status (+ sim) + scout summary + graph NBA | |
 
@@ -168,6 +177,7 @@ pnpm cox cx export-aws billing-dispute   # plan handoff (also under govern)
 | Command | Purpose | Notes |
 |---|---|---|
 | `console <name> [--target] [--live\|…]` | One tick: poll, route, NBA, propose, persist | Writes `proposals.json` only |
+| `operate <name> [--target] [--live\|…]` | One-shot operate: console tick + board line | Prints open/claimed props, tasks, daemon; hints `claim` |
 | `watch <name> [--ticks 3] [--interval 2000] [--live\|…]` | Bounded console loop | Persists proposals each tick |
 | `daemon start <name> [--interval 30000] [--ticks 120] [--live] [--base-url]` | Detached watch | `daemon.pid` / `daemon.log` / `daemon.json` |
 | `daemon status <name>` | Health line | `running\|stopped pid ticks last proposals_open log=` |
@@ -179,18 +189,28 @@ pnpm cox cx export-aws billing-dispute   # plan handoff (also under govern)
 |---|---|---|
 | `proposals <name> [--all] [--status …]` | List proposals | Default open\|claimed; rows show `next=` + CLI hint |
 | `proposal <name> <id> <status>` | Legal transition | `open` \| `claimed` \| `resolved` \| `dismissed` |
+| `claim <name> <proposalId> [--resolve]` | **Alias for apply** (ops claim language) | Same as `apply`: task + remediation; default → **claimed** |
 | `apply <name> <proposalId> [--resolve]` | Task + remediation note | Default proposal → **claimed**; `--resolve` → **resolved** |
 | `tasks <name> [--all] [--status …]` | Task board rollup | Shows `proposal=` + `remediation=` paths |
 | `task <name> <id> <status> [--no-resolve-source]` | Task transition | `done` auto-resolves source proposal unless `--no-resolve-source` |
 
 ```bash
 pnpm cox cx status billing --live
+pnpm cox cx health-history billing --limit 20
+pnpm cox cx operate billing --live
+# or step by step:
 pnpm cox cx console billing --live
 pnpm cox cx proposals billing
+pnpm cox cx claim billing prop_…
+# claim is alias for apply:
 pnpm cox cx apply billing prop_…
 pnpm cox cx tasks billing
 pnpm cox cx task billing task_… done
 pnpm cox cx audit billing
+# scripts:
+pnpm cx:operate -- billing
+pnpm cx:claim -- billing prop_…
+pnpm cx:health-history -- billing
 ```
 
 ---
@@ -203,6 +223,10 @@ pnpm cox cx audit billing
 | `audit <name> [--limit 30]` | Append-only event trail | `audit.jsonl` under spec |
 | `export-aws <name> [outDir]` | Plan-only AWS files only | `./cx-export/<name>-aws` |
 | `cab-export <name> [outDir]` | Full CAB package | `./cx-cab/<name>/` |
+| `snapshot <name> [outDir]` | CAB + `spec.json` + health/audit/daemon | `./cx-snapshot/<name>/` |
+| `archive <name>` | Soft-archive program | Renames to `.archived-<name>` (hidden from list) |
+| `restore <name>` | Restore soft-archived program | Renames back to active name |
+| `snapshot <name> [outDir]` | Full program snapshot (CAB + `spec.json` + health history + optional daemon/audit) | `./cx-snapshot/<name>/` |
 
 **CAB package contents** (`cab-export`):
 
@@ -215,6 +239,16 @@ deployments.json
 aws/                 # template.yaml, APPLY.md, optional architecture/agent JSON
 remediations/        # operator notes from apply
 audit.jsonl?         # when present
+```
+
+**Snapshot package** (`snapshot`) = CAB base plus:
+
+```text
+spec.json
+health-history.jsonl?   # when status has been polled
+daemon.json?
+audit.jsonl?
+SNAPSHOT.md             # restore note (manual copy back under .cox/cx/<name>/)
 ```
 
 **AWS human apply** (from `APPLY.md` or export):
@@ -233,42 +267,77 @@ pnpm cox cx brief billing
 pnpm cox cx audit billing --limit 50
 pnpm cox cx export-aws billing ./exports/billing-aws
 pnpm cox cx cab-export billing
+pnpm cox cx snapshot billing
+pnpm cox cx snapshot billing ./handoffs/billing-snap
 # review cx-cab/billing/MANIFEST.md + aws/APPLY.md
+# or
+pnpm cx:snapshot -- billing
 ```
 
 ---
 
 ### 2.5 Fleet (multi-spec)
 
-| Command | Purpose |
-|---|---|
-| `board` | Multi-spec ops board: phases, proposals, tasks, daemons |
+| Command | Purpose | Notes |
+|---|---|---|
+| `board` | Multi-spec ops board: phases, proposals, tasks, daemons | Fast rollup, no per-spec status poll |
+| `fleet-status [--live] [--auto-live] [--base-url]` | Fleet board + **status poll** for each deployed spec | Writes health samples via `status`; empty fleet hints `cox cx init` |
 
 ```bash
 pnpm cox cx board
+pnpm cox cx fleet-status
+pnpm cox cx fleet-status --live
 # or
 pnpm cx:board
+pnpm cx:fleet
+pnpm cx:fleet -- --live
 ```
 
 ---
 
-### 2.6 Full command inventory (flat)
+### 2.6 Program archive / restore
+
+Soft-archive renames the workspace dir; nothing is deleted.
+
+| Command | Purpose | Effect |
+|---|---|---|
+| `archive <name>` | Soft-archive a CX program | `.cox/cx/<name>` → `.cox/cx/.archived-<name>` |
+| `restore <name>` | Restore soft-archived program | reverse rename; fails if active name already exists |
+
+```bash
+pnpm cox cx archive billing
+# workspace: .cox/cx/.archived-billing
+pnpm cox cx restore billing
+# or
+pnpm cx:archive -- billing
+```
+
+---
+
+### 2.7 Full command inventory (flat)
 
 | Lifecycle | Commands |
 |---|---|
-| **Design** | `ontology show` `ontology validate` `ontology graph` `nba` `journeys` `init` `new` `approve` `list` |
-| **Build** | `plan` `build` `deploy` `run` `teardown` |
-| **Operate** | `doctor` `status` `simulate` `report` `console` `watch` `daemon start\|status\|stop` `proposals` `proposal` `apply` `tasks` `task` |
-| **Govern** | `brief` `audit` `export-aws` `cab-export` |
-| **Fleet** | `board` |
+| **Design** | `catalog` `ontology show` `ontology validate` `ontology graph` `nba` `journeys` `init` `new` `approve` `list` |
+| **Build** | `plan` `build` `deploy` `run` `teardown` `archive` `restore` |
+| **Operate** | `doctor` `status` `health-history` `simulate` `report` `console` `operate` `watch` `daemon start\|status\|stop` `proposals` `proposal` `claim` `apply` `tasks` `task` |
+| **Govern** | `brief` `audit` `export-aws` `cab-export` `snapshot` |
+| **Fleet** | `board` `fleet-status` |
 
-Related monorepo scripts (not under `cox cx`, but OS fabric):
+Related monorepo scripts (root `package.json`; pass args after `--`):
 
 | Script | Action |
 |---|---|
 | `pnpm cx:init` | Workspace + starter |
 | `pnpm cx:board` | Fleet board |
-| `pnpm cx:doctor` | Health |
+| `pnpm cx:fleet` | Fleet status (board + status poll) |
+| `pnpm cx:catalog` | Closed catalog browser |
+| `pnpm cx:health-history -- <name>` | Health score history |
+| `pnpm cx:archive -- <name>` | Soft-archive program |
+| `pnpm cx:snapshot -- <name> [outDir]` | Full program snapshot |
+| `pnpm cx:claim -- <name> <proposalId>` | Claim/apply proposal |
+| `pnpm cx:operate -- <name>` | One-shot operate tick |
+| `pnpm cx:doctor` | Health / wiring |
 | `pnpm cx:run -- <name> "idea"` | Golden one-shot |
 | `pnpm cx:journeys` | Journey catalog |
 | `pnpm cx:golden` / `cx:golden:live` | Demo script |
@@ -293,19 +362,43 @@ pnpm cox cx brief billing
 
 ```bash
 pnpm cox cx status billing --live
-pnpm cox cx console billing --live
-pnpm cox cx apply billing prop_…
+pnpm cox cx health-history billing
+pnpm cox cx operate billing --live
+pnpm cox cx claim billing prop_…
 pnpm cox cx tasks billing
 pnpm cox cx task billing task_… done
 pnpm cox cx audit billing
+# scripts:
+pnpm cx:operate -- billing
+pnpm cx:claim -- billing prop_…
+pnpm cx:health-history -- billing
 ```
 
 ### C. Change board / AWS handoff (govern)
 
 ```bash
 pnpm cox cx cab-export billing
+pnpm cox cx snapshot billing
 # review cx-cab/billing/MANIFEST.md + aws/APPLY.md
 # human: aws cloudformation deploy …
+pnpm cx:snapshot -- billing
+```
+
+### F. Fleet rollup
+
+```bash
+pnpm cox cx board
+pnpm cox cx fleet-status --live
+pnpm cx:fleet -- --live
+```
+
+### G. Archive retired program
+
+```bash
+pnpm cox cx archive old-pilot
+# later:
+pnpm cox cx restore old-pilot
+pnpm cx:archive -- old-pilot
 ```
 
 ### D. Offline proof (CI / workshop)
@@ -371,8 +464,10 @@ resolved → none.
 | Step | Command | Effect |
 |---|---|---|
 | List | `proposals <spec>` | Open + claimed; `next=` + concrete CLI line |
+| Claim | `claim <spec> <prop_…>` | **Alias for apply** (ops language) |
 | Apply | `apply <spec> <prop_…>` | Task + `remediations/<id>.md`; proposal → **claimed** |
-| Apply+close | `apply <spec> <id> --resolve` | Same, proposal → **resolved** |
+| Apply+close | `apply` / `claim` with `--resolve` | Same, proposal → **resolved** |
+| One-shot tick | `operate <spec>` | Console tick + board line; no mutations beyond proposals |
 | Work board | `tasks <spec>` | Rollup; rows show `proposal=` + `remediation=` |
 | Close task | `task <spec> <taskId> done` | Default **auto-resolves** source proposal; `--no-resolve-source` skips |
 
@@ -395,11 +490,13 @@ change adapter deployments. Remediation markdown is the operator runbook.
 | Action | Who | Artifact |
 |---|---|---|
 | Approve requirements/design/tasks | Human (PM / SA) | `spec.json` phases |
-| Propose remediation | System (console/watch/daemon) | `proposals.json` |
-| Claim / apply proposal | Human (Ops) | `tasks.json` + `remediations/*.md` |
+| Propose remediation | System (`console` / `operate` / `watch` / `daemon`) | `proposals.json` |
+| Claim / apply proposal | Human (Ops) via `claim` or `apply` | `tasks.json` + `remediations/*.md` |
 | Execute remediation on platform/AWS | Human outside Coxswain | Platform config / CFN deploy |
 | Mark task done | Human | task status; proposal auto-resolve |
 | Ship AWS stack | Human + scoped AWS | CloudFormation |
+| Soft-archive / restore program | Human | `.cox/cx/.archived-<name>` rename |
+| Snapshot / CAB package | Human | `cx-snapshot/` or `cx-cab/` filesystem export |
 
 ---
 
@@ -474,7 +571,7 @@ ready 200.
 | `@cox/cx-artifacts` | Neutral document factory (journey maps, personas, intents, NBA, KPI, architecture) | plan / build / deploy disk under `artifacts/` |
 | `@cox/cx-local` | Live HTTP omnichannel / Nexus adapter | bind, deploy, status, simulate traffic, KPI match |
 | `@cox/cx-aws` | AWS plan-only (Connect / Lex / Bedrock planning) | template + agent/architecture docs; no CreateStack |
-| `@cox/cx-ops` | Workspace, orchestrate, console, proposals, tasks, daemon, board, brief, cab, audit, CFN skeleton, offline adapters | see module table below |
+| `@cox/cx-ops` | Workspace, orchestrate, console, proposals, tasks, daemon, board, brief, cab, audit, catalog, health-history, archive, snapshot, CFN skeleton, offline adapters | see module table below |
 | `@cox/cli` | Composition root: `cox cx` + `createCxRuntime` / offline wiring | `commands/cx.ts`, `cx/runtime.ts` |
 
 ### 6.2 cx-ops modules (operate engine)
@@ -493,6 +590,10 @@ ready 200.
 | `board` | Multi-spec fleet rollup |
 | `brief` | Executive markdown (no model) |
 | `cab-export` | CAB filesystem package |
+| `snapshot` | Full program snapshot (CAB + spec + health history) |
+| `archive` | Soft-archive / restore (rename under `.archived-`) |
+| `catalog` | Closed catalog inventory (domains, intents, KPIs, NBA, channels) |
+| `health-history` | Append/load `health-history.jsonl` samples |
 | `audit` | Append-only `audit.jsonl` |
 | `journeys` | Closed-world journey list |
 | `cfn-skeleton` | Deterministic CFN YAML + APPLY.md |
@@ -539,12 +640,15 @@ Adapters never import each other or cx-ops.
 | CLI | Primary package entry |
 |---|---|
 | `new` / `approve` / `list` / `init` | `cx-ops` workspace |
-| `plan` / `build` / `deploy` / `status` / `simulate` / `report` / `run` / `teardown` | `cx-ops` orchestrate (+ adapters) |
-| `console` / `watch` / `daemon *` | `cx-ops` console, watch, daemon |
-| `proposals` / `proposal` / `apply` / `tasks` / `task` | `cx-ops` proposals, tasks |
-| `ontology *` / `nba` / `journeys` | `cx-ops` ontology, nba, journeys (+ `cx-core` catalogs) |
+| `plan` / `build` / `deploy` / `status` / `simulate` / `report` / `run` / `teardown` | `cx-ops` orchestrate (+ adapters); status appends health-history |
+| `console` / `operate` / `watch` / `daemon *` | `cx-ops` console, watch, daemon; operate = console + board line |
+| `proposals` / `proposal` / `claim` / `apply` / `tasks` / `task` | `cx-ops` proposals, tasks; claim → apply |
+| `catalog` / `ontology *` / `nba` / `journeys` | `cx-ops` catalog, ontology, nba, journeys (+ `cx-core` catalogs) |
 | `doctor` | `cx-ops` stack-health + ontology + workspace list |
-| `board` / `brief` / `cab-export` / `audit` | `cx-ops` board, brief, cab-export, audit |
+| `board` / `fleet-status` | `cx-ops` board; fleet-status = board + status each deployed |
+| `brief` / `cab-export` / `snapshot` / `audit` | `cx-ops` brief, cab-export, snapshot, audit |
+| `archive` / `restore` | `cx-ops` archive (soft rename) |
+| `health-history` | `cx-ops` health-history load |
 | `export-aws` | CLI copy of plan-only aws/ files |
 
 ---
@@ -560,6 +664,7 @@ Root: `{cwd}/.cox/cx/` (`defaultCxRoot`). Per-spec:
   proposals.json         # console/watch proposals (human-gated)
   tasks.json             # tasks from applyProposal
   audit.jsonl            # OS audit trail (append-only)
+  health-history.jsonl   # status poll samples (score, healthy/degraded/down counts)
   remediations/          # <proposalId>.md operator notes
   artifacts/             # artifacts adapter disk
   local/                 # local adapter disk
@@ -571,6 +676,8 @@ Root: `{cwd}/.cox/cx/` (`defaultCxRoot`). Per-spec:
   daemon.pid             # watch daemon (when started)
   daemon.log
   daemon.json            # DaemonMeta (ticks, lastTickAt, …)
+
+.cox/cx/.archived-<spec>/   # soft-archived via `cox cx archive` (restore renames back)
 ```
 
 CAB export (`cx-cab/<spec>/` by default):
@@ -579,6 +686,9 @@ CAB export (`cx-cab/<spec>/` by default):
 MANIFEST.md BRIEF.md proposals.json tasks.json deployments.json
 aws/ remediations/ audit.jsonl?
 ```
+
+Snapshot export (`cx-snapshot/<spec>/` by default): CAB contents plus `spec.json`,
+optional `health-history.jsonl` / `daemon.json` / `audit.jsonl`, and `SNAPSHOT.md`.
 
 AWS export (`cx-export/<spec>-aws` by default): plan-only files only.
 
@@ -591,10 +701,15 @@ Typical `path: string[]` returned or recorded:
 | Surface | Path sketch |
 |---|---|
 | **build** | `load_workspace → route_targets → plan:artifacts → build:artifacts → merge_design → plan:local → … → emit` |
-| **console** | `load_strong → poll_status → target:local → health:… → route:… → recommend_nba → propose_gated → emit` |
+| **console / operate** | `load_strong → poll_status → target:local → health:… → route:… → recommend_nba → propose_gated → emit` (+ board line for operate) |
+| **catalog** | `load_strong → inventory_catalog → emit` |
 | **nba** | `load_strong → match_rules → confidence_band? → next_stages? → emit` |
 | **stack / doctor** | `probe_ollama → probe_platform → emit` |
 | **daemon** | `daemon_start → [watch ticks] → daemon_stop` |
+| **fleet-status** | `fleet_board → status_each → emit` |
+| **health-history** | `load_health_history → emit` |
+| **archive / restore** | `archive_spec → rename → emit` / `restore_spec → rename → emit` |
+| **snapshot** | `snapshot → cab_base → copy_spec → copy_health → emit` |
 | **cab-export** | `load_workspace → copy_aws → copy_remediations → write_state → write_brief → emit` |
 | **runtime wire** | `load_config → weak_generate:… → probe_platform → route:artifacts|local|aws → wire:…` |
 
@@ -614,18 +729,18 @@ Quick map of persona → home surface:
 
 | ID | Persona | Home commands |
 |---|---|---|
-| P1 | CX Product Manager | `new` `approve` `run` `report` `nba` `brief` |
-| P2 | Contact Center / CX SA | `plan` `build` `export-aws` `ontology` `cab-export` |
-| P3 | GenAI / Graph Engineer | `ontology *` packs, path audits, offline tests |
-| P4 | Journey Owner / Ops Lead | `status` `console` `watch` `daemon` `apply` `tasks` |
-| P5 | NOC / Platform SRE | `doctor` `cx:stack-up` LaunchAgents |
-| P6 | Change / Security / Compliance | `audit` `cab-export` APPLY.md, proposal history |
+| P1 | CX Product Manager | `new` `approve` `run` `report` `nba` `brief` `catalog` |
+| P2 | Contact Center / CX SA | `plan` `build` `export-aws` `ontology` `cab-export` `snapshot` |
+| P3 | GenAI / Graph Engineer | `ontology *` `catalog`, path audits, offline tests |
+| P4 | Journey Owner / Ops Lead | `status` `health-history` `operate` `watch` `daemon` `claim` `tasks` |
+| P5 | NOC / Platform SRE | `doctor` `fleet-status` `cx:stack-up` LaunchAgents |
+| P6 | Change / Security / Compliance | `audit` `cab-export` `snapshot` APPLY.md, proposal history |
 | P7 | AWS PS / Partner | `cx:golden` multi-cwd `run` |
-| P8 | Workshop Facilitator | demo README, ontology, golden |
+| P8 | Workshop Facilitator | demo README, `catalog`, ontology, golden |
 | P9 | QA / Release | vitest e2e, `doctor --live` |
-| P10 | CX Executive / Sponsor | `status` score, `tasks` rollup, `brief`, `board` |
-| P11 | CS / Retention | `nba` churn contexts, console |
-| P12 | LOB Analyst | `ontology show` `validate` `journeys` |
+| P10 | CX Executive / Sponsor | `status` score, `tasks` rollup, `brief`, `board` `fleet-status` |
+| P11 | CS / Retention | `nba` churn contexts, `operate` |
+| P12 | LOB Analyst | `catalog` `ontology show` `validate` `journeys` |
 
 Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/README.md).
 
@@ -636,20 +751,28 @@ Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/READM
 | Capability | Status |
 |---|---|
 | Closed ontology + NBA | yes |
+| Closed catalog browser (`catalog`) | yes |
 | Spec phases + multi-target build | yes |
+| Soft-archive / restore | yes |
 | Offline + hybrid + live local | yes |
 | Plan-only AWS + export | yes |
 | Human-gated proposals / tasks | yes |
+| Claim alias (`claim` → `apply`) | yes |
+| One-shot operate (`operate`) | yes |
 | Legal proposal transition graph | yes |
 | Metrics score + path audit | yes |
+| Health history samples | yes |
 | Daemon operate | yes |
 | Multi-spec board | yes |
+| Fleet status poll | yes |
 | Executive brief | yes |
 | CAB package | yes |
+| Full program snapshot | yes |
 | Audit log | yes |
 | Journey inventory | yes |
 | Workspace init | yes |
 | LaunchAgents / stack-up | yes |
+| Root scripts (`cx:catalog` `cx:fleet` `cx:health-history` `cx:archive` `cx:snapshot` `cx:claim` `cx:operate`) | yes |
 | Persona playbooks | yes ([`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md)) |
 | CreateStack from Coxswain | **never** (by design) |
 
@@ -672,26 +795,26 @@ Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/READM
 
 ```text
                     ┌──────────── Catalog ────────────┐
-                    │ ontology · journeys · nba       │
+                    │ catalog · ontology · journeys · nba │
                     └───────────────┬─────────────────┘
                                     │ grounds
           ┌─────────────────────────▼─────────────────────────┐
           │              Program (design + build)               │
           │  init → new → approve → plan → build → run          │
-          │  targets: artifacts → local → aws (plan-only)       │
+          │  archive / restore · targets: artifacts→local→aws   │
           └─────────────────────────┬─────────────────────────┘
                                     │ deploys records
      ┌──────────────────────────────┼──────────────────────────────┐
      │                              │                              │
      ▼                              ▼                              ▼
  Observe                      Operate                         Govern
- status·sim·report·doctor     console·watch·daemon            brief·audit
-                              proposals → apply → tasks       cab-export
-                              (human gates only)              export-aws
-                                    │
+ status·health-history        console·operate·watch·daemon    brief·audit
+ sim·report·doctor            proposals → claim/apply → tasks cab-export
+                              (human gates only)              snapshot
+                                    │                         export-aws
                                     ▼
                                  Fleet
-                                 board
+                              board · fleet-status
                                     │
                                     ▼
                                  Fabric
@@ -699,5 +822,7 @@ Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/READM
 ```
 
 **Closed loop:** design once under a closed catalog → build three targets →
-observe health → propose gated remediations → humans apply and close tasks →
-export evidence for change boards. No silent prod write anywhere on the loop.
+observe health (status + health-history) → propose gated remediations
+(console / operate) → humans claim/apply and close tasks → export evidence
+(cab-export / snapshot) for change boards. Soft-archive retires programs
+without delete. No silent prod write anywhere on the loop.

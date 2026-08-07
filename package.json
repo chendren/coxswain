@@ -22,10 +22,7 @@
     "cx:operate": "pnpm cox cx operate",
     "cx:init": "pnpm cox cx init",
     "cx:run": "pnpm cox cx run",
-    "cx:journeys": "pnpm cox cx journeys",
-    "cx:catalog": "pnpm cox cx catalog",
-    "cx:fleet": "pnpm cox cx fleet-status",
-    "cx:operate": "pnpm cox cx operate"
+    "cx:journeys": "pnpm cox cx journeys"
   },
   "devDependencies": {
     "tsx": "^4.19.0",

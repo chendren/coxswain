@@ -26,9 +26,9 @@ Public surface is re-exported from `src/index.ts`.
 | **cab-export** | `exportCabPackage`, type `CabExportResult` | Filesystem CAB package for change boards: AWS plan files, remediations, proposals/tasks/deployments JSON, BRIEF.md, MANIFEST.md, optional audit.jsonl (never mutates AWS) |
 | **audit** | `appendAuditEvent`, `loadAuditEvents`, types `CxAuditEvent`, `AuditDeps` | Append-only per-spec `audit.jsonl` evidence trail (kind, message, optional ref/path) |
 | **journeys** | `listJourneys`, types `JourneyListItem`, `JourneyInventory` | Closed-world journey inventory from ontology pack (`default` \| `local`): stages, terminals, trigger intents |
-| **catalog** | `inventoryCatalog`, types `CatalogDomain`, `CatalogKpi`, `CatalogNbaRule`, `CatalogInventory` | Closed-world pack inventory (domains/intents, KPIs, NBA rules, channels/sentiments/urgencies); strong nodes only |
-| **health-history** | `appendHealthSample`, `loadHealthHistory`, types `HealthSample`, `HealthHistoryDeps` | Append-only per-spec `health-history.jsonl` from status polls; score rollup via `summarizeDeployments` |
-| **archive** | `archiveCxSpec`, `restoreCxSpec` | Soft-archive: rename `.cox/cx/<name>` → `.archived-<name>` (hidden from `listCxSpecs`); restore renames back |
+| **catalog** | `inventoryCatalog`, types `CatalogDomain`, `CatalogKpi`, `CatalogNbaRule`, `CatalogInventory` | Closed-world catalog browser (domains/intents, KPIs, NBA rules, channels/sentiments/urgencies); strong nodes only, zero model calls |
+| **health-history** | `appendHealthSample`, `loadHealthHistory`, types `HealthSample`, `HealthHistoryDeps` | Append-only per-spec `health-history.jsonl` from status polls; score rollup via `summarizeDeployments`; load last N samples |
+| **archive** | `archiveCxSpec`, `restoreCxSpec` | Soft-archive: rename `.cox/cx/<name>` → `.archived-<name>` (hidden from `listCxSpecs`); restore renames back; no delete |
 | **snapshot** | `snapshotCxSpec`, type `SnapshotResult` | Full program backup/handoff: CAB package + `spec.json` + optional health/audit/daemon + `SNAPSHOT.md` |
 | **cfn-skeleton** | `buildCfnSkeleton` | Deterministic CloudFormation YAML + APPLY markdown from journey map (plan-only; no CreateStack) |
 | **offline-adapters** | `createOfflineLocalAdapter`, `createOfflineAwsAdapter`, type `OfflineDiskDeps` | Disk-backed local (build/deploy/status/simulate/teardown) and AWS plan-only (writes `template.yaml`, `APPLY.md`) |
@@ -37,10 +37,6 @@ Public surface is re-exported from `src/index.ts`.
 | **report** | `generateReport`, types `CxOpsReport`, `CxOpsReportEntry`, `ReportTarget`, `ReportDeps` | Cross-target status (+ simulate when capable); one scout-tier summary via injected `generate` |
 | **nba** | `opsRecommendNba`, `parseNbaContext`, type `NbaRecommendResult` | Pure graph NBA + confidence band + next stages; CLI key=value context parse |
 | **ontology** | `resolveOntologyPack`, `showOntology`, `validateOntologyPack`, `showStrongGraph`, type `OntologyPack` (`default` \| `local`), show/validate/graph result types | Closed-world catalog inventory, integrity + strong-graph stats |
-| **catalog** | `inventoryCatalog`, types `CatalogInventory`, `CatalogDomain`, `CatalogKpi`, `CatalogNbaRule` | Closed-world catalog browser (domains, intents, KPIs, NBA rules, channels/sentiments/urgencies); strong nodes only, zero model calls |
-| **health-history** | `appendHealthSample`, `loadHealthHistory`, types `HealthSample`, `HealthHistoryDeps` | Append-only per-spec `health-history.jsonl` from status polls; load last N samples for trend-ish ops |
-| **archive** | `archiveCxSpec`, `restoreCxSpec` | Soft-archive via rename to `.archived-<name>` (hidden from `listCxSpecs`); restore by renaming back; no delete |
-| **snapshot** | `snapshotCxSpec`, type `SnapshotResult` | Full program snapshot dir: CAB package base + `spec.json` + optional health-history/daemon/audit + `SNAPSHOT.md` |
 | **json-extract** | `extractJsonText`, `parseJsonLoose` | Weak-node helpers: strip fences / loose JSON for model output |
 
 ## Import law
@@ -93,8 +89,10 @@ snapshot: snapshot → cab_base → copy_spec → copy_health → emit
 | `cox cx watch` | watch |
 | `cox cx daemon *` | daemon |
 | `cox cx proposals` / `proposal` | proposals |
-| `cox cx apply` / `tasks` / `task` | tasks |
+| `cox cx apply` / `claim` / `tasks` / `task` | tasks (`claim` is apply alias) |
+| `cox cx operate <name>` | console tick + board line for one spec |
 | `cox cx board` | board (`buildOpsBoard`) |
+| `cox cx fleet-status` | board + status poll each deployed spec |
 | `cox cx brief <name> [outFile]` | brief (`renderExecBrief`) |
 | `cox cx cab-export <name> [outDir]` | cab-export (`exportCabPackage`) |
 | `cox cx audit <name> [--limit N]` | audit (`loadAuditEvents`) |
