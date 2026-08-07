@@ -1,4 +1,4 @@
-# SuperHeavy CXOS — mass-parallel expansion summary
+# SuperHeavy CXOS - mass-parallel expansion summary
 
 **Date:** 2026-08-07  
 **Branch:** `main`  
