@@ -803,10 +803,16 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   });
 
   addGlobalOptions(
-    cx.command("board").description("multi-spec ops board (phases, proposals, tasks, daemons)"),
+    cx
+      .command("board")
+      .description("multi-spec ops board (phases, proposals, tasks, daemons)")
+      .option("--json", "print board as JSON only"),
   ).action(async (_o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
-    throw new CliExit(await runCxBoard(await cxCtx(command, f.pack, f)));
+    const opts = command.optsWithGlobals<CxCmdOpts & { json?: boolean }>();
+    throw new CliExit(
+      await runCxBoard(await cxCtx(command, f.pack, f), { json: Boolean(opts.json) }),
+    );
   });
 
   addGlobalOptions(

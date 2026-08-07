@@ -158,4 +158,23 @@ describe("CXOS offline surface", () => {
     // Fresh init has no open proposals/tasks from operate/console
     expect(out.join("\n")).toMatch(/queue empty|proposals=0/);
   });
+
+  it("board --json emits only OpsBoard JSON", async () => {
+    const { write, out } = lines();
+    const c = ctx(write);
+    expect(await runCxInit(c)).toBe(0);
+
+    out.length = 0;
+    expect(await runCxBoard(c, { json: true })).toBe(0);
+    expect(out).toHaveLength(1);
+    const board = JSON.parse(out[0]!) as {
+      rows: unknown[];
+      totals: { specs: number };
+      path: string[];
+    };
+    expect(board.totals.specs).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(board.rows)).toBe(true);
+    expect(board.path).toEqual(["list_specs", "load_each", "rollup", "emit"]);
+    expect(out[0]).not.toMatch(/CXOS board/);
+  });
 });

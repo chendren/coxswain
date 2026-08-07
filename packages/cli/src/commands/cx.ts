@@ -1199,9 +1199,16 @@ export async function runCxTaskTransition(
   return 0;
 }
 
-export async function runCxBoard(ctx: CxCommandContext): Promise<number> {
+export async function runCxBoard(
+  ctx: CxCommandContext,
+  opts?: { json?: boolean },
+): Promise<number> {
   const rt = await runtimeFrom(ctx);
   const board = await buildOpsBoard(rt.workspace);
+  if (opts?.json) {
+    ctx.write(JSON.stringify(board));
+    return 0;
+  }
   ctx.write(
     `CXOS board  specs=${board.totals.specs} deployed=${board.totals.deployedSpecs} proposals_open=${board.totals.proposalsOpen} tasks_open=${board.totals.tasksOpen} daemons=${board.totals.daemonsRunning}`,
   );
