@@ -127,6 +127,25 @@ From monorepo root:
 ./examples/cx-demo/golden-path.sh --live
 ```
 
+## Multi-program (script)
+
+Offline fleet demo: two CX specs under one cwd, `cx run` for each, then
+`board` and `queue` when those commands exist. Uses `CX_CWD` or a temp dir.
+
+From monorepo root:
+
+```bash
+# offline (temp cwd)
+./examples/cx-demo/multi-program.sh
+
+# reuse a fixed workspace
+CX_CWD=/tmp/cx-multi ./examples/cx-demo/multi-program.sh
+```
+
+Creates `billing-dispute` and `churn-save`, then prints the multi-spec ops
+board and cross-spec work queue. Skip lines appear if `board` / `queue` are
+missing from the CLI build.
+
 ## Operate loop (proposals → tasks)
 
 Proposals are human-gated. Console/watch only write `proposals.json`.
