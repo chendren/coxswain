@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- CXOS stack: Nexus omnichannel CX platform (default :3143).
+     Install via scripts/macos/install-launchagents.sh
+     (substitutes {{HOME}} and {{PLATFORM_DIR}}). -->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.chendren.nexus-cx</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/usr/bin/env</string>
+		<string>node</string>
+		<string>{{PLATFORM_DIR}}/server.js</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>{{PLATFORM_DIR}}</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>{{HOME}}</string>
+		<key>PATH</key>
+		<string>{{HOME}}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>PORT</key>
+		<string>3143</string>
+	</dict>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>{{HOME}}/Library/Logs/coxswain/nexus-cx.out.log</string>
+	<key>StandardErrorPath</key>
+	<string>{{HOME}}/Library/Logs/coxswain/nexus-cx.err.log</string>
+</dict>
+</plist>

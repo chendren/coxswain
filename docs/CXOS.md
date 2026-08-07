@@ -273,6 +273,33 @@ pnpm cox cx doctor --live --base-url http://127.0.0.1:3143
 pnpm cox cx build <spec> --live --base-url http://127.0.0.1:3143 --target all
 ```
 
+### Stack services (macOS LaunchAgents)
+
+For always-on Ollama + Nexus CX (login session), use LaunchAgents instead of
+one-shot `cx-stack-up.sh`. Templates live under `scripts/macos/`; install
+substitutes `{{HOME}}` and `{{PLATFORM_DIR}}`, resolves `ollama` on PATH,
+writes plists to `~/Library/LaunchAgents`, and `launchctl load`s them.
+
+| Item | Detail |
+|---|---|
+| Labels | `com.chendren.ollama`, `com.chendren.nexus-cx` |
+| Ollama | `ollama serve` (binary resolved at install; template placeholder `{{HOME}}/.local/bin/ollama`) |
+| Platform | `/usr/bin/env node {{PLATFORM_DIR}}/server.js`, `WorkingDirectory` = platform root, `PORT=3143` |
+| Default `PLATFORM_DIR` | `~/Projects/cx-platform/omnichannel-cx-platform` (`CX_PLATFORM_DIR` or `--platform-dir`) |
+| Logs | `~/Library/Logs/coxswain/` |
+
+```bash
+# install (optional platform path)
+./scripts/macos/install-launchagents.sh
+./scripts/macos/install-launchagents.sh --platform-dir ~/Projects/cx-platform/omnichannel-cx-platform
+
+# uninstall
+./scripts/macos/uninstall-launchagents.sh
+```
+
+Still pull models once (`nomic-embed-text`, optional `nemotron-mini`) via
+`cx-stack-up.sh` or `ollama pull` before expecting `/api/health/ready` 200.
+
 ---
 
 ## Package map (quick)
