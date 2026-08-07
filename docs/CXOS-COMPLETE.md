@@ -29,11 +29,11 @@ command lives in exactly one primary layer.
 
 | Layer | Responsibility | Primary surface | Lifecycle bucket |
 |---|---|---|---|
-| **Catalog** | Closed ontology / strong graph | `catalog`, `ontology *`, `journeys`, `nba` | design (grounding) |
+| **Catalog** | Closed ontology / strong graph | `catalog`, `ontology *`, `graph-find`, `journeys`, `nba` | design (grounding) |
 | **Program** | Spec lifecycle + multi-target build | `init` `new` `approve` `list` `plan` `build` `deploy` `run` `teardown` `archive` `restore` | design + build |
 | **Observe** | Health, simulate, report, scores | `status` `health-history` `simulate` `report` `doctor` | operate (read) |
 | **Operate** | Propose → claim → task → close | `console` `watch` `daemon` `operate` `proposals` `proposal` `claim`/`apply` `tasks` `task` | operate |
-| **Fleet** | Multi-spec board + health poll | `board` `fleet-status` | fleet |
+| **Fleet** | Multi-spec board, work queue, HTML dashboard, health poll | `board` `queue` `dashboard` `fleet-status` | fleet |
 | **Govern** | Brief, audit, CAB/snapshot, AWS plan handoff | `brief` `audit` `cab-export` `snapshot` `export-aws` | govern |
 | **Fabric** | Local stack readiness | `cx:stack-up`, LaunchAgents, hybrid/live wiring | operate (platform) |
 
@@ -99,6 +99,7 @@ Ground work in the closed world, then create and approve a CX program.
 | `ontology show [--pack]` | Inventory domains, journeys, KPIs, NBA rules | Strong-only; no models |
 | `ontology validate [--pack]` | Catalog integrity + materialize strong graph | Exit 1 on failure |
 | `ontology graph [--pack]` | Strong-graph node/edge stats | |
+| `graph-find <query> [--pack]` | Search strong ontology graph nodes by id/name/kind | Pure graph lookup; default pack `local` |
 | `nba [k=v…] [--pack]` | Pure NBA recommend (`journey=` `stage=` `confidence=` …) | Graph match only |
 | `journeys [--pack]` | Closed journey inventory | Default pack `local` |
 | `init` | Ensure `.cox/cx`; seed `starter` if empty | Workspace bootstrap |
@@ -117,6 +118,7 @@ pnpm cox cx catalog --pack local
 pnpm cox cx catalog domains --pack local
 pnpm cox cx catalog nba
 pnpm cox cx ontology validate --pack local
+pnpm cox cx graph-find billing --pack local
 pnpm cox cx journeys --pack local
 pnpm cox cx init
 pnpm cox cx new billing-dispute "reduce dispute handle time"
@@ -126,6 +128,7 @@ pnpm cox cx nba journey=billing_dispute stage=intake confidence=0.9
 # or via monorepo script:
 pnpm cx:catalog
 pnpm cx:catalog -- domains
+pnpm cx:graph-find -- billing
 ```
 
 ---
@@ -279,14 +282,21 @@ pnpm cx:snapshot -- billing
 | Command | Purpose | Notes |
 |---|---|---|
 | `board` | Multi-spec ops board: phases, proposals, tasks, daemons | Fast rollup, no per-spec status poll |
+| `queue` | Cross-spec work queue (open/claimed proposals + open tasks) | Urgency + age; prints claim/task CLI hints |
+| `dashboard [outFile]` | Self-contained HTML ops dashboard | Default `cxos-dashboard.html`; board + queue; no external assets |
 | `fleet-status [--live] [--auto-live] [--base-url]` | Fleet board + **status poll** for each deployed spec | Writes health samples via `status`; empty fleet hints `cox cx init` |
 
 ```bash
 pnpm cox cx board
+pnpm cox cx queue
+pnpm cox cx dashboard
+pnpm cox cx dashboard ./handoffs/ops.html
 pnpm cox cx fleet-status
 pnpm cox cx fleet-status --live
 # or
 pnpm cx:board
+pnpm cx:queue
+pnpm cx:dashboard
 pnpm cx:fleet
 pnpm cx:fleet -- --live
 ```
@@ -316,11 +326,11 @@ pnpm cx:archive -- billing
 
 | Lifecycle | Commands |
 |---|---|
-| **Design** | `catalog` `ontology show` `ontology validate` `ontology graph` `nba` `journeys` `init` `new` `approve` `list` `archive` `restore` |
+| **Design** | `catalog` `ontology show` `ontology validate` `ontology graph` `graph-find` `nba` `journeys` `init` `new` `approve` `list` `archive` `restore` |
 | **Build** | `plan` `build` `deploy` `run` `teardown` |
 | **Operate** | `doctor` `status` `health-history` `simulate` `report` `console` `operate` `watch` `daemon start\|status\|stop` `proposals` `proposal` `claim` `apply` `tasks` `task` |
 | **Govern** | `brief` `audit` `export-aws` `cab-export` `snapshot` |
-| **Fleet** | `board` `fleet-status` |
+| **Fleet** | `board` `queue` `dashboard` `fleet-status` |
 
 Related monorepo scripts (root `package.json`; pass args after `--`):
 
@@ -328,6 +338,9 @@ Related monorepo scripts (root `package.json`; pass args after `--`):
 |---|---|
 | `pnpm cx:init` | Workspace + starter |
 | `pnpm cx:board` | Fleet board |
+| `pnpm cx:queue` | Cross-spec work queue |
+| `pnpm cx:dashboard` | HTML ops dashboard (default `cxos-dashboard.html`) |
+| `pnpm cx:graph-find -- <query>` | Strong-graph node search |
 | `pnpm cx:fleet` | Fleet status (board + status poll) |
 | `pnpm cx:catalog` | Closed catalog browser |
 | `pnpm cx:health-history -- <name>` | Health score history |
@@ -376,8 +389,12 @@ pnpm cx:health-history -- billing
 
 ```bash
 pnpm cox cx board
+pnpm cox cx queue
+pnpm cox cx dashboard
 pnpm cox cx fleet-status --live
 pnpm cx:fleet -- --live
+pnpm cx:queue
+pnpm cx:dashboard
 ```
 
 ### D. Change board / AWS handoff (govern)
@@ -569,7 +586,7 @@ ready 200.
 | `@cox/cx-artifacts` | Neutral document factory (journey maps, personas, intents, NBA, KPI, architecture) | plan / build / deploy disk under `artifacts/` |
 | `@cox/cx-local` | Live HTTP omnichannel / Nexus adapter | bind, deploy, status, simulate traffic, KPI match |
 | `@cox/cx-aws` | AWS plan-only (Connect / Lex / Bedrock planning) | template + agent/architecture docs; no CreateStack |
-| `@cox/cx-ops` | Workspace, orchestrate, console, proposals, tasks, daemon, board, brief, cab, audit, catalog, health-history, archive, snapshot, CFN skeleton, offline adapters | see module table below |
+| `@cox/cx-ops` | Workspace, orchestrate, console, proposals, tasks, daemon, board, fleet-queue, dashboard-html, graph-query, brief, cab, audit, catalog, health-history, archive, snapshot, CFN skeleton, offline adapters | see module table below |
 | `@cox/cli` | Composition root: `cox cx` + `createCxRuntime` / offline wiring | `commands/cx.ts`, `cx/runtime.ts` |
 
 ### 6.2 cx-ops modules (operate engine)
@@ -586,6 +603,9 @@ ready 200.
 | `metrics-summary` | Health score rollup |
 | `path-audit` | Collapse/group control `path[]` |
 | `board` | Multi-spec fleet rollup |
+| `fleet-queue` | Cross-spec open proposals + open tasks (`buildWorkQueue`) |
+| `dashboard-html` | Self-contained HTML ops dashboard (`renderOpsDashboardHtml`) |
+| `graph-query` | Strong-node lookup by id/name/kind (`lookupStrongNode`) |
 | `brief` | Executive markdown (no model) |
 | `cab-export` | CAB filesystem package |
 | `snapshot` | Full program snapshot (CAB + spec + health history) |
@@ -641,9 +661,9 @@ Adapters never import each other or cx-ops.
 | `plan` / `build` / `deploy` / `status` / `simulate` / `report` / `run` / `teardown` | `cx-ops` orchestrate (+ adapters); status appends health-history |
 | `console` / `operate` / `watch` / `daemon *` | `cx-ops` console, watch, daemon; operate = console + board line |
 | `proposals` / `proposal` / `claim` / `apply` / `tasks` / `task` | `cx-ops` proposals, tasks; claim → apply |
-| `catalog` / `ontology *` / `nba` / `journeys` | `cx-ops` catalog, ontology, nba, journeys (+ `cx-core` catalogs) |
+| `catalog` / `ontology *` / `graph-find` / `nba` / `journeys` | `cx-ops` catalog, ontology, graph-query, nba, journeys (+ `cx-core` catalogs) |
 | `doctor` | `cx-ops` stack-health + ontology + workspace list |
-| `board` / `fleet-status` | `cx-ops` board; fleet-status = board + status each deployed |
+| `board` / `queue` / `dashboard` / `fleet-status` | `cx-ops` board, fleet-queue, dashboard-html; fleet-status = board + status each deployed |
 | `brief` / `cab-export` / `snapshot` / `audit` | `cx-ops` brief, cab-export, snapshot, audit |
 | `archive` / `restore` | `cx-ops` archive (soft rename) |
 | `health-history` | `cx-ops` health-history load |
@@ -701,9 +721,12 @@ Typical `path: string[]` returned or recorded:
 | **build** | `load_workspace → route_targets → plan:artifacts → build:artifacts → merge_design → plan:local → … → emit` |
 | **console / operate** | `load_strong → poll_status → target:local → health:… → route:… → recommend_nba → propose_gated → emit` (+ board line for operate) |
 | **catalog** | `load_strong → inventory_catalog → emit` |
+| **graph-find** | `load_strong → lookup_node → emit` |
 | **nba** | `load_strong → match_rules → confidence_band? → next_stages? → emit` |
 | **stack / doctor** | `probe_ollama → probe_platform → emit` |
 | **daemon** | `daemon_start → [watch ticks] → daemon_stop` |
+| **queue** | `list_specs → load_proposals_tasks → sort → emit` |
+| **dashboard** | `board → queue → render_html → emit` |
 | **fleet-status** | `fleet_board → status_each → emit` |
 | **health-history** | `load_health_history → emit` |
 | **archive / restore** | `archive_spec → rename → emit` / `restore_spec → rename → emit` |
@@ -727,18 +750,18 @@ Quick map of persona → home surface:
 
 | ID | Persona | Home commands |
 |---|---|---|
-| P1 | CX Product Manager | `new` `approve` `run` `report` `nba` `brief` `catalog` |
-| P2 | Contact Center / CX SA | `plan` `build` `export-aws` `ontology` `cab-export` `snapshot` |
-| P3 | GenAI / Graph Engineer | `ontology *` `catalog`, path audits, offline tests |
-| P4 | Journey Owner / Ops Lead | `status` `health-history` `operate` `watch` `daemon` `claim` `tasks` |
-| P5 | NOC / Platform SRE | `doctor` `fleet-status` `cx:stack-up` LaunchAgents |
+| P1 | CX Product Manager | `new` `approve` `run` `report` `nba` `brief` `catalog` `graph-find` |
+| P2 | Contact Center / CX SA | `plan` `build` `export-aws` `ontology` `graph-find` `cab-export` `snapshot` |
+| P3 | GenAI / Graph Engineer | `ontology *` `catalog` `graph-find`, path audits, offline tests |
+| P4 | Journey Owner / Ops Lead | `status` `health-history` `operate` `watch` `daemon` `claim` `tasks` `queue` |
+| P5 | NOC / Platform SRE | `doctor` `fleet-status` `queue` `dashboard` `cx:stack-up` LaunchAgents |
 | P6 | Change / Security / Compliance | `audit` `cab-export` `snapshot` APPLY.md, proposal history |
 | P7 | AWS PS / Partner | `cx:golden` multi-cwd `run` |
-| P8 | Workshop Facilitator | demo README, `catalog`, ontology, golden |
+| P8 | Workshop Facilitator | demo README, `catalog`, `graph-find`, ontology, golden |
 | P9 | QA / Release | vitest e2e, `doctor --live` |
-| P10 | CX Executive / Sponsor | `status` score, `tasks` rollup, `brief`, `board` `fleet-status` |
+| P10 | CX Executive / Sponsor | `status` score, `tasks` rollup, `brief`, `board` `queue` `dashboard` `fleet-status` |
 | P11 | CS / Retention | `nba` churn contexts, `operate` |
-| P12 | LOB Analyst | `catalog` `ontology show` `validate` `journeys` |
+| P12 | LOB Analyst | `catalog` `ontology show` `validate` `graph-find` `journeys` |
 
 Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/README.md).
 
@@ -750,6 +773,7 @@ Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/READM
 |---|---|
 | Closed ontology + NBA | yes |
 | Closed catalog browser (`catalog`) | yes |
+| Strong graph find (`graph-find`) | yes |
 | Spec phases + multi-target build | yes |
 | Soft-archive / restore | yes |
 | Offline + hybrid + live local | yes |
@@ -762,6 +786,8 @@ Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/READM
 | Health history samples | yes |
 | Daemon operate | yes |
 | Multi-spec board | yes |
+| Cross-spec work queue (`queue`) | yes |
+| HTML ops dashboard (`dashboard`) | yes |
 | Fleet status poll | yes |
 | Executive brief | yes |
 | CAB package | yes |
@@ -770,7 +796,7 @@ Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/READM
 | Journey inventory | yes |
 | Workspace init | yes |
 | LaunchAgents / stack-up | yes |
-| Root scripts (`cx:catalog` `cx:fleet` `cx:health-history` `cx:archive` `cx:snapshot` `cx:claim` `cx:operate`) | yes |
+| Root scripts (`cx:catalog` `cx:fleet` `cx:queue` `cx:dashboard` `cx:graph-find` `cx:health-history` `cx:archive` `cx:snapshot` `cx:claim` `cx:operate`) | yes |
 | Persona playbooks | yes ([`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md)) |
 | CreateStack from Coxswain | **never** (by design) |
 
@@ -793,7 +819,8 @@ Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/READM
 
 ```text
                     ┌──────────── Catalog ────────────┐
-                    │ catalog · ontology · journeys · nba │
+                    │ catalog · ontology · graph-find  │
+                    │ journeys · nba                   │
                     └───────────────┬─────────────────┘
                                     │ grounds
           ┌─────────────────────────▼─────────────────────────┐
@@ -812,7 +839,7 @@ Demo tracks by persona: [`examples/cx-demo/README.md`](../examples/cx-demo/READM
                                     │                         export-aws
                                     ▼
                                  Fleet
-                              board · fleet-status
+                    board · queue · dashboard · fleet-status
                                     │
                                     ▼
                                  Fabric
