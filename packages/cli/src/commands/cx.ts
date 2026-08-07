@@ -38,6 +38,7 @@ import {
   seedDesignFromIdea,
   showOntology,
   showStrongGraph,
+  summarizeDeployments,
   transitionProposal,
   validateOntologyPack,
   type OntologyPack,
@@ -989,9 +990,20 @@ export async function runCxDaemonStatus(ctx: CxCommandContext, name: string): Pr
   const rt = await runtimeFrom(ctx);
   const running = await isDaemonRunning(rt.workspace.cxRoot, name);
   const meta = await readDaemonMeta(rt.workspace.cxRoot, name);
+  const logPath = join(rt.workspace.cxRoot, name, "daemon.log");
   ctx.write(`daemon ${name}: ${running ? "running" : "stopped"}`);
   if (meta) {
-    ctx.write(`pid=${meta.pid} startedAt=${meta.startedAt} intervalMs=${meta.intervalMs}`);
+    const extra = Object.entries(meta)
+      .filter(([k]) => !["pid", "startedAt", "intervalMs"].includes(k))
+      .map(([k, v]) => `${k}=${String(v)}`)
+      .join(" ");
+    ctx.write(
+      `pid=${meta.pid} startedAt=${meta.startedAt} intervalMs=${meta.intervalMs}${extra ? ` ${extra}` : ""}`,
+    );
+  }
+  ctx.write(`log: ${logPath}`);
+  if (!running) {
+    ctx.write(`next: cox cx daemon start ${name}`);
   }
   ctx.write(`path: daemon_status → emit`);
   return running ? 0 : 1;
@@ -1017,6 +1029,8 @@ export async function runCxApply(
   ctx.write(`applied ${proposalId} → task ${result.task.id}`);
   ctx.write(`remediation: ${result.remediationPath}`);
   ctx.write(`path: ${result.path.join(" → ")}`);
+  ctx.write(`next: cox cx task ${name} ${result.task.id} in_progress`);
+  ctx.write(`next: cox cx proposal ${name} ${proposalId} resolved`);
   return 0;
 }
 
