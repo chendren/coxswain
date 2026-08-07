@@ -91,13 +91,60 @@ describe("proposals + watch", () => {
   });
 
   it("proposal transition graph and next hints", () => {
+    // open -> claimed | dismissed | resolved (+ idempotent open)
     expect(isLegalProposalTransition("open", "claimed")).toBe(true);
+    expect(isLegalProposalTransition("open", "dismissed")).toBe(true);
+    expect(isLegalProposalTransition("open", "resolved")).toBe(true);
+    expect(isLegalProposalTransition("open", "open")).toBe(true);
+
+    // claimed -> resolved | dismissed | open (+ idempotent claimed)
     expect(isLegalProposalTransition("claimed", "resolved")).toBe(true);
-    expect(isLegalProposalTransition("resolved", "claimed")).toBe(false);
+    expect(isLegalProposalTransition("claimed", "dismissed")).toBe(true);
+    expect(isLegalProposalTransition("claimed", "open")).toBe(true);
+    expect(isLegalProposalTransition("claimed", "claimed")).toBe(true);
+
+    // dismissed -> open (+ idempotent dismissed); not to claimed/resolved
     expect(isLegalProposalTransition("dismissed", "open")).toBe(true);
+    expect(isLegalProposalTransition("dismissed", "dismissed")).toBe(true);
+    expect(isLegalProposalTransition("dismissed", "claimed")).toBe(false);
+    expect(isLegalProposalTransition("dismissed", "resolved")).toBe(false);
+
+    // resolved is terminal (only self)
+    expect(isLegalProposalTransition("resolved", "resolved")).toBe(true);
+    expect(isLegalProposalTransition("resolved", "open")).toBe(false);
+    expect(isLegalProposalTransition("resolved", "claimed")).toBe(false);
+    expect(isLegalProposalTransition("resolved", "dismissed")).toBe(false);
+
     expect(suggestedProposalNext("open")).toBe("apply");
     expect(suggestedProposalNext("claimed")).toBe("resolve");
+    expect(suggestedProposalNext("dismissed")).toBe("reopen");
     expect(suggestedProposalNext("resolved")).toBe("none");
+  });
+
+  it("transitionProposal rejects illegal edges with a clear Error", async () => {
+    const tick = [
+      {
+        targetId: "local" as const,
+        kind: "investigate" as const,
+        summary: "seed",
+        path: ["test"],
+      },
+    ];
+    const { added } = await appendProposalsFromTick({ cxRoot, now }, "demo", tick);
+    const id = added[0]!.id;
+
+    // open -> claimed then try illegal dismissed->resolved after reopen cycle
+    await transitionProposal({ cxRoot, now }, "demo", id, "dismissed");
+    await expect(
+      transitionProposal({ cxRoot, now }, "demo", id, "resolved"),
+    ).rejects.toThrow(/illegal proposal transition dismissed .+ resolved/);
+
+    await transitionProposal({ cxRoot, now }, "demo", id, "open");
+    await transitionProposal({ cxRoot, now }, "demo", id, "claimed");
+    await transitionProposal({ cxRoot, now }, "demo", id, "resolved");
+    await expect(
+      transitionProposal({ cxRoot, now }, "demo", id, "open"),
+    ).rejects.toThrow(`illegal proposal transition resolved → open (id=${id})`);
   });
 
   it("watch loop runs ticks and can add proposals on degraded", async () => {
