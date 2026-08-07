@@ -95,11 +95,10 @@ Ground work in the closed world, then create and approve a CX program.
 
 | Command | Purpose | Notes |
 |---|---|---|
-| `catalog [section] [--pack]` | Closed catalog browser | `all` (default) \| `domains` \| `intents` \| `kpis` \| `nba` \| `channels`; strong-only |
+| `catalog [section] [--pack]` | Closed catalog browser | `all` (default) \| `domains` \| `intents` \| `kpis` \| `nba` \| `channels`; strong-only; default pack `local` |
 | `ontology show [--pack]` | Inventory domains, journeys, KPIs, NBA rules | Strong-only; no models |
 | `ontology validate [--pack]` | Catalog integrity + materialize strong graph | Exit 1 on failure |
 | `ontology graph [--pack]` | Strong-graph node/edge stats | |
-| `catalog [section] [--pack]` | Full closed taxonomy browser | Section: `all`\|`domains`\|`intents`\|`kpis`\|`nba`\|`channels`; default pack `local` |
 | `nba [k=v…] [--pack]` | Pure NBA recommend (`journey=` `stage=` `confidence=` …) | Graph match only |
 | `journeys [--pack]` | Closed journey inventory | Default pack `local` |
 | `init` | Ensure `.cox/cx`; seed `starter` if empty | Workspace bootstrap |
@@ -223,10 +222,9 @@ pnpm cx:health-history -- billing
 | `audit <name> [--limit 30]` | Append-only event trail | `audit.jsonl` under spec |
 | `export-aws <name> [outDir]` | Plan-only AWS files only | `./cx-export/<name>-aws` |
 | `cab-export <name> [outDir]` | Full CAB package | `./cx-cab/<name>/` |
-| `snapshot <name> [outDir]` | CAB + `spec.json` + health/audit/daemon | `./cx-snapshot/<name>/` |
+| `snapshot <name> [outDir]` | Full program snapshot (CAB + `spec.json` + health/audit/daemon) | `./cx-snapshot/<name>/` |
 | `archive <name>` | Soft-archive program | Renames to `.archived-<name>` (hidden from list) |
 | `restore <name>` | Restore soft-archived program | Renames back to active name |
-| `snapshot <name> [outDir]` | Full program snapshot (CAB + `spec.json` + health history + optional daemon/audit) | `./cx-snapshot/<name>/` |
 
 **CAB package contents** (`cab-export`):
 
