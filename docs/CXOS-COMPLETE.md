@@ -222,9 +222,7 @@ pnpm cx:health-history -- billing
 | `audit <name> [--limit 30]` | Append-only event trail | `audit.jsonl` under spec |
 | `export-aws <name> [outDir]` | Plan-only AWS files only | `./cx-export/<name>-aws` |
 | `cab-export <name> [outDir]` | Full CAB package | `./cx-cab/<name>/` |
-| `snapshot <name> [outDir]` | Full program snapshot (CAB + `spec.json` + health/audit/daemon) | `./cx-snapshot/<name>/` |
-| `archive <name>` | Soft-archive program | Renames to `.archived-<name>` (hidden from list) |
-| `restore <name>` | Restore soft-archived program | Renames back to active name |
+| `snapshot <name> [outDir]` | Full program snapshot (CAB + `spec.json` + health history + optional daemon/audit) | `./cx-snapshot/<name>/` |
 
 **CAB package contents** (`cab-export`):
 
