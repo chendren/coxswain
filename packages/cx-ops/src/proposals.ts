@@ -142,6 +142,18 @@ export function suggestedProposalNext(
   return "none";
 }
 
+/**
+ * Pure urgency score 0-100 from kind + age (hours).
+ * remediate base 70, investigate 45, else 25; +1 per hour capped +30.
+ */
+export function proposalUrgencyScore(kind: string, ageHours: number): number {
+  let base = 25;
+  if (kind === "remediate") base = 70;
+  else if (kind === "investigate") base = 45;
+  const age = Math.max(0, Math.min(30, Math.floor(ageHours)));
+  return Math.min(100, base + age);
+}
+
 export async function transitionProposal(
   deps: ProposalStoreDeps,
   specName: string,

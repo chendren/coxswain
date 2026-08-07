@@ -16,6 +16,8 @@ export interface BriefInput {
   proposals: CxProposal[];
   tasks: CxTask[];
   healthEntries?: HealthEntry[];
+  /** Recent scores newest-last, e.g. from health-history. */
+  healthScoreTrail?: number[];
   generatedAt: string;
 }
 
@@ -53,6 +55,9 @@ export function renderExecBrief(input: BriefInput): string {
     );
   } else {
     lines.push(`- Status not polled in this brief (run \`cox cx status ${name}\` for live score).`, ``);
+  }
+  if (input.healthScoreTrail && input.healthScoreTrail.length > 0) {
+    lines.push(`- **Score trail:** ${input.healthScoreTrail.join(" → ")}`, ``);
   }
 
   lines.push(

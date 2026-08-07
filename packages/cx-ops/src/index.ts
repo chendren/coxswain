@@ -25,3 +25,6 @@ export * from "./catalog";
 export * from "./health-history";
 export * from "./archive";
 export * from "./snapshot";
+export * from "./fleet-queue";
+export * from "./dashboard-html";
+export * from "./graph-query";

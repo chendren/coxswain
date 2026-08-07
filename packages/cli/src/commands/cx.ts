@@ -60,6 +60,10 @@ import {
   archiveCxSpec,
   restoreCxSpec,
   snapshotCxSpec,
+  buildWorkQueue,
+  renderOpsDashboardHtml,
+  lookupStrongNode,
+  proposalUrgencyScore,
   type OntologyPack,
   type CxPhase,
   type ProposalStatus,
@@ -1230,12 +1234,14 @@ export async function runCxBrief(
   const depsFile = await loadDeployments(rt.workspace, name);
   const proposals = await loadProposals(rt.workspace, name);
   const tasks = await loadCxTasks(rt.workspace, name);
+  const hist = await loadHealthHistory(rt.workspace, name, 8);
   const md = renderExecBrief({
     name,
     record,
     deployments: depsFile.deployments,
     proposals,
     tasks,
+    healthScoreTrail: hist.map((h) => h.score),
     generatedAt: rt.workspace.now(),
   });
   if (outFile) {
@@ -1514,6 +1520,78 @@ export async function runCxFleetStatus(
   }
   ctx.write(`path: fleet_board → status_each → emit`);
   void opts;
+  return 0;
+}
+
+export async function runCxQueue(ctx: CxCommandContext): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const q = await buildWorkQueue(rt.workspace);
+  ctx.write(
+    `CXOS queue  proposals=${q.totals.proposals} tasks=${q.totals.tasks} specs_with_work=${q.totals.specsWithWork}`,
+  );
+  if (q.proposals.length === 0 && q.tasks.length === 0) {
+    ctx.write("(queue empty — cox cx operate <name> or console to generate work)");
+    ctx.write(`path: ${q.path.join(" → ")}`);
+    return 0;
+  }
+  if (q.proposals.length > 0) {
+    ctx.write("## proposals");
+    for (const p of q.proposals) {
+      const score = proposalUrgencyScore(p.kind, p.ageHours);
+      ctx.write(
+        `${p.specName}  ${p.id}  [${p.status}/${p.kind}] urg=${p.urgency} score=${score} age=${p.ageHours}h next=${p.next}  ${p.summary}`,
+      );
+      if (p.next === "apply") {
+        ctx.write(`  → cox cx claim ${p.specName} ${p.id}`);
+      }
+    }
+  }
+  if (q.tasks.length > 0) {
+    ctx.write("## tasks");
+    for (const t of q.tasks) {
+      ctx.write(
+        `${t.specName}  ${t.id}  [${t.status}] age=${t.ageHours}h  ${t.title}`,
+      );
+      ctx.write(`  → cox cx task ${t.specName} ${t.id} done`);
+    }
+  }
+  ctx.write(`path: ${q.path.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxDashboard(
+  ctx: CxCommandContext,
+  outFile?: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const board = await buildOpsBoard(rt.workspace);
+  const queue = await buildWorkQueue(rt.workspace);
+  const html = renderOpsDashboardHtml(board, queue, rt.workspace.now());
+  const dest = resolve(ctx.cwd, outFile?.trim() || "cxos-dashboard.html");
+  await writeFile(dest, html, "utf8");
+  ctx.write(`wrote CXOS dashboard ${dest}`);
+  ctx.write(
+    `fleet specs=${board.totals.specs} proposals=${queue.totals.proposals} tasks=${queue.totals.tasks}`,
+  );
+  ctx.write(`path: board → queue → render_html → emit`);
+  return 0;
+}
+
+export async function runCxGraphFind(
+  ctx: CxCommandContext,
+  query: string,
+  packRaw?: string,
+): Promise<number> {
+  const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "local");
+  const result = lookupStrongNode(pack, query);
+  ctx.write(`CXOS graph-find  pack=${result.pack} query="${query}" hits=${result.hits.length}`);
+  for (const h of result.hits) {
+    ctx.write(`${h.uid}  kind=${h.kind}  name=${h.name}  hub=${h.hubKey}`);
+  }
+  if (result.hits.length === 0) {
+    ctx.write("(no matches — try a domain, journey, or intent fragment)");
+  }
+  ctx.write(`path: ${result.path.join(" → ")}`);
   return 0;
 }
 

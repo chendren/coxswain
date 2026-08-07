@@ -26,7 +26,10 @@
     "cx:archive": "pnpm cox cx archive",
     "cx:snapshot": "pnpm cox cx snapshot",
     "cx:claim": "pnpm cox cx claim",
-    "cx:operate": "pnpm cox cx operate"
+    "cx:operate": "pnpm cox cx operate",
+    "cx:queue": "pnpm cox cx queue",
+    "cx:dashboard": "pnpm cox cx dashboard",
+    "cx:graph-find": "pnpm cox cx graph-find"
   },
   "devDependencies": {
     "tsx": "^4.19.0",

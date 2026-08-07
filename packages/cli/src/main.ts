@@ -60,6 +60,9 @@ import {
   runCxSnapshot,
   runCxHealthHistory,
   runCxFleetStatus,
+  runCxQueue,
+  runCxDashboard,
+  runCxGraphFind,
   type CxCommandContext,
 } from "./commands/cx";
 import { loadDeps, type LoadedDeps } from "./deps";
@@ -941,6 +944,32 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     throw new CliExit(
       await runCxFleetStatus(await cxCtx(command, f.pack, f), { live: Boolean(f.live) }),
     );
+  });
+
+  addGlobalOptions(
+    cx.command("queue").description("cross-spec work queue (open proposals + tasks)"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxQueue(await cxCtx(command, f.pack, f)));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("dashboard [outFile]")
+      .description("write self-contained HTML ops dashboard (default cxos-dashboard.html)"),
+  ).action(async (outFile: string | undefined, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxDashboard(await cxCtx(command, f.pack, f), outFile));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("graph-find <query>")
+      .description("search strong ontology graph nodes by id/name/kind")
+      .option("--pack <name>", "ontology pack: default|local", "local"),
+  ).action(async (query: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxGraphFind(await cxCtx(command, f.pack, f), query, f.pack));
   });
 
   return program;
