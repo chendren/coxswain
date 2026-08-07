@@ -53,8 +53,47 @@ async function saveCxTasks(
   );
 }
 
+export function remediationFilePath(
+  deps: ProposalStoreDeps,
+  specName: string,
+  proposalId: string,
+): string {
+  return join(deps.cxRoot, specName, "remediations", `${proposalId}.md`);
+}
+
+export interface TaskSummary {
+  pending: number;
+  in_progress: number;
+  done: number;
+  cancelled: number;
+  total: number;
+  open: number;
+}
+
+export function summarizeTasks(tasks: CxTask[]): TaskSummary {
+  let pending = 0;
+  let in_progress = 0;
+  let done = 0;
+  let cancelled = 0;
+  for (const t of tasks) {
+    if (t.status === "pending") pending++;
+    else if (t.status === "in_progress") in_progress++;
+    else if (t.status === "done") done++;
+    else if (t.status === "cancelled") cancelled++;
+  }
+  return {
+    pending,
+    in_progress,
+    done,
+    cancelled,
+    total: tasks.length,
+    open: pending + in_progress,
+  };
+}
+
 /**
- * Apply an open proposal: create a CX task + remediation note, mark proposal claimed/resolved.
+ * Apply an open/claimed proposal: create a CX task + remediation note.
+ * Default marks proposal **claimed**. Pass `{ resolve: true }` to mark **resolved**.
  */
 export async function applyProposal(
   deps: ProposalStoreDeps,
@@ -63,6 +102,9 @@ export async function applyProposal(
   opts?: { resolve?: boolean },
 ): Promise<{ path: string[]; task: CxTask; remediationPath: string }> {
   const path = ["load_tasks", "apply_proposal", "write_remediation", "transition_proposal", "emit"];
+  if (proposal.status === "resolved" || proposal.status === "dismissed") {
+    throw new Error(`proposal ${proposal.id} is ${proposal.status} — nothing to apply`);
+  }
   const now = deps.now();
   const tasks = await loadCxTasks(deps, specName);
 
@@ -82,9 +124,8 @@ export async function applyProposal(
   tasks.push(task);
   await saveCxTasks(deps, specName, tasks);
 
-  const remediationDir = join(deps.cxRoot, specName, "remediations");
-  await mkdir(remediationDir, { recursive: true });
-  const remediationPath = join(remediationDir, `${proposal.id}.md`);
+  const remediationPath = remediationFilePath(deps, specName, proposal.id);
+  await mkdir(join(deps.cxRoot, specName, "remediations"), { recursive: true });
   const md = [
     `# Remediation: ${proposal.id}`,
     ``,
@@ -102,9 +143,9 @@ export async function applyProposal(
     `## Operator steps (human-gated)`,
     `1. Review target health: \`cox cx status ${specName} --live\``,
     `2. If local platform: check dashboard and ollama (\`curl -s localhost:3143/api/health/ready\`)`,
-    `3. If NBA action present, execute via platform ops console — do not auto-mutate prod`,
-    `4. Mark task done: \`cox cx task ${specName} ${task.id} done\``,
-    `5. Resolve proposal: \`cox cx proposal ${specName} ${proposal.id} resolved\``,
+    `3. If NBA action present, execute via platform ops console - do not auto-mutate prod`,
+    `4. Mark task done: \`cox cx task ${specName} ${task.id} done\` (auto-resolves proposal)`,
+    `5. Or resolve proposal only: \`cox cx proposal ${specName} ${proposal.id} resolved\``,
     ``,
     `## Graph path`,
     "```",
@@ -114,7 +155,8 @@ export async function applyProposal(
   ].join("\n");
   await writeFile(remediationPath, md, "utf8");
 
-  const nextStatus = opts?.resolve === false ? "claimed" : "claimed";
+  // resolve:true → resolved; default → claimed (human still owns close-out)
+  const nextStatus = opts?.resolve ? "resolved" : "claimed";
   await transitionProposal(deps, specName, proposal.id, nextStatus);
 
   return { path, task, remediationPath };
@@ -125,12 +167,24 @@ export async function transitionTask(
   specName: string,
   taskId: string,
   status: CxTaskStatus,
+  opts?: { resolveSource?: boolean },
 ): Promise<CxTask | null> {
   const tasks = await loadCxTasks(deps, specName);
   const idx = tasks.findIndex((t) => t.id === taskId);
   if (idx < 0) return null;
-  const next = { ...tasks[idx]!, status, updatedAt: deps.now() };
+  const current = tasks[idx]!;
+  const next = { ...current, status, updatedAt: deps.now() };
   tasks[idx] = next;
   await saveCxTasks(deps, specName, tasks);
+
+  // Closing a task resolves the source proposal by default (human gate still required to get here).
+  const resolveSource = opts?.resolveSource !== false;
+  if (status === "done" && resolveSource && current.sourceProposalId) {
+    try {
+      await transitionProposal(deps, specName, current.sourceProposalId, "resolved");
+    } catch {
+      // Proposal may already be resolved/dismissed; task transition still succeeds.
+    }
+  }
   return next;
 }

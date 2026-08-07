@@ -40,7 +40,11 @@ import {
   showOntology,
   showStrongGraph,
   summarizeDeployments,
+  summarizeTasks,
   formatPathAudit,
+  suggestedProposalNext,
+  remediationFilePath,
+  listOpenProposals,
   transitionProposal,
   validateOntologyPack,
   type OntologyPack,
@@ -827,11 +831,12 @@ export async function runCxConsole(
     ctx.write(`persisted ${persisted.added.length} proposal(s) (skipped ${persisted.skipped} dupes)`);
     for (const p of persisted.added) {
       ctx.write(`  + ${p.id} [${p.kind}] ${p.summary}`);
+      ctx.write(`  next: cox cx apply ${name} ${p.id}`);
     }
   } else {
     ctx.write("(no new proposals to persist)");
   }
-  ctx.write("(proposals are human-gated — no mutations applied)");
+  ctx.write("(proposals are human-gated - no mutations applied)");
   return 0;
 }
 
@@ -912,9 +917,15 @@ export async function runCxProposals(
     return 0;
   }
   for (const p of list) {
+    const next = suggestedProposalNext(p.status);
     ctx.write(
-      `${p.id}  [${p.status}/${p.kind}] ${p.targetId}  ${p.nbaRuleId ?? "-"}  ${p.summary}`,
+      `${p.id}  [${p.status}/${p.kind}] ${p.targetId}  ${p.nbaRuleId ?? "-"}  next=${next}  ${p.summary}`,
     );
+    if (next === "apply") {
+      ctx.write(`  → cox cx apply ${name} ${p.id}`);
+    } else if (next === "resolve") {
+      ctx.write(`  → cox cx proposal ${name} ${p.id} resolved`);
+    }
   }
   ctx.write(`path: load_proposals → emit`);
   return 0;
@@ -927,14 +938,19 @@ export async function runCxProposalTransition(
   status: ProposalStatus,
 ): Promise<number> {
   const rt = await runtimeFrom(ctx);
-  const next = await transitionProposal(rt.workspace, name, id, status);
-  if (!next) {
-    ctx.write(`proposal ${id} not found`);
+  try {
+    const next = await transitionProposal(rt.workspace, name, id, status);
+    if (!next) {
+      ctx.write(`proposal ${id} not found`);
+      return 1;
+    }
+    ctx.write(`${next.id} → ${next.status}`);
+    ctx.write(`path: load_proposals → transition:${status} → emit`);
+    return 0;
+  } catch (e) {
+    ctx.write(e instanceof Error ? e.message : String(e));
     return 1;
   }
-  ctx.write(`${next.id} → ${next.status}`);
-  ctx.write(`path: load_proposals → transition:${status} → emit`);
-  return 0;
 }
 
 export async function runCxDaemonStart(
@@ -998,26 +1014,32 @@ export async function runCxDaemonStatus(ctx: CxCommandContext, name: string): Pr
   const rt = await runtimeFrom(ctx);
   const running = await isDaemonRunning(rt.workspace.cxRoot, name);
   const meta = await readDaemonMeta(rt.workspace.cxRoot, name);
-  const logPath = join(rt.workspace.cxRoot, name, "daemon.log");
+  const paths = {
+    log: join(rt.workspace.cxRoot, name, "daemon.log"),
+  };
   let logPresent = false;
   try {
-    await access(logPath);
+    await access(paths.log);
     logPresent = true;
   } catch {
     /* log not created yet */
   }
+  const openProps = await listOpenProposals(rt.workspace, name);
+  const ticks =
+    meta != null
+      ? `${meta.lastTick ?? 0}/${meta.maxTicks}`
+      : "-/-";
+  const pid = meta?.pid ?? "-";
+  const last = meta?.lastTickAt ?? "-";
 
-  ctx.write(`daemon ${name}: ${running ? "running" : "stopped"}`);
+  // One scannable health line for operators
   ctx.write(
-    `running=${running} pid=${meta?.pid ?? "-"} lastTickAt=${meta?.lastTickAt ?? "-"}`,
+    `daemon ${name}: ${running ? "running" : "stopped"} pid=${pid} ticks=${ticks} last=${last} proposals_open=${openProps.length}${logPresent ? ` log=${paths.log}` : ""}`,
   );
   if (meta) {
     ctx.write(
-      `startedAt=${meta.startedAt} intervalMs=${meta.intervalMs} maxTicks=${meta.maxTicks} targets=${meta.targets.join(",")}${meta.lastTick != null ? ` lastTick=${meta.lastTick}` : ""}`,
+      `detail: startedAt=${meta.startedAt} intervalMs=${meta.intervalMs} targets=${meta.targets.join(",")}`,
     );
-  }
-  if (logPresent) {
-    ctx.write(`log: ${logPath}`);
   }
   if (!running) {
     ctx.write(`next: cox cx daemon start ${name}`);
@@ -1030,6 +1052,7 @@ export async function runCxApply(
   ctx: CxCommandContext,
   name: string,
   proposalId: string,
+  opts?: { resolve?: boolean },
 ): Promise<number> {
   const rt = await runtimeFrom(ctx);
   const proposals = await loadProposals(rt.workspace, name);
@@ -1042,13 +1065,25 @@ export async function runCxApply(
     ctx.write(`proposal ${proposalId} is ${prop.status} - nothing to apply`);
     return 1;
   }
-  const result = await applyProposal(rt.workspace, name, prop);
-  ctx.write(`applied ${proposalId} → task ${result.task.id}`);
-  ctx.write(`remediation: ${result.remediationPath}`);
-  ctx.write(`path: ${result.path.join(" → ")}`);
-  ctx.write(`next: cox cx task ${name} ${result.task.id} in_progress`);
-  ctx.write(`next: cox cx proposal ${name} ${proposalId} resolved`);
-  return 0;
+  try {
+    const result = await applyProposal(rt.workspace, name, prop, {
+      resolve: Boolean(opts?.resolve),
+    });
+    ctx.write(
+      `applied ${proposalId} → task ${result.task.id} (proposal → ${opts?.resolve ? "resolved" : "claimed"})`,
+    );
+    ctx.write(`remediation: ${result.remediationPath}`);
+    ctx.write(`path: ${result.path.join(" → ")}`);
+    ctx.write(`next: cox cx task ${name} ${result.task.id} in_progress`);
+    if (!opts?.resolve) {
+      ctx.write(`next: cox cx task ${name} ${result.task.id} done  # auto-resolves proposal`);
+      ctx.write(`next: cox cx proposal ${name} ${proposalId} resolved`);
+    }
+    return 0;
+  } catch (e) {
+    ctx.write(e instanceof Error ? e.message : String(e));
+    return 1;
+  }
 }
 
 export async function runCxTasks(
@@ -1058,6 +1093,11 @@ export async function runCxTasks(
 ): Promise<number> {
   const rt = await runtimeFrom(ctx);
   const tasks = await loadCxTasks(rt.workspace, name);
+  const rollup = summarizeTasks(tasks);
+  ctx.write(
+    `tasks ${name}: open=${rollup.open} pending=${rollup.pending} in_progress=${rollup.in_progress} done=${rollup.done} cancelled=${rollup.cancelled} total=${rollup.total}`,
+  );
+
   let list = tasks;
   if (opts.status) {
     list = tasks.filter((t) => t.status === opts.status);
@@ -1073,6 +1113,10 @@ export async function runCxTasks(
     ctx.write(
       `${t.id}  [${t.status}] ${t.targetId ?? "-"}  ${t.nbaAction ?? "-"}  ${t.title}`,
     );
+    if (t.sourceProposalId) {
+      const rem = remediationFilePath(rt.workspace, name, t.sourceProposalId);
+      ctx.write(`  proposal=${t.sourceProposalId} remediation=${rem}`);
+    }
   }
   ctx.write(`path: load_tasks → emit`);
   return 0;
@@ -1083,14 +1127,20 @@ export async function runCxTaskTransition(
   name: string,
   taskId: string,
   status: "pending" | "in_progress" | "done" | "cancelled",
+  opts?: { resolveSource?: boolean },
 ): Promise<number> {
   const rt = await runtimeFrom(ctx);
-  const next = await transitionTask(rt.workspace, name, taskId, status);
+  const next = await transitionTask(rt.workspace, name, taskId, status, {
+    resolveSource: opts?.resolveSource,
+  });
   if (!next) {
     ctx.write(`task ${taskId} not found`);
     return 1;
   }
   ctx.write(`${next.id} → ${next.status}`);
+  if (status === "done" && next.sourceProposalId && opts?.resolveSource !== false) {
+    ctx.write(`source proposal ${next.sourceProposalId} → resolved (default)`);
+  }
   ctx.write(`path: load_tasks → transition:${status} → emit`);
   return 0;
 }

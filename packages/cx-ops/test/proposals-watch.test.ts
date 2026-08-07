@@ -6,10 +6,12 @@ import { createMockTargetAdapter, type CxDeployment, type CxHealth } from "@cox/
 import {
   appendProposalsFromTick,
   extractJsonText,
+  isLegalProposalTransition,
   listOpenProposals,
   loadProposals,
   parseJsonLoose,
   runWatchLoop,
+  suggestedProposalNext,
   transitionProposal,
 } from "../src/index";
 
@@ -77,10 +79,25 @@ describe("proposals + watch", () => {
     const open = await listOpenProposals({ cxRoot, now }, "demo");
     expect(open).toHaveLength(1);
     const id = open[0]!.id;
+    // open → resolved is legal (operator shortcut)
     const resolved = await transitionProposal({ cxRoot, now }, "demo", id, "resolved");
     expect(resolved?.status).toBe("resolved");
     expect(await listOpenProposals({ cxRoot, now }, "demo")).toHaveLength(0);
     expect((await loadProposals({ cxRoot, now }, "demo"))[0]?.status).toBe("resolved");
+    // resolved is terminal
+    await expect(
+      transitionProposal({ cxRoot, now }, "demo", id, "open"),
+    ).rejects.toThrow(/illegal proposal transition/);
+  });
+
+  it("proposal transition graph and next hints", () => {
+    expect(isLegalProposalTransition("open", "claimed")).toBe(true);
+    expect(isLegalProposalTransition("claimed", "resolved")).toBe(true);
+    expect(isLegalProposalTransition("resolved", "claimed")).toBe(false);
+    expect(isLegalProposalTransition("dismissed", "open")).toBe(true);
+    expect(suggestedProposalNext("open")).toBe("apply");
+    expect(suggestedProposalNext("claimed")).toBe("resolve");
+    expect(suggestedProposalNext("resolved")).toBe("none");
   });
 
   it("watch loop runs ticks and can add proposals on degraded", async () => {

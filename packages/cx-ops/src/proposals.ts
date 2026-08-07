@@ -117,6 +117,31 @@ export async function appendProposalsFromTick(
   return { path, added, skipped };
 }
 
+/** Legal human-gated edges. Same status is always allowed (idempotent). */
+const LEGAL_EDGES: Record<ProposalStatus, readonly ProposalStatus[]> = {
+  open: ["open", "claimed", "dismissed", "resolved"],
+  claimed: ["claimed", "resolved", "dismissed", "open"],
+  dismissed: ["dismissed", "open"],
+  resolved: ["resolved"],
+};
+
+export function isLegalProposalTransition(
+  from: ProposalStatus,
+  to: ProposalStatus,
+): boolean {
+  return (LEGAL_EDGES[from] ?? []).includes(to);
+}
+
+/** Suggested operator next command verb for a proposal row. */
+export function suggestedProposalNext(
+  status: ProposalStatus,
+): "apply" | "resolve" | "dismiss" | "reopen" | "none" {
+  if (status === "open") return "apply";
+  if (status === "claimed") return "resolve";
+  if (status === "dismissed") return "reopen";
+  return "none";
+}
+
 export async function transitionProposal(
   deps: ProposalStoreDeps,
   specName: string,
@@ -126,7 +151,13 @@ export async function transitionProposal(
   const all = await loadProposals(deps, specName);
   const idx = all.findIndex((p) => p.id === id);
   if (idx < 0) return null;
-  const next = { ...all[idx]!, status, updatedAt: deps.now() };
+  const current = all[idx]!;
+  if (!isLegalProposalTransition(current.status, status)) {
+    throw new Error(
+      `illegal proposal transition ${current.status} → ${status} (id=${id})`,
+    );
+  }
+  const next = { ...current, status, updatedAt: deps.now() };
   all[idx] = next;
   await saveProposals(deps, specName, all);
   return next;

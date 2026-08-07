@@ -97,8 +97,43 @@ describe("applyProposal + tasks", () => {
     expect(md).toContain("Remediation");
     const tasks = await loadCxTasks({ cxRoot, now }, "demo");
     expect(tasks).toHaveLength(1);
+    // default apply claims proposal
+    const claimed = (await loadProposals({ cxRoot, now }, "demo")).find((x) => x.id === p.id);
+    expect(claimed?.status).toBe("claimed");
+
     const done = await transitionTask({ cxRoot, now }, "demo", result.task.id, "done");
     expect(done?.status).toBe("done");
+    // task done auto-resolves source proposal
+    const resolved = (await loadProposals({ cxRoot, now }, "demo")).find((x) => x.id === p.id);
+    expect(resolved?.status).toBe("resolved");
+  });
+
+  it("apply --resolve marks proposal resolved immediately", async () => {
+    const { appendProposalsFromTick, loadProposals } = await import("../src/proposals");
+    await appendProposalsFromTick({ cxRoot, now }, "demo", [
+      {
+        targetId: "local",
+        kind: "investigate",
+        summary: "quick fix",
+        nba: {
+          rules: [],
+          primary: {
+            id: "RULE_A",
+            name: "x",
+            priority: 1,
+            conditions: [],
+            logic: "AND",
+            action: "noop",
+            actionType: "other",
+            urgency: "low",
+          },
+        },
+        path: ["test"],
+      },
+    ]);
+    const p = (await loadProposals({ cxRoot, now }, "demo"))[0]!;
+    await applyProposal({ cxRoot, now }, "demo", p, { resolve: true });
+    expect((await loadProposals({ cxRoot, now }, "demo"))[0]?.status).toBe("resolved");
   });
 });
 

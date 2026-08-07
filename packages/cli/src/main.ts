@@ -704,10 +704,16 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   addGlobalOptions(
     cx
       .command("apply <name> <proposalId>")
-      .description("apply proposal → CX task + remediation note (human-gated)"),
+      .description("apply proposal → CX task + remediation note (human-gated)")
+      .option("--resolve", "mark proposal resolved (default: claimed)"),
   ).action(async (name: string, proposalId: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
-    throw new CliExit(await runCxApply(await cxCtx(command, f.pack, f), name, proposalId));
+    const opts = command.optsWithGlobals<CxCmdOpts & { resolve?: boolean }>();
+    throw new CliExit(
+      await runCxApply(await cxCtx(command, f.pack, f), name, proposalId, {
+        resolve: Boolean(opts.resolve),
+      }),
+    );
   });
 
   addGlobalOptions(
@@ -734,19 +740,24 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   addGlobalOptions(
     cx
       .command("task <name> <id> <status>")
-      .description("transition task: pending|in_progress|done|cancelled"),
+      .description("transition task: pending|in_progress|done|cancelled (done resolves source proposal)")
+      .option("--no-resolve-source", "do not auto-resolve linked proposal on done"),
   ).action(async (name: string, id: string, status: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     const allowed = ["pending", "in_progress", "done", "cancelled"] as const;
     if (!(allowed as readonly string[]).includes(status)) {
       throw new CliExit(2, `status must be one of ${allowed.join("|")}`);
     }
+    const opts = command.optsWithGlobals<CxCmdOpts & { resolveSource?: boolean }>();
+    // commander --no-resolve-source sets resolveSource=false when present
+    const resolveSource = opts.resolveSource === false ? false : undefined;
     throw new CliExit(
       await runCxTaskTransition(
         await cxCtx(command, f.pack, f),
         name,
         id,
         status as (typeof allowed)[number],
+        { resolveSource },
       ),
     );
   });
