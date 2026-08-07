@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# CXOS multi-program demo — two specs under one cwd, then fleet board/queue.
+# CXOS multi-program demo: two specs under one cwd, then fleet board/queue.
 # Offline by default (no live platform required).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
