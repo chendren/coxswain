@@ -925,6 +925,10 @@ export async function runCxProposals(
       ctx.write(`  → cox cx apply ${name} ${p.id}`);
     } else if (next === "resolve") {
       ctx.write(`  → cox cx proposal ${name} ${p.id} resolved`);
+    } else if (next === "dismiss") {
+      ctx.write(`  → cox cx proposal ${name} ${p.id} dismissed`);
+    } else if (next === "reopen") {
+      ctx.write(`  → cox cx proposal ${name} ${p.id} open`);
     }
   }
   ctx.write(`path: load_proposals → emit`);
