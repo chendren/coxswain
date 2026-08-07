@@ -410,6 +410,47 @@ AWS Well-Architected change discipline (plan, review, apply).
 
 ---
 
+### Fleet queue, HTML dashboard, and graph-find (P4 + P10)
+
+**Context:** Single-spec `tasks` / `proposals` break down when a cwd holds many
+CX programs. P4 needs one work queue across the fleet. P10 needs a shareable
+scoreboard without living in the CLI.
+
+**Jobs:**
+
+1. List open proposals and open tasks across all specs (urgency + age + next).
+2. Emit a browser-safe HTML board (offline, no CDNs, no auto-mutation).
+3. Ground ticket and remediation language in strong ontology nodes.
+
+**Happy path:**
+
+```bash
+pnpm cox --cwd ~/cx/acme cx queue
+# proposals + tasks across fleet; urg, age, claim/done hints
+
+pnpm cox --cwd ~/cx/acme cx dashboard
+# wrote …/cxos-dashboard.html  (fleet board + open queue tables)
+
+pnpm cox --cwd ~/cx/acme cx graph-find billing
+# strong nodes: domain / journey / intent hits with hub keys
+```
+
+**Who uses what:**
+
+| Surface | P4 Ops Lead | P10 Exec / Sponsor |
+|---|---|---|
+| `queue` | Daily standup of claimable work | Rarely; prefers rollups |
+| `dashboard` | Shift handoff board (open in browser) | Primary non-CLI view (via Ops) |
+| `graph-find` | Name remediations against real hubs | Sanity-check vocabulary in reviews |
+
+**Value:** multi-spec ops without a second tool; HTML is read-only presentation
+of board + queue; graph-find keeps free-text names out of the operate loop.
+
+**Failure avoided:** exec status theater from ad-hoc spreadsheets; ops inventing
+journey labels that are not in the pack.
+
+---
+
 ## 5. Cross-persona scenarios (breadth × depth)
 
 These are multi-role stories that only work because the **workspace is shared**.

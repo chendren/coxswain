@@ -14,7 +14,7 @@ Public surface is re-exported from `src/index.ts`.
 | **workspace** | `defaultCxRoot`, `createCxSpec`, `loadCxWorkspace`, `saveCxWorkspace`, `listCxSpecs`, `approveCxPhase`, `mergeDesignFromArtifacts`, `loadDeployments`, `saveDeployment`, `clearDeployment`, `parseTargets`, `adapterDiskRoot`, types `CxPhase`, `CxWorkspaceRecord`, `CxDeploymentsFile`, `CxWorkspaceDeps` | Disk layout under `.cox/cx/<spec>/`: `spec.json`, `deployments.json`; phase gates; target parse (artifacts first) |
 | **orchestrate** | `orchestrateBuild`, `orchestrateStatus`, `orchestrateSimulate`, `orchestrateReport`, `seedDesignFromIdea`, types `OrchestratorAdapters`, `OrchestrateDeps`, `TargetResult`, `OrchestrateResult` | Multi-target graph: artifacts first → merge design → local/aws; status/sim/report with optional scout summary + NBA |
 | **console** | `runConsoleTick`, types `ConsoleProposalKind`, `ConsoleProposal`, `ConsoleTickResult`, `ConsoleTarget`, `ConsoleTickDeps` | One poll cycle: load strong → status → intent route → recommend NBA → propose (no mutations, no models) |
-| **proposals** | `loadProposals`, `appendProposalsFromTick`, `transitionProposal`, `isLegalProposalTransition`, `suggestedProposalNext`, `listOpenProposals`, types `ProposalStatus`, `CxProposal`, `ProposalStoreDeps` | Persist/dedupe `proposals.json`; legal edges (`open`→claim/dismiss/resolve, `claimed`→resolve/dismiss/open, `dismissed`→open, `resolved` terminal); `suggestedProposalNext` → apply/resolve/reopen/none |
+| **proposals** | `loadProposals`, `appendProposalsFromTick`, `transitionProposal`, `isLegalProposalTransition`, `suggestedProposalNext`, `listOpenProposals`, `proposalUrgencyScore`, types `ProposalStatus`, `CxProposal`, `ProposalStoreDeps` | Persist/dedupe `proposals.json`; legal edges (`open`→claim/dismiss/resolve, `claimed`→resolve/dismiss/open, `dismissed`→open, `resolved` terminal); `suggestedProposalNext` → apply/resolve/reopen/none; `proposalUrgencyScore(kind, ageHours)` pure 0-100 (remediate 70 / investigate 45 / else 25 +1h capped +30) |
 | **tasks** | `loadCxTasks`, `applyProposal`, `transitionTask`, `summarizeTasks`, `remediationFilePath`, types `CxTaskStatus`, `CxTask`, `TaskSummary` | Apply → task + remediation; default proposal **claimed** (`resolve: true` → **resolved**); `summarizeTasks` rollup; task `done` auto-resolves source proposal (`resolveSource: false` to skip) |
 | **watch** | `runWatchLoop`, types `WatchTarget`, `WatchLoopDeps`, `WatchLoopResult` | Bounded console loop with interval/maxTicks; persists proposals via proposal store |
 | **daemon** | `daemonPaths`, `readDaemonMeta`, `isDaemonRunning`, `stopDaemon`, `runDaemonLoop`, `spawnWatchDaemon`, `recordDaemonLastTick`, types `DaemonPaths`, `DaemonMeta` | Detached watch: `daemon.pid` / `daemon.log` / `daemon.json` (lastTick/lastTickAt); CLI health line: running/stopped + pid/ticks/proposals_open |
@@ -22,6 +22,8 @@ Public surface is re-exported from `src/index.ts`.
 | **metrics-summary** | `summarizeDeployments`, types `HealthEntry`, `MetricsSummary` | Pure health rollup for status: counts + score (healthy=100, degraded=50, down/error=0) |
 | **path-audit** | `formatPathAudit`, `formatPathByPhase`, `PATH_AUDIT_DEFAULT_MAX` | Collapse long paths for CLI; group multi-stage `run` audits by phase (`build` / `status` / `simulate` / `report` / `other`) |
 | **board** | `buildOpsBoard`, types `BoardRow`, `OpsBoard` | Multi-spec fleet rollup: phases, deployments, open/claimed proposals, open/done tasks, daemon running + last tick |
+| **fleet-queue** | `buildWorkQueue`, types `QueueProposalItem`, `QueueTaskItem`, `WorkQueue` | Cross-spec open work: open/claimed proposals + pending/in_progress tasks; urgency by kind; sort urgency then age; totals + path |
+| **dashboard-html** | `renderOpsDashboardHtml` | Self-contained offline HTML dashboard from `OpsBoard` (+ optional `WorkQueue`); no CDN CSS/JS; cards + fleet table + queue tables |
 | **brief** | `renderExecBrief`, type `BriefInput` | Executive markdown brief from workspace state (no model): program, health, work queue, design footprint, controls, next steps |
 | **cab-export** | `exportCabPackage`, type `CabExportResult` | Filesystem CAB package for change boards: AWS plan files, remediations, proposals/tasks/deployments JSON, BRIEF.md, MANIFEST.md, optional audit.jsonl (never mutates AWS) |
 | **audit** | `appendAuditEvent`, `loadAuditEvents`, types `CxAuditEvent`, `AuditDeps` | Append-only per-spec `audit.jsonl` evidence trail (kind, message, optional ref/path) |
@@ -37,6 +39,7 @@ Public surface is re-exported from `src/index.ts`.
 | **report** | `generateReport`, types `CxOpsReport`, `CxOpsReportEntry`, `ReportTarget`, `ReportDeps` | Cross-target status (+ simulate when capable); one scout-tier summary via injected `generate` |
 | **nba** | `opsRecommendNba`, `parseNbaContext`, type `NbaRecommendResult` | Pure graph NBA + confidence band + next stages; CLI key=value context parse |
 | **ontology** | `resolveOntologyPack`, `showOntology`, `validateOntologyPack`, `showStrongGraph`, type `OntologyPack` (`default` \| `local`), show/validate/graph result types | Closed-world catalog inventory, integrity + strong-graph stats |
+| **graph-query** | `lookupStrongNode`, types `GraphHit`, `GraphQueryResult` | Closed-world strong-graph search by uid/id/name/kind/hubKey (case-insensitive substring); pack + limit; zero model calls |
 | **json-extract** | `extractJsonText`, `parseJsonLoose` | Weak-node helpers: strip fences / loose JSON for model output |
 
 ## Import law
@@ -64,6 +67,8 @@ nba:      load_strong → match_rules → confidence_band? → next_stages? → 
 stack:    probe_ollama → probe_platform → emit
 daemon:   daemon_start → [watch ticks] → daemon_stop
 board:    list_specs → load_each → rollup → emit
+fleet:    list_specs → load_proposals_tasks → sort → emit
+graph:    load_strong → materialize_graph → search → emit
 brief:    load_workspace → render_brief → emit
 cab:      load_workspace → copy_aws → copy_remediations → write_state → write_brief → emit
 audit:    load_audit → append → emit  (or load_audit → emit for read)
