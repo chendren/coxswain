@@ -20,12 +20,12 @@ Public surface is re-exported from `src/index.ts`.
 | **daemon** | `daemonPaths`, `readDaemonMeta`, `isDaemonRunning`, `stopDaemon`, `runDaemonLoop`, `spawnWatchDaemon`, `recordDaemonLastTick`, types `DaemonPaths`, `DaemonMeta` | Detached watch: `daemon.pid` / `daemon.log` / `daemon.json` (lastTick/lastTickAt); CLI health line: running/stopped + pid/ticks/proposals_open |
 | **stack-health** | `probeOllama`, `probePlatformReady`, `probeStackHealth`, types `OllamaHealth`, `PlatformHealth`, `StackHealth` | Doctor probes: Ollama tags + embed/LLM models; platform `/api/health/ready` |
 | **metrics-summary** | `summarizeDeployments`, types `HealthEntry`, `MetricsSummary` | Pure health rollup for status: counts + score (healthy=100, degraded=50, down/error=0) |
-| **path-audit** | `formatPathAudit`, `formatPathByPhase`, `PATH_AUDIT_DEFAULT_MAX` | Collapse long paths; group multi-stage `run` audits by phase |
-| **board** | `buildOpsBoard`, types `BoardRow`, `OpsBoard` | Multi-spec fleet rollup (phases, proposals, tasks, daemons) |
-| **brief** | `renderExecBrief` | Executive markdown brief (no model) |
-| **cab-export** | `exportCabPackage` | CAB package: CFN + remediations + state + BRIEF/MANIFEST |
-| **audit** | `appendAuditEvent`, `loadAuditEvents` | Append-only `audit.jsonl` evidence |
-| **journeys** | `listJourneys` | Closed-world journey inventory from ontology pack |
+| **path-audit** | `formatPathAudit`, `formatPathByPhase`, `PATH_AUDIT_DEFAULT_MAX` | Collapse long paths for CLI; group multi-stage `run` audits by phase (`build` / `status` / `simulate` / `report` / `other`) |
+| **board** | `buildOpsBoard`, types `BoardRow`, `OpsBoard` | Multi-spec fleet rollup: phases, deployments, open/claimed proposals, open/done tasks, daemon running + last tick |
+| **brief** | `renderExecBrief`, type `BriefInput` | Executive markdown brief from workspace state (no model): program, health, work queue, design footprint, controls, next steps |
+| **cab-export** | `exportCabPackage`, type `CabExportResult` | Filesystem CAB package for change boards: AWS plan files, remediations, proposals/tasks/deployments JSON, BRIEF.md, MANIFEST.md, optional audit.jsonl (never mutates AWS) |
+| **audit** | `appendAuditEvent`, `loadAuditEvents`, types `CxAuditEvent`, `AuditDeps` | Append-only per-spec `audit.jsonl` evidence trail (kind, message, optional ref/path) |
+| **journeys** | `listJourneys`, types `JourneyListItem`, `JourneyInventory` | Closed-world journey inventory from ontology pack (`default` \| `local`): stages, terminals, trigger intents |
 | **cfn-skeleton** | `buildCfnSkeleton` | Deterministic CloudFormation YAML + APPLY markdown from journey map (plan-only; no CreateStack) |
 | **offline-adapters** | `createOfflineLocalAdapter`, `createOfflineAwsAdapter`, type `OfflineDiskDeps` | Disk-backed local (build/deploy/status/simulate/teardown) and AWS plan-only (writes `template.yaml`, `APPLY.md`) |
 | **offline-artifacts** | `createOfflineArtifactsAdapter`, type `OfflineArtifactsDeps` | Deterministic / optional-generate artifacts adapter for offline runtime |
@@ -59,7 +59,15 @@ console:  load_strong → poll_status → target:local → health:… → route:
 nba:      load_strong → match_rules → confidence_band? → next_stages? → emit
 stack:    probe_ollama → probe_platform → emit
 daemon:   daemon_start → [watch ticks] → daemon_stop
+board:    list_specs → load_each → rollup → emit
+brief:    load_workspace → render_brief → emit
+cab:      load_workspace → copy_aws → copy_remediations → write_state → write_brief → emit
+audit:    load_audit → append → emit  (or load_audit → emit for read)
+journeys: load_ontology → list_journeys → emit
 ```
+
+`cox cx run` prints both views: `path:` via `formatPathByPhase` (phase buckets) and
+`path_full:` via `formatPathAudit` (collapsed linear path).
 
 ## CLI mapping
 
@@ -73,9 +81,135 @@ daemon:   daemon_start → [watch ticks] → daemon_stop
 | `cox cx daemon *` | daemon |
 | `cox cx proposals` / `proposal` | proposals |
 | `cox cx apply` / `tasks` / `task` | tasks |
+| `cox cx board` | board (`buildOpsBoard`) |
+| `cox cx brief <name> [outFile]` | brief (`renderExecBrief`) |
+| `cox cx cab-export <name> [outDir]` | cab-export (`exportCabPackage`) |
+| `cox cx audit <name> [--limit N]` | audit (`loadAuditEvents`) |
+| `cox cx journeys [--pack default\|local]` | journeys (`listJourneys`) |
 | `cox cx ontology *` / `nba` | ontology / nba |
 | `cox cx doctor` | stack-health + ontology + workspace list |
 | `cox cx teardown` | status `runTeardown` / adapter teardown + `clearDeployment` |
+| `cox cx run` path lines | path-audit (`formatPathByPhase` + `formatPathAudit`) |
+
+## Path audit display
+
+Pure string helpers for operator-facing control-flow paths (`path: string[]`).
+
+| API | Behavior |
+|---|---|
+| `formatPathAudit(path, max?)` | Join with ` -> `. Length `<= max` (default `PATH_AUDIT_DEFAULT_MAX` = 8): full path. Longer: first 3, `...`, last 3. |
+| `formatPathByPhase(path)` | Bucket segments into `build` / `status` / `simulate` / `report` / `other` by keyword, collapse each bucket with `formatPathAudit(..., 6)`, join buckets with ` \| `. Empty path → `""`. |
+
+Phase bucketing (case-insensitive substring / prefix heuristics):
+
+| Bucket | Segment matches |
+|---|---|
+| `build` | `build`, `deploy`, starts with `create`, `approve`, `seed` |
+| `status` | `status`, `health` |
+| `simulate` | `simulat`, `traffic` |
+| `report` | `report`, `nba`, `summary` |
+| `other` | everything else |
+
+CLI: multi-stage `cox cx run` uses phase view for the primary `path:` line and a longer linear collapse for `path_full:`.
+
+## Board (fleet rollup)
+
+`buildOpsBoard(deps: CxWorkspaceDeps): Promise<OpsBoard>`
+
+Lists every CX spec under `cxRoot`, loads workspace + deployments + proposals + tasks + daemon meta, and returns:
+
+- **rows** (`BoardRow`): name, idea, phase statuses (requirements/design/tasks), deployment target ids, `proposalsOpen` / `proposalsClaimed`, `tasksOpen` / `tasksDone`, `daemonRunning`, optional `daemonLastTickAt`, `updatedAt`
+- **totals**: specs, proposalsOpen (open + claimed across fleet), tasksOpen, daemonsRunning, deployedSpecs
+- **path**: `list_specs → load_each → rollup → emit`
+
+Read-only. No adapter calls, no mutations.
+
+```text
+cox cx board
+# CXOS board  specs=N deployed=… proposals_open=… tasks_open=… daemons=…
+# <name>  [R=… D=… T=…] deps=… prop=N+Mc tasks_open=… done=… daemon=up|off
+```
+
+## Brief (executive markdown)
+
+`renderExecBrief(input: BriefInput): string`
+
+Pure markdown from in-memory state. No model, no network. Sections:
+
+1. Program (idea, phases, deployment ids)
+2. Health (optional `healthEntries` via `summarizeDeployments`; otherwise points at `cox cx status`)
+3. Work queue (open/claimed proposals, task rollup; top 8 proposals and open tasks)
+4. Design footprint (journey maps count, requirements count)
+5. Controls (AWS plan-only, propose/apply human gates, task done → resolve proposal)
+6. Suggested next steps (`status --live`, `console --live`, `board`, `cab-export`)
+
+`BriefInput`: `name`, `record`, `deployments`, `proposals`, `tasks`, optional `healthEntries`, `generatedAt`.
+
+```text
+cox cx brief <name>           # print markdown
+cox cx brief <name> out.md    # write file under cwd
+```
+
+## CAB export (change package)
+
+`exportCabPackage(deps, specName, outDirRaw, cwd): Promise<CabExportResult>`
+
+Filesystem package for human change boards. Resolves `outDir` under `cwd`. Never calls AWS APIs.
+
+| Written | Source |
+|---|---|
+| `aws/template.yaml`, `APPLY.md`, `architectureDoc.json`, `agentDefinition.json` | `.cox/cx/<spec>/aws/` (optional each) |
+| `remediations/*.md` | workspace remediations |
+| `proposals.json`, `tasks.json`, `deployments.json` | live state + `exportedAt` |
+| `BRIEF.md` | `renderExecBrief` (no health poll) |
+| `MANIFEST.md` | file list + human CFN apply notes |
+| `audit.jsonl` | copied when present |
+
+Returns `{ outDir, files, path }` with path
+`load_workspace → copy_aws → copy_remediations → write_state → write_brief → emit`.
+
+CLI default out dir: `cx-cab/<name>`. Appends audit event `kind: cab_export`.
+
+```text
+cox cx cab-export <name>
+cox cx cab-export <name> ./my-cab-pkg
+# next: review MANIFEST.md + aws/APPLY.md (human CFN only)
+```
+
+## Audit (append-only evidence)
+
+Per-spec log at `.cox/cx/<spec>/audit.jsonl` (one JSON object per line).
+
+| API | Role |
+|---|---|
+| `appendAuditEvent(deps, event)` | Ensure spec dir; append `CxAuditEvent` (`at` defaults to `deps.now()`); returns full event |
+| `loadAuditEvents(deps, specName, limit = 50)` | Parse JSONL (skip bad lines); return last `limit` events (`limit <= 0` → all); missing file → `[]` |
+
+`CxAuditEvent`: `at`, `kind`, `specName`, `message`, optional `ref`, optional `path`.
+
+CLI/read path is load-only. Writers elsewhere (apply, task transition, cab-export, etc.) call `appendAuditEvent` for human-gated evidence.
+
+```text
+cox cx audit <name>
+cox cx audit <name> --limit 30
+# <at>  <kind>  <ref|->  <message>
+```
+
+## Journeys (closed-world inventory)
+
+`listJourneys(pack: OntologyPack = "local"): JourneyInventory`
+
+Strong-graph only: maps `DEFAULT_ONTOLOGY` or `LOCAL_PLATFORM_ONTOLOGY` journeys to flat items. No model, no disk.
+
+Each `JourneyListItem`: `id`, `name`, `stages` (stage ids), `terminalStages`, `triggerIntents`.
+
+Returns `{ pack, journeys, path: ["load_ontology", "list_journeys", "emit"] }`.
+
+```text
+cox cx journeys
+cox cx journeys --pack local
+cox cx journeys --pack default
+```
 
 ## Proposals lifecycle (human-gated)
 

@@ -65,10 +65,21 @@ Hard rules (OS kernel):
 | Command | Purpose |
 |---|---|
 | `board` | Multi-spec ops board |
+| `fleet-status` | Board + status poll each deployed spec |
 | `brief [outFile]` | Executive markdown brief |
 | `audit [--limit]` | Append-only event trail |
+| `health-history` | Score samples from status polls |
 | `cab-export [outDir]` | CAB package (CFN + remediations + state + BRIEF) |
+| `snapshot [outDir]` | Full program snapshot (CAB + spec + health) |
 | `export-aws [outDir]` | AWS plan-only files only |
+| `archive` / `restore` | Soft-archive programs (dot-prefix hide) |
+
+### Catalog (deeper)
+| Command | Purpose |
+|---|---|
+| `catalog [all\|domains\|intents\|kpis\|nba\|channels]` | Full closed taxonomy browser |
+| `claim` | Ops alias for `apply` |
+| `operate` | One-shot console tick + board line |
 
 ---
 
@@ -154,10 +165,15 @@ aws/ remediations/ audit.jsonl?
 | Metrics score + path audit | yes |
 | Daemon operate | yes |
 | Multi-spec board | yes |
+| Fleet status (poll each) | yes |
 | Executive brief | yes |
 | CAB package | yes |
+| Full snapshot | yes |
 | Audit log | yes |
-| Journey inventory | yes |
+| Health history | yes |
+| Journey + catalog inventory | yes |
+| Soft archive / restore | yes |
+| Claim + operate one-shot | yes |
 | Workspace init | yes |
 | LaunchAgents / stack-up | yes |
 | Persona playbooks | yes (`CXOS-PERSONAS-USE-CASES.md`) |

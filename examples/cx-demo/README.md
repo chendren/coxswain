@@ -11,16 +11,84 @@ scenarios: [`docs/CXOS-PERSONAS-USE-CASES.md`](../../docs/CXOS-PERSONAS-USE-CASE
 
 | Track | Persona | Commands |
 |---|---|---|
-| Design once | PM / SA | `cx init` / `cx run` / `cx:golden` |
-| Catalog honesty | Graph eng / LOB | `journeys` / `ontology show\|validate\|graph` |
+| Workspace seed | PM / SA | `cx:init` / `cx init` |
+| Design once | PM / SA | `cx run` / `cx:golden` |
+| Catalog honesty | Graph eng / LOB | `cx:journeys` / `journeys` / `ontology show\|validate\|graph` |
 | Day-2 queue | Journey owner | `console` → `apply` → `tasks` → `task … done` |
-| Fleet view | Ops lead | `cx board` |
+| Fleet view | Ops lead | `cx:board` / `cx board` |
 | Exec read | Sponsor | `cx brief <name>` |
 | Change board | SA / Compliance | `cab-export` / `export-aws` |
 | Evidence | Security | `cx audit <name>` |
 | Live local | SRE | `cx:stack-up` + `doctor --live` |
 
 Complete OS map: [`docs/CXOS-COMPLETE.md`](../../docs/CXOS-COMPLETE.md).
+
+### Demo tracks (init / journeys / board / brief / cab-export / audit)
+
+From monorepo root. Use a cwd with `.cox/cx` (or let `init` create it).
+
+**init** - ensure workspace; seed `starter` when empty:
+
+```bash
+pnpm cx:init
+# or: pnpm cox --cwd /tmp/cx-demo cx init
+# next when empty: approve starter + build, or cx run starter "your idea"
+# next when specs exist: cx board
+```
+
+**journeys** - closed journey inventory from the ontology pack:
+
+```bash
+pnpm cx:journeys
+pnpm cox cx journeys
+pnpm cox cx journeys --pack local    # default pack
+pnpm cox cx ontology show
+pnpm cox cx ontology validate
+pnpm cox cx ontology graph
+```
+
+**board** - multi-spec fleet rollup (phases, proposals, tasks, daemons):
+
+```bash
+pnpm cx:board
+pnpm cox --cwd /tmp/cx-demo cx board
+```
+
+**brief** - executive markdown (stdout or file; no model):
+
+```bash
+pnpm cox cx brief billing-dispute
+pnpm cox cx brief billing-dispute ./brief-billing.md
+```
+
+**cab-export** - change-board package (CFN + remediations + state + BRIEF/MANIFEST).
+Default out: `cx-cab/<spec>/`. Human CFN only (never CreateStack):
+
+```bash
+pnpm cox cx cab-export billing-dispute
+pnpm cox cx cab-export billing-dispute ./cx-cab/billing-dispute
+# review MANIFEST.md + aws/APPLY.md, then human aws cloudformation deploy …
+pnpm cox cx export-aws billing-dispute   # AWS plan files only
+```
+
+**audit** - append-only event trail (`audit.jsonl`, last N events):
+
+```bash
+pnpm cox cx audit billing-dispute
+pnpm cox cx audit billing-dispute --limit 50
+```
+
+End-to-end sketch (offline):
+
+```bash
+pnpm cx:init
+pnpm cox cx run billing-dispute "reduce dispute handle time"
+pnpm cx:board
+pnpm cox cx brief billing-dispute
+pnpm cox cx cab-export billing-dispute
+pnpm cox cx audit billing-dispute
+pnpm cx:journeys
+```
 
 ## Stack up (Ollama + platform)
 
@@ -99,10 +167,16 @@ pnpm cox cx export-aws <spec> [outDir]
 
 | Command | Action |
 |---|---|
+| `pnpm cx:init` | ensure `.cox/cx`; seed `starter` if empty |
+| `pnpm cx:board` | multi-spec ops board |
+| `pnpm cx:journeys` | closed journey inventory |
 | `pnpm cx:doctor` | wiring + ontology (`cox cx doctor`; exit 1 if `--live` and stack not ready) |
 | `pnpm cx:stack-up` | one-shot Ollama + platform (`scripts/cx-stack-up.sh`) |
-| `pnpm cox cx run <name> [idea...]` | one-shot golden path (new/approve/build/status/simulate/report) |
+| `pnpm cx:run -- <name> [idea...]` | one-shot golden path (new/approve/build/status/simulate/report) |
 | `pnpm cx:golden` / `cx:golden:live` | demo script (`cx run` + `export-aws`) |
+| `pnpm cox cx brief <spec> [outFile]` | executive markdown brief |
+| `pnpm cox cx cab-export <spec> [outDir]` | CAB package (CFN + remediations + state + BRIEF) |
+| `pnpm cox cx audit <spec> [--limit N]` | append-only audit trail |
 | `pnpm cox cx export-aws <spec> [outDir]` | copy plan-only CFN for human apply |
 
 macOS always-on stack (LaunchAgents for Ollama + Nexus CX):

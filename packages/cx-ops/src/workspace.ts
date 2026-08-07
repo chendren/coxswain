@@ -142,7 +142,10 @@ export async function saveCxWorkspace(
 export async function listCxSpecs(deps: CxWorkspaceDeps): Promise<string[]> {
   try {
     const entries = await readdir(deps.cxRoot, { withFileTypes: true });
-    return entries.filter((e) => e.isDirectory()).map((e) => e.name).sort();
+    return entries
+      .filter((e) => e.isDirectory() && !e.name.startsWith("."))
+      .map((e) => e.name)
+      .sort();
   } catch {
     return [];
   }

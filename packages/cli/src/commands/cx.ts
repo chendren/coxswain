@@ -54,6 +54,12 @@ import {
   appendAuditEvent,
   loadAuditEvents,
   listJourneys,
+  inventoryCatalog,
+  appendHealthSample,
+  loadHealthHistory,
+  archiveCxSpec,
+  restoreCxSpec,
+  snapshotCxSpec,
   type OntologyPack,
   type CxPhase,
   type ProposalStatus,
@@ -357,16 +363,20 @@ export async function runCxStatus(
       ctx.write(`  ${t.targetId}: ${t.health?.level}  ${m}`);
     }
   }
-  const summary = summarizeDeployments(
-    result.targets.map((t) => ({
-      targetId: t.targetId,
-      level: t.health?.level,
-      error: t.error,
-    })),
-  );
+  const entries = result.targets.map((t) => ({
+    targetId: t.targetId,
+    level: t.health?.level,
+    error: t.error,
+  }));
+  const summary = summarizeDeployments(entries);
   ctx.write(
     `summary score: ${summary.score} (healthy=${summary.healthy} degraded=${summary.degraded} down=${summary.down} errors=${summary.errors})`,
   );
+  await appendHealthSample(rt.workspace, name, entries);
+  const hist = await loadHealthHistory(rt.workspace, name, 5);
+  if (hist.length > 1) {
+    ctx.write(`health history (last ${hist.length}): ${hist.map((h) => h.score).join(" → ")}`);
+  }
   ctx.write(`path: ${formatPathAudit(result.path)}`);
   return result.ok ? 0 : 1;
 }
@@ -934,13 +944,17 @@ export async function runCxProposals(
     ctx.write(`(no ${label} proposals for ${name})`);
     return 0;
   }
+  const nowMs = Date.now();
   for (const p of list) {
     const next = suggestedProposalNext(p.status);
+    const created = Date.parse(p.createdAt || "");
+    const ageH = Number.isFinite(created) ? Math.floor(Math.max(0, nowMs - created) / 3_600_000) : 0;
+    const urg = p.kind === "remediate" ? "high" : p.kind === "investigate" ? "med" : "low";
     ctx.write(
-      `${p.id}  [${p.status}/${p.kind}] ${p.targetId}  ${p.nbaRuleId ?? "-"}  next=${next}  ${p.summary}`,
+      `${p.id}  [${p.status}/${p.kind}] ${p.targetId}  age=${ageH}h urg=${urg}  ${p.nbaRuleId ?? "-"}  next=${next}  ${p.summary}`,
     );
     if (next === "apply") {
-      ctx.write(`  → cox cx apply ${name} ${p.id}`);
+      ctx.write(`  → cox cx apply ${name} ${p.id}  (or: cox cx claim ${name} ${p.id})`);
     } else if (next === "resolve") {
       ctx.write(`  → cox cx proposal ${name} ${p.id} resolved`);
     } else if (next === "dismiss") {
@@ -1314,6 +1328,193 @@ export async function runCxInit(ctx: CxCommandContext): Promise<number> {
     ctx.write(`next: cox cx board`);
   }
   ctx.write(`path: ensure_cx_root → seed_optional → emit`);
+  return 0;
+}
+
+/** Alias for apply — claim language for ops leads. */
+export async function runCxClaim(
+  ctx: CxCommandContext,
+  name: string,
+  proposalId: string,
+  opts?: { resolve?: boolean },
+): Promise<number> {
+  return runCxApply(ctx, name, proposalId, opts);
+}
+
+/**
+ * One-shot operate: doctor-ish wiring print + console tick + board line for this spec.
+ */
+export async function runCxOperate(
+  ctx: CxCommandContext,
+  name: string,
+  targetsRaw?: string,
+): Promise<number> {
+  ctx.write(`CXOS operate ${name}`);
+  const code = await runCxConsole(ctx, name, targetsRaw);
+  const rt = await runtimeFrom(ctx);
+  const board = await buildOpsBoard(rt.workspace);
+  const row = board.rows.find((r) => r.name === name);
+  if (row) {
+    ctx.write(
+      `board ${name}: prop_open=${row.proposalsOpen} claimed=${row.proposalsClaimed} tasks_open=${row.tasksOpen} daemon=${row.daemonRunning ? "up" : "off"}`,
+    );
+  }
+  ctx.write(`next: cox cx proposals ${name}`);
+  ctx.write(`next: cox cx claim ${name} <proposalId>`);
+  return code;
+}
+
+export async function runCxCatalog(
+  ctx: CxCommandContext,
+  section: "all" | "domains" | "intents" | "kpis" | "nba" | "channels" = "all",
+  packRaw?: string,
+): Promise<number> {
+  const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "local");
+  const inv = inventoryCatalog(pack);
+  ctx.write(`CXOS catalog  pack=${inv.pack} v=${inv.version} source=${inv.source}`);
+  if (section === "all" || section === "domains" || section === "intents") {
+    for (const d of inv.domains) {
+      ctx.write(`domain ${d.id}  ${d.name}  intents=${d.intentCount}`);
+      if (section === "intents" || section === "all") {
+        for (const i of d.intents.slice(0, section === "intents" ? 50 : 6)) {
+          ctx.write(`  intent ${i.id}  ${i.name}`);
+        }
+      }
+    }
+  }
+  if (section === "all" || section === "kpis") {
+    ctx.write(`kpis (${inv.kpis.length}):`);
+    for (const k of inv.kpis) {
+      ctx.write(`  ${k.id}  ${k.name}  unit=${k.unit}`);
+    }
+  }
+  if (section === "all" || section === "nba") {
+    ctx.write(`nbaRules (${inv.nbaRules.length}):`);
+    for (const r of inv.nbaRules.slice(0, 40)) {
+      ctx.write(
+        `  [${r.priority}] ${r.id} → ${r.action} (${r.actionType}/${r.urgency})`,
+      );
+    }
+  }
+  if (section === "all" || section === "channels") {
+    ctx.write(`channels: ${inv.channels.join(", ")}`);
+    ctx.write(`sentiments: ${inv.sentiments.join(", ")}`);
+    ctx.write(`urgencies: ${inv.urgencies.join(", ")}`);
+  }
+  ctx.write(`path: ${inv.path.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxArchive(ctx: CxCommandContext, name: string): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  try {
+    const r = await archiveCxSpec(rt.workspace, name);
+    await appendAuditEvent(rt.workspace, {
+      kind: "archive",
+      specName: name,
+      message: r.to,
+      path: r.path,
+    }).catch(() => {
+      /* audit under old path may fail after rename — write to archived path via direct */
+    });
+    ctx.write(`archived ${name} → ${r.to}`);
+    ctx.write(`path: ${r.path.join(" → ")}`);
+    ctx.write(`next: cox cx restore ${name}`);
+    return 0;
+  } catch (e) {
+    ctx.write(e instanceof Error ? e.message : String(e));
+    return 1;
+  }
+}
+
+export async function runCxRestore(ctx: CxCommandContext, name: string): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  try {
+    const r = await restoreCxSpec(rt.workspace, name);
+    ctx.write(`restored ${name} ← ${r.from}`);
+    ctx.write(`path: ${r.path.join(" → ")}`);
+    return 0;
+  } catch (e) {
+    ctx.write(e instanceof Error ? e.message : String(e));
+    return 1;
+  }
+}
+
+export async function runCxSnapshot(
+  ctx: CxCommandContext,
+  name: string,
+  outDirRaw?: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const out = outDirRaw?.trim() || join("cx-snapshot", name);
+  try {
+    const result = await snapshotCxSpec(rt.workspace, name, out, ctx.cwd);
+    await appendAuditEvent(rt.workspace, {
+      kind: "snapshot",
+      specName: name,
+      message: result.outDir,
+      path: result.path,
+    });
+    ctx.write(`snapshot "${name}"`);
+    ctx.write(`out: ${result.outDir}`);
+    ctx.write(`files: ${result.files.join(", ")}`);
+    ctx.write(`path: ${result.path.join(" → ")}`);
+    return 0;
+  } catch (e) {
+    ctx.write(e instanceof Error ? e.message : String(e));
+    return 1;
+  }
+}
+
+export async function runCxHealthHistory(
+  ctx: CxCommandContext,
+  name: string,
+  limitRaw?: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const limit = Math.max(1, Number(limitRaw ?? 20) || 20);
+  const samples = await loadHealthHistory(rt.workspace, name, limit);
+  if (samples.length === 0) {
+    ctx.write(`(no health history for ${name} — run cox cx status ${name} first)`);
+    return 0;
+  }
+  ctx.write(`health history ${name} (last ${samples.length})`);
+  for (const s of samples) {
+    ctx.write(
+      `${s.at}  score=${s.score} healthy=${s.healthy} degraded=${s.degraded} down=${s.down} errors=${s.errors}`,
+    );
+  }
+  ctx.write(`path: load_health_history → emit`);
+  return 0;
+}
+
+/**
+ * Fleet status: board rollup + optional status poll for each deployed spec (local-first).
+ */
+export async function runCxFleetStatus(
+  ctx: CxCommandContext,
+  opts?: { live?: boolean },
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const board = await buildOpsBoard(rt.workspace);
+  ctx.write(
+    `CXOS fleet  specs=${board.totals.specs} deployed=${board.totals.deployedSpecs} proposals_open=${board.totals.proposalsOpen} tasks_open=${board.totals.tasksOpen} daemons=${board.totals.daemonsRunning}`,
+  );
+  let worst = 100;
+  for (const row of board.rows) {
+    if (row.deployments.length === 0) {
+      ctx.write(`${row.name}  (no deployments) prop=${row.proposalsOpen} tasks_open=${row.tasksOpen}`);
+      continue;
+    }
+    // Poll health via runCxStatus silently by reusing orchestrate — call status for score
+    const code = await runCxStatus(ctx, row.name, "all");
+    if (code !== 0) worst = Math.min(worst, 0);
+  }
+  if (board.rows.length === 0) {
+    ctx.write("(empty fleet — cox cx init)");
+  }
+  ctx.write(`path: fleet_board → status_each → emit`);
+  void opts;
   return 0;
 }
 

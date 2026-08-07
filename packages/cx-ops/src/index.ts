@@ -21,3 +21,7 @@ export * from "./board";
 export * from "./brief";
 export * from "./cab-export";
 export * from "./journeys";
+export * from "./catalog";
+export * from "./health-history";
+export * from "./archive";
+export * from "./snapshot";

@@ -52,6 +52,14 @@ import {
   runCxAudit,
   runCxJourneys,
   runCxInit,
+  runCxClaim,
+  runCxOperate,
+  runCxCatalog,
+  runCxArchive,
+  runCxRestore,
+  runCxSnapshot,
+  runCxHealthHistory,
+  runCxFleetStatus,
   type CxCommandContext,
 } from "./commands/cx";
 import { loadDeps, type LoadedDeps } from "./deps";
@@ -842,6 +850,97 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   ).action(async (_o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     throw new CliExit(await runCxInit(await cxCtx(command, f.pack, f)));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("claim <name> <proposalId>")
+      .description("alias for apply (ops claim language)")
+      .option("--resolve", "mark proposal resolved after apply"),
+  ).action(async (name: string, proposalId: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { resolve?: boolean }>();
+    throw new CliExit(
+      await runCxClaim(await cxCtx(command, f.pack, f), name, proposalId, {
+        resolve: Boolean(opts.resolve),
+      }),
+    );
+  });
+
+  addGlobalOptions(
+    cx
+      .command("operate <name>")
+      .description("one-shot operate: console tick + board line")
+      .option("--target <list>", "deployed targets or all", "all")
+      .option("--live", "prefer live platform health")
+      .option("--auto-live", "hybrid without --live")
+      .option("--base-url <url>", "local platform base URL"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxOperate(await cxCtx(command, f.pack, f), name, f.target));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("catalog [section]")
+      .description("closed catalog: all|domains|intents|kpis|nba|channels")
+      .option("--pack <name>", "ontology pack: default|local", "local"),
+  ).action(async (section: string | undefined, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const allowed = ["all", "domains", "intents", "kpis", "nba", "channels"] as const;
+    const sec = (section ?? "all") as (typeof allowed)[number];
+    if (!(allowed as readonly string[]).includes(sec)) {
+      throw new CliExit(2, `section must be one of ${allowed.join("|")}`);
+    }
+    throw new CliExit(await runCxCatalog(await cxCtx(command, f.pack, f), sec, f.pack));
+  });
+
+  addGlobalOptions(
+    cx.command("archive <name>").description("soft-archive a CX program (.archived-<name>)"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxArchive(await cxCtx(command, f.pack, f), name));
+  });
+
+  addGlobalOptions(
+    cx.command("restore <name>").description("restore soft-archived CX program"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxRestore(await cxCtx(command, f.pack, f), name));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("snapshot <name> [outDir]")
+      .description("full program snapshot (CAB + spec + health history)"),
+  ).action(async (name: string, outDir: string | undefined, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxSnapshot(await cxCtx(command, f.pack, f), name, outDir));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("health-history <name>")
+      .description("show recent health score samples from status polls")
+      .option("--limit <n>", "max samples", "20"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { limit?: string }>();
+    throw new CliExit(await runCxHealthHistory(await cxCtx(command, f.pack, f), name, opts.limit));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("fleet-status")
+      .description("fleet board + status poll for each deployed spec")
+      .option("--live", "prefer live platform health")
+      .option("--auto-live", "hybrid without --live")
+      .option("--base-url <url>", "local platform base URL"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(
+      await runCxFleetStatus(await cxCtx(command, f.pack, f), { live: Boolean(f.live) }),
+    );
   });
 
   return program;
