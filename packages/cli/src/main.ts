@@ -34,6 +34,7 @@ import {
   runCxProposalTransition,
   runCxProposals,
   runCxReport,
+  runCxRun,
   runCxSimulate,
   runCxStatus,
   runCxTeardown,
@@ -333,16 +334,27 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   async function cxCtx(
     command: Command,
     pack?: string,
-    extra?: { live?: boolean; mode?: string; localBaseUrl?: string },
+    extra?: {
+      live?: boolean;
+      mode?: string;
+      localBaseUrl?: string;
+      autoLive?: boolean;
+    },
   ): Promise<CxCommandContext> {
     const opts = command.optsWithGlobals<GlobalOpts>();
     const cwd = resolveCwd(opts);
-    const wantLive = Boolean(extra?.live) || extra?.mode === "live" || extra?.mode === "hybrid";
+    const cfg = loadConfig(cwd);
+    const autoLive =
+      Boolean(extra?.autoLive) || process.env.CX_AUTO_LIVE === "1";
+    const wantLive =
+      Boolean(extra?.live) ||
+      autoLive ||
+      extra?.mode === "live" ||
+      extra?.mode === "hybrid";
     let tierModel: CxCommandContext["tierModel"];
     if (wantLive) {
       try {
         const bus = new EventBus();
-        const cfg = loadConfig(cwd);
         const deps = await loadDeps(cfg, cwd, bus);
         tierModel = deps.tierModel;
       } catch (e) {
@@ -351,18 +363,29 @@ export function createProgram(io: CliIo = REAL_IO): Command {
         );
       }
     }
-    const mode: CxRuntimeMode | undefined = extra?.live
-      ? tierModel
-        ? "hybrid"
-        : "offline"
-      : (extra?.mode as CxRuntimeMode | undefined) ?? "offline";
+    // Explicit --mode wins; --live / auto-live prefer hybrid; else offline.
+    let mode: CxRuntimeMode;
+    if (extra?.mode === "offline" || extra?.mode === "live" || extra?.mode === "hybrid") {
+      mode = extra.mode;
+    } else if (extra?.live) {
+      mode = tierModel ? "hybrid" : "offline";
+    } else if (autoLive) {
+      mode = "hybrid";
+    } else {
+      mode = "offline";
+    }
+    // Prefer CLI --base-url; else cox.config.json cx.targets.local.baseUrl
+    // (createCxRuntime also resolveLocalBaseUrl as a backstop).
+    const localBaseUrl =
+      extra?.localBaseUrl ?? cfg.cx.targets.local?.baseUrl;
     return {
       cwd,
       write,
       pack,
       mode,
       tierModel,
-      localBaseUrl: extra?.localBaseUrl,
+      localBaseUrl,
+      autoLive,
     };
   }
 
@@ -411,6 +434,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   type CxCmdOpts = GlobalOpts & {
     target?: string;
     live?: boolean;
+    autoLive?: boolean;
     mode?: string;
     pack?: string;
     baseUrl?: string;
@@ -419,6 +443,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   function cxFlags(command: Command): {
     pack?: string;
     live?: boolean;
+    autoLive?: boolean;
     mode?: string;
     localBaseUrl?: string;
     target?: string;
@@ -427,6 +452,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     return {
       pack: opts.pack,
       live: opts.live,
+      autoLive: opts.autoLive,
       mode: opts.mode,
       localBaseUrl: opts.baseUrl,
       target: opts.target,
@@ -438,6 +464,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       .command("doctor")
       .description("CXOS runtime wiring + ontology health")
       .option("--live", "probe platform and prefer live wiring")
+      .option("--auto-live", "hybrid mode without --live (or CX_AUTO_LIVE=1)")
       .option("--mode <mode>", "offline|live|hybrid")
       .option("--base-url <url>", "local platform base URL")
       .option("--pack <name>", "ontology pack: default|local", "local"),
@@ -475,6 +502,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       .description("show CX spec phases and deployment health")
       .option("--target <list>", "artifacts,local,aws or all", "all")
       .option("--live", "prefer live models/platform when available")
+      .option("--auto-live", "hybrid mode without --live (or CX_AUTO_LIVE=1)")
       .option("--mode <mode>", "offline|live|hybrid")
       .option("--base-url <url>", "local platform base URL"),
   ).action(async (name: string | undefined, _o: GlobalOpts, command: Command) => {
@@ -500,6 +528,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       .description("plan+build+deploy targets (artifacts first; graph-ordered)")
       .option("--target <list>", "artifacts,local,aws or all", "all")
       .option("--live", "prefer live models/platform when available")
+      .option("--auto-live", "hybrid mode without --live (or CX_AUTO_LIVE=1)")
       .option("--mode <mode>", "offline|live|hybrid")
       .option("--base-url <url>", "local platform base URL")
       .option("--pack <name>", "ontology pack: default|local", "local"),
@@ -510,10 +539,26 @@ export function createProgram(io: CliIo = REAL_IO): Command {
 
   addGlobalOptions(
     cx
+      .command("run <name> [idea...]")
+      .description("golden path: new (if needed) → approve → build+deploy → status → simulate → report")
+      .option("--target <list>", "artifacts,local,aws or all", "all")
+      .option("--live", "prefer live models/platform when available")
+      .option("--auto-live", "hybrid mode without --live (or CX_AUTO_LIVE=1)")
+      .option("--mode <mode>", "offline|live|hybrid")
+      .option("--base-url <url>", "local platform base URL")
+      .option("--pack <name>", "ontology pack: default|local", "local"),
+  ).action(async (name: string, idea: string[], _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxRun(await cxCtx(command, f.pack, f), name, idea, f.target));
+  });
+
+  addGlobalOptions(
+    cx
       .command("deploy <name>")
       .description("build and deploy targets")
       .option("--target <list>", "artifacts,local,aws or all", "all")
       .option("--live", "prefer live models/platform when available")
+      .option("--auto-live", "hybrid mode without --live (or CX_AUTO_LIVE=1)")
       .option("--mode <mode>", "offline|live|hybrid")
       .option("--base-url <url>", "local platform base URL"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
@@ -527,6 +572,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       .description("run traffic simulation on deployed targets")
       .option("--target <list>", "default: local", "local")
       .option("--live", "prefer live models/platform when available")
+      .option("--auto-live", "hybrid mode without --live (or CX_AUTO_LIVE=1)")
       .option("--base-url <url>", "local platform base URL"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
@@ -550,6 +596,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       .description("one console tick: poll status, propose gated NBA (no mutations)")
       .option("--target <list>", "deployed targets or all", "all")
       .option("--live", "prefer live platform health")
+      .option("--auto-live", "hybrid mode without --live (or CX_AUTO_LIVE=1)")
       .option("--base-url <url>", "local platform base URL"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
@@ -564,6 +611,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       .option("--ticks <n>", "max ticks", "3")
       .option("--interval <ms>", "interval between ticks", "2000")
       .option("--live", "prefer live platform health")
+      .option("--auto-live", "hybrid mode without --live (or CX_AUTO_LIVE=1)")
       .option("--base-url <url>", "local platform base URL"),
   ).action(async (name: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);

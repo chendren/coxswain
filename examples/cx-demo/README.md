@@ -15,8 +15,18 @@ From the **monorepo root** (not this directory):
 `scripts/cx-stack-up.sh` brings up Ollama (`nomic-embed-text` required for ready),
 starts the Nexus platform (`CX_PLATFORM_DIR`), and checks `/api/health/ready`.
 
-There is no `cox cx run` subcommand. Lifecycle is `new` → `approve` → `build`
-(plan+build+deploy), then operate with `status` / `simulate` / `console` / `apply`.
+One-shot golden path: `cox cx run <name> [idea...]` (new if needed, approve
+requirements, build+deploy all targets, status, simulate local, report).
+Stepwise lifecycle remains `new` → `approve` → `build`, then operate with
+`status` / `simulate` / `console` / `apply` / `daemon`.
+
+```bash
+# offline one-shot
+pnpm cox --cwd /tmp/cx-demo cx run billing-dispute "reduce dispute handle time"
+
+# live platform when up
+pnpm cox --cwd /tmp/cx-demo cx run billing-dispute "reduce dispute handle time" --live
+```
 
 ## Golden path (script)
 

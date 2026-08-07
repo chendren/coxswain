@@ -59,6 +59,8 @@ export interface CxCommandContext {
   mode?: CxRuntimeMode;
   localBaseUrl?: string;
   skipProbe?: boolean;
+  /** Prefer hybrid without an explicit --live (also CX_AUTO_LIVE=1). */
+  autoLive?: boolean;
 }
 
 function packOf(raw?: string): OntologyPack {
@@ -69,7 +71,15 @@ function packOf(raw?: string): OntologyPack {
 }
 
 async function runtimeFrom(ctx: CxCommandContext): Promise<CxRuntime> {
-  const mode = ctx.mode ?? (ctx.tierModel ? "hybrid" : "offline");
+  const auto =
+    Boolean(ctx.autoLive) || process.env.CX_AUTO_LIVE === "1";
+  // Explicit offline always wins; auto-live otherwise forces hybrid.
+  const mode: CxRuntimeMode =
+    ctx.mode === "offline"
+      ? "offline"
+      : auto
+        ? "hybrid"
+        : (ctx.mode ?? (ctx.tierModel ? "hybrid" : "offline"));
   if (mode === "offline" && !ctx.tierModel) {
     return createOfflineCxRuntime({
       cwd: ctx.cwd,
