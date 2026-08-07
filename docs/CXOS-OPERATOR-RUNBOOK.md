@@ -51,16 +51,18 @@ pnpm cox --cwd ~/cx/acme cx doctor --live
 **Pass criteria:** `ontology validate` exit 0; `doctor` reports ontology ok;
 with `--live`, platform ready or fail-closed (exit 1 if stack down by design).
 
-Common flags used below:
+Common flags used below (command support varies; use `pnpm cox cx <cmd> --help`):
 
-| Flag | Meaning |
-|---|---|
-| `--target <list>` | `artifacts`, `local`, `aws`, comma list, or `all` |
-| `--live` | Prefer live models/platform |
-| `--auto-live` | Hybrid without `--live` (or `CX_AUTO_LIVE=1`) |
-| `--mode offline\|live\|hybrid` | Explicit runtime mode |
-| `--base-url <url>` | Local platform base URL |
-| `--pack default\|local` | Ontology pack |
+| Flag | Meaning | Typical commands |
+|---|---|---|
+| `--target <list>` | `artifacts`, `local`, `aws`, comma list, or `all` | plan, build, status, operate, … |
+| `--live` | Prefer live models/platform | status, operate, doctor, fleet-status, … |
+| `--auto-live` | Hybrid without `--live` (or `CX_AUTO_LIVE=1`) | build, status, operate, doctor, … |
+| `--mode offline\|live\|hybrid` | Explicit runtime mode | **doctor**, status, plan, build, run (not on `operate`/`console`) |
+| `--base-url <url>` | Local platform base URL | doctor, build, operate, daemon, … |
+| `--pack default\|local` | Ontology pack | ontology, catalog, build, graph-find, nba, … |
+
+Offline operate is the default: omit `--live` rather than passing `--mode offline` on `operate`.
 
 ---
 
