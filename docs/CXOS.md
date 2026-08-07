@@ -31,6 +31,12 @@ Adapters: `@cox/cx-artifacts`, `@cox/cx-local`, `@cox/cx-aws`. Operate layer:
 - Closed ontology for NBA, journeys, KPIs; models only where generation is allowed.
 - Fully offline-capable demos and tests (offline adapters in `cx-ops`).
 
+**Who it is for (personas):** CX product managers, contact-center / CX architects,
+journey owners and ops leads, graph/GenAI engineers, platform SRE, change/security
+reviewers, AWS PS and partners, workshop facilitators, QA, CS/retention leads, and
+LOB analysts. Full jobs-to-be-done, multi-role scenarios, and value tables live in
+[`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md).
+
 **Hard rules:**
 
 - No live AWS stack create from Coxswain. Deploy writes plan-only
@@ -370,6 +376,10 @@ packages/
   cli/            cox cx + createCxRuntime / createOfflineCxRuntime
 ```
 
-See also: `docs/superpowers/specs/2026-07-22-cxos-design.md`,
-`2026-07-24-cx-ops-design.md`, `2026-08-03-cxos-ontology-design.md`,
-`packages/cx-ops/README.md`, `examples/cx-demo/README.md`.
+See also:
+
+- [`CXOS-PERSONAS-USE-CASES.md`](./CXOS-PERSONAS-USE-CASES.md) — personas, playbooks, value
+- `docs/superpowers/specs/2026-07-22-cxos-design.md`,
+  `2026-07-24-cx-ops-design.md`, `2026-08-03-cxos-ontology-design.md`
+- `packages/cx-ops/README.md`, `examples/cx-demo/README.md`
+- `WAVE2-SUMMARY.md`, `WAVE3-SUMMARY.md`, `WAVE4-SUMMARY.md`

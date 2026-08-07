@@ -3,6 +3,20 @@
 End-to-end Customer Experience Operating System flow using **strong-graph**
 adapters. Default is fully offline (no live AWS or platform required).
 
+**Who this demo is for:** product, architecture, ops, partners, and workshop
+facilitators practicing the same loop. Deep persona playbooks and multi-role
+scenarios: [`docs/CXOS-PERSONAS-USE-CASES.md`](../../docs/CXOS-PERSONAS-USE-CASES.md).
+
+### Demo tracks by persona (quick)
+
+| Track | Persona | Commands |
+|---|---|---|
+| Design once | PM / SA | `cx run` / `cx:golden` |
+| Catalog honesty | Graph eng / LOB | `cx ontology show\|validate\|graph` |
+| Day-2 queue | Journey owner | `console` → `apply` → `tasks` → `task … done` |
+| Cloud handoff | SA / Change | `export-aws` (human CFN) |
+| Live local | SRE | `cx:stack-up` + `doctor --live` |
+
 ## Stack up (Ollama + platform)
 
 From the **monorepo root** (not this directory):
