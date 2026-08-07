@@ -43,4 +43,9 @@ dismissed → open           # reopen
 
 ## Workflow
 
-`.grok/workflows/enhance-cxos-wave4.rhai` — parallel map/build/verify lanes.
+`.grok/workflows/enhance-cxos-wave4.rhai` - parallel map/build/verify lanes.
+
+## Docs
+
+Product cheat sheet: [`docs/CXOS.md`](./CXOS.md) (Claim / apply / task / daemon health).
+Package API: [`packages/cx-ops/README.md`](../packages/cx-ops/README.md).

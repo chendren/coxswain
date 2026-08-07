@@ -14,10 +14,10 @@ Public surface is re-exported from `src/index.ts`.
 | **workspace** | `defaultCxRoot`, `createCxSpec`, `loadCxWorkspace`, `saveCxWorkspace`, `listCxSpecs`, `approveCxPhase`, `mergeDesignFromArtifacts`, `loadDeployments`, `saveDeployment`, `clearDeployment`, `parseTargets`, `adapterDiskRoot`, types `CxPhase`, `CxWorkspaceRecord`, `CxDeploymentsFile`, `CxWorkspaceDeps` | Disk layout under `.cox/cx/<spec>/`: `spec.json`, `deployments.json`; phase gates; target parse (artifacts first) |
 | **orchestrate** | `orchestrateBuild`, `orchestrateStatus`, `orchestrateSimulate`, `orchestrateReport`, `seedDesignFromIdea`, types `OrchestratorAdapters`, `OrchestrateDeps`, `TargetResult`, `OrchestrateResult` | Multi-target graph: artifacts first → merge design → local/aws; status/sim/report with optional scout summary + NBA |
 | **console** | `runConsoleTick`, types `ConsoleProposalKind`, `ConsoleProposal`, `ConsoleTickResult`, `ConsoleTarget`, `ConsoleTickDeps` | One poll cycle: load strong → status → intent route → recommend NBA → propose (no mutations, no models) |
-| **proposals** | `loadProposals`, `appendProposalsFromTick`, `transitionProposal`, `isLegalProposalTransition`, `suggestedProposalNext`, `listOpenProposals`, types `ProposalStatus`, `CxProposal`, `ProposalStoreDeps` | Persist/dedupe `proposals.json`; legal edges enforced; statuses `open` \| `claimed` \| `resolved` \| `dismissed` |
-| **tasks** | `loadCxTasks`, `applyProposal`, `transitionTask`, `summarizeTasks`, `remediationFilePath`, types `CxTaskStatus`, `CxTask`, `TaskSummary` | Apply → task + remediation; default claim (or `resolve: true`); task `done` auto-resolves source proposal |
+| **proposals** | `loadProposals`, `appendProposalsFromTick`, `transitionProposal`, `isLegalProposalTransition`, `suggestedProposalNext`, `listOpenProposals`, types `ProposalStatus`, `CxProposal`, `ProposalStoreDeps` | Persist/dedupe `proposals.json`; legal edges (`open`→claim/dismiss/resolve, `claimed`→resolve/dismiss/open, `dismissed`→open, `resolved` terminal); `suggestedProposalNext` → apply/resolve/reopen/none |
+| **tasks** | `loadCxTasks`, `applyProposal`, `transitionTask`, `summarizeTasks`, `remediationFilePath`, types `CxTaskStatus`, `CxTask`, `TaskSummary` | Apply → task + remediation; default proposal **claimed** (`resolve: true` → **resolved**); `summarizeTasks` rollup; task `done` auto-resolves source proposal (`resolveSource: false` to skip) |
 | **watch** | `runWatchLoop`, types `WatchTarget`, `WatchLoopDeps`, `WatchLoopResult` | Bounded console loop with interval/maxTicks; persists proposals via proposal store |
-| **daemon** | `daemonPaths`, `readDaemonMeta`, `isDaemonRunning`, `stopDaemon`, `runDaemonLoop`, `spawnWatchDaemon`, types `DaemonPaths`, `DaemonMeta` | Detached watch: `daemon.pid` / `daemon.log` / `daemon.json` under the spec dir |
+| **daemon** | `daemonPaths`, `readDaemonMeta`, `isDaemonRunning`, `stopDaemon`, `runDaemonLoop`, `spawnWatchDaemon`, `recordDaemonLastTick`, types `DaemonPaths`, `DaemonMeta` | Detached watch: `daemon.pid` / `daemon.log` / `daemon.json` (lastTick/lastTickAt); CLI health line: running/stopped + pid/ticks/proposals_open |
 | **stack-health** | `probeOllama`, `probePlatformReady`, `probeStackHealth`, types `OllamaHealth`, `PlatformHealth`, `StackHealth` | Doctor probes: Ollama tags + embed/LLM models; platform `/api/health/ready` |
 | **metrics-summary** | `summarizeDeployments`, types `HealthEntry`, `MetricsSummary` | Pure health rollup for status: counts + score (healthy=100, degraded=50, down/error=0) |
 | **path-audit** | `formatPathAudit`, `PATH_AUDIT_DEFAULT_MAX` | Collapse long control-flow paths for CLI display (head 3 + `...` + tail 3 when length > 8) |
@@ -78,25 +78,52 @@ Console/watch only **persist** proposals. No adapter mutations. Statuses:
 
 `open` → `claimed` → `resolved` | `dismissed`
 
+Legal edges (enforced by `isLegalProposalTransition`; same status is idempotent):
+
+| From | To |
+|---|---|
+| `open` | `claimed`, `dismissed`, `resolved` |
+| `claimed` | `resolved`, `dismissed`, `open` (release claim) |
+| `dismissed` | `open` (reopen) |
+| `resolved` | terminal |
+
 | Command | Effect |
 |---|---|
-| `cox cx proposals <name>` | list open + claimed (default) |
+| `cox cx proposals <name>` | list open + claimed; rows show `next=apply\|resolve\|…` + CLI hint |
 | `cox cx proposals <name> --all` | include resolved/dismissed |
 | `cox cx proposals <name> --status <s>` | filter one status (`open`\|`claimed`\|`resolved`\|`dismissed`) |
-| `cox cx proposal <name> <id> claimed` | claim for work |
+| `cox cx proposal <name> <id> claimed` | claim for work (manual; apply also claims) |
 | `cox cx proposal <name> <id> resolved` | mark done after remediation |
 | `cox cx proposal <name> <id> dismissed` | drop without apply |
-| `cox cx apply <name> <proposalId>` | create task + remediation note; proposal → `claimed` |
+| `cox cx apply <name> <proposalId>` | task + remediation; proposal → `claimed` |
+| `cox cx apply <name> <proposalId> --resolve` | same, proposal → `resolved` |
 
-After apply, CLI prints next steps:
+After default apply, CLI prints next steps:
 
 ```text
 next: cox cx task <name> <taskId> in_progress
+next: cox cx task <name> <taskId> done  # auto-resolves proposal
 next: cox cx proposal <name> <proposalId> resolved
 ```
 
-Tasks mirror list filters: `cox cx tasks <name> [--all] [--status pending|in_progress|done|cancelled]`.
-Transitions: `cox cx task <name> <id> pending|in_progress|done|cancelled`.
+### Tasks
 
-Product narrative and cheat sheet: [`docs/CXOS.md`](../../docs/CXOS.md).
+| Command | Effect |
+|---|---|
+| `cox cx tasks <name>` | rollup (`open/pending/in_progress/done/…`) + open tasks; `proposal=` + `remediation=` paths |
+| `cox cx tasks <name> --all` | include done/cancelled |
+| `cox cx tasks <name> --status <s>` | filter one status |
+| `cox cx task <name> <id> done` | close task; default **auto-resolves** source proposal |
+| `cox cx task <name> <id> done --no-resolve-source` | close task only |
+
+### Daemon health
+
+`cox cx daemon status <name>` prints one scannable line:
+
+```text
+daemon <name>: running|stopped pid=… ticks=last/max last=… proposals_open=N log=…
+```
+
+Product narrative and cheat sheet: [`docs/CXOS.md`](../../docs/CXOS.md)
+(claim/apply/task/daemon section). Wave4 summary: [`docs/WAVE4-SUMMARY.md`](../../docs/WAVE4-SUMMARY.md).
 Demo: [`examples/cx-demo/README.md`](../../examples/cx-demo/README.md).

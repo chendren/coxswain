@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { summarizeTasks, type CxTask } from "../src/tasks";
 
-function t(status: CxTask["status"], id = status): CxTask {
+function t(status: CxTask["status"], id: string = status): CxTask {
   return {
     id,
     specName: "demo",

@@ -167,12 +167,46 @@ pnpm cox cx watch <name> [--ticks 3] [--interval 2000] [--live]
 pnpm cox cx daemon start <name> [--interval 30000] [--ticks 120] [--live]
 pnpm cox cx daemon status <name>
 pnpm cox cx daemon stop <name>
-pnpm cox cx proposals <name> [--all]
+pnpm cox cx proposals <name> [--all] [--status open|claimed|resolved|dismissed]
 pnpm cox cx proposal <name> <id> open|claimed|resolved|dismissed
-pnpm cox cx apply <name> <proposalId>               # → tasks.json + remediations/<id>.md
-pnpm cox cx tasks <name> [--all]
-pnpm cox cx task <name> <id> pending|in_progress|done|cancelled
+pnpm cox cx apply <name> <proposalId> [--resolve]   # → tasks.json + remediations/<id>.md
+pnpm cox cx tasks <name> [--all] [--status pending|in_progress|done|cancelled]
+pnpm cox cx task <name> <id> pending|in_progress|done|cancelled [--no-resolve-source]
 pnpm cox cx teardown <name> [--target all] [--live]
+```
+
+### Claim / apply / task / daemon health
+
+Human-gated close-out after console or watch proposes work. Nothing mutates
+adapters; apply only writes a task + remediation note under the spec dir.
+
+| Step | Command | Effect |
+|---|---|---|
+| List | `cox cx proposals <spec>` | Open + claimed; each row shows `next=apply\|resolve\|…` and a concrete CLI line |
+| Apply | `cox cx apply <spec> <prop_…>` | Task + `remediations/<id>.md`; proposal → **claimed** (default) |
+| Apply+close | `cox cx apply <spec> <id> --resolve` | Same, but proposal → **resolved** immediately |
+| Work board | `cox cx tasks <spec>` | Rollup `open/pending/in_progress/done/…`; rows show `proposal=` + `remediation=` path |
+| Close task | `cox cx task <spec> <taskId> done` | Default **auto-resolves** source proposal; `--no-resolve-source` skips |
+| Daemon | `cox cx daemon status <spec>` | One line: `running\|stopped pid ticks last proposals_open log=` |
+
+Legal proposal edges (same status is always idempotent):
+
+```text
+open      → claimed | dismissed | resolved
+claimed   → resolved | dismissed | open   # open = release claim
+dismissed → open                          # reopen
+resolved  → (terminal)
+```
+
+Typical loop:
+
+```bash
+pnpm cox cx console <spec> --live
+pnpm cox cx proposals <spec>
+pnpm cox cx apply <spec> <proposalId>
+pnpm cox cx tasks <spec>
+pnpm cox cx task <spec> <taskId> done
+pnpm cox cx daemon status <spec>
 ```
 
 ### Golden offline path
