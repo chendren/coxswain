@@ -39,7 +39,7 @@ Public surface is re-exported from `src/index.ts`.
 | **report** | `generateReport`, types `CxOpsReport`, `CxOpsReportEntry`, `ReportTarget`, `ReportDeps` | Cross-target status (+ simulate when capable); one scout-tier summary via injected `generate` |
 | **nba** | `opsRecommendNba`, `parseNbaContext`, type `NbaRecommendResult` | Pure graph NBA + confidence band + next stages; CLI key=value context parse |
 | **ontology** | `resolveOntologyPack`, `showOntology`, `validateOntologyPack`, `showStrongGraph`, type `OntologyPack` (`default` \| `local`), show/validate/graph result types | Closed-world catalog inventory, integrity + strong-graph stats |
-| **graph-query** | `lookupStrongNode`, types `GraphHit`, `GraphQueryResult` | Closed-world strong-graph search by uid/id/name/kind/hubKey (case-insensitive substring); pack + limit; zero model calls |
+| **graph-query** | `lookupStrongNode`, types `GraphHit`, `GraphQueryResult` | Closed-world strong-graph search by id/name (case-insensitive substring); top 20 matches `{id, kind, name}`; pack + limit; zero model calls |
 | **json-extract** | `extractJsonText`, `parseJsonLoose` | Weak-node helpers: strip fences / loose JSON for model output |
 
 ## Import law

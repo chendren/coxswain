@@ -7,9 +7,10 @@ import { resolveOntologyPack } from "./ontology";
 
 export interface GraphHit {
   id: string;
-  uid: string;
   kind: string;
   name: string;
+  /** Full strong-node uid (kind:id); kept for CLI/display consumers. */
+  uid: string;
   hubKey: string;
 }
 
@@ -20,6 +21,10 @@ export interface GraphQueryResult {
   path: string[];
 }
 
+/**
+ * Search the strong graph for nodes whose id or name contains query
+ * (case-insensitive). Returns up to 20 matches with {id, kind, name}.
+ */
 export function lookupStrongNode(
   pack: OntologyPack,
   query: string,
@@ -34,18 +39,12 @@ export function lookupStrongNode(
   }
   const hits: GraphHit[] = [];
   for (const n of g.nodes.values()) {
-    if (
-      n.uid.toLowerCase().includes(q) ||
-      n.id.toLowerCase().includes(q) ||
-      n.name.toLowerCase().includes(q) ||
-      n.kind.toLowerCase().includes(q) ||
-      n.hubKey.toLowerCase().includes(q)
-    ) {
+    if (n.id.toLowerCase().includes(q) || n.name.toLowerCase().includes(q)) {
       hits.push({
         id: n.id,
-        uid: n.uid,
         kind: n.kind,
         name: n.name,
+        uid: n.uid,
         hubKey: n.hubKey,
       });
       if (hits.length >= limit) break;

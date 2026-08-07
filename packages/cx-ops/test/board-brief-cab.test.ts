@@ -51,6 +51,32 @@ describe("board + brief + cab + audit + journeys", () => {
     expect(md).toContain("# CXOS Executive Brief: beta");
     expect(md).toContain("cut handle time");
     expect(md).toContain("plan-only");
+    expect(md).not.toContain("Score trail");
+  });
+
+  it("renderExecBrief includes optional healthScoreTrail line", async () => {
+    const rec = await createCxSpec({ cxRoot, now }, "beta-trail", "trail idea");
+    const withTrail = renderExecBrief({
+      name: "beta-trail",
+      record: rec,
+      deployments: {},
+      proposals: [],
+      tasks: [],
+      healthScoreTrail: [90, 75, 100],
+      generatedAt: now(),
+    });
+    expect(withTrail).toContain("- **Score trail:** 90 → 75 → 100");
+
+    const emptyTrail = renderExecBrief({
+      name: "beta-trail",
+      record: rec,
+      deployments: {},
+      proposals: [],
+      tasks: [],
+      healthScoreTrail: [],
+      generatedAt: now(),
+    });
+    expect(emptyTrail).not.toContain("Score trail");
   });
 
   it("exportCabPackage writes MANIFEST and BRIEF", async () => {
