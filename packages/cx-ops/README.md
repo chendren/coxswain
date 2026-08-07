@@ -26,6 +26,10 @@ Public surface is re-exported from `src/index.ts`.
 | **cab-export** | `exportCabPackage`, type `CabExportResult` | Filesystem CAB package for change boards: AWS plan files, remediations, proposals/tasks/deployments JSON, BRIEF.md, MANIFEST.md, optional audit.jsonl (never mutates AWS) |
 | **audit** | `appendAuditEvent`, `loadAuditEvents`, types `CxAuditEvent`, `AuditDeps` | Append-only per-spec `audit.jsonl` evidence trail (kind, message, optional ref/path) |
 | **journeys** | `listJourneys`, types `JourneyListItem`, `JourneyInventory` | Closed-world journey inventory from ontology pack (`default` \| `local`): stages, terminals, trigger intents |
+| **catalog** | `inventoryCatalog`, types `CatalogDomain`, `CatalogKpi`, `CatalogNbaRule`, `CatalogInventory` | Closed-world pack inventory (domains/intents, KPIs, NBA rules, channels/sentiments/urgencies); strong nodes only |
+| **health-history** | `appendHealthSample`, `loadHealthHistory`, types `HealthSample`, `HealthHistoryDeps` | Append-only per-spec `health-history.jsonl` from status polls; score rollup via `summarizeDeployments` |
+| **archive** | `archiveCxSpec`, `restoreCxSpec` | Soft-archive: rename `.cox/cx/<name>` → `.archived-<name>` (hidden from `listCxSpecs`); restore renames back |
+| **snapshot** | `snapshotCxSpec`, type `SnapshotResult` | Full program backup/handoff: CAB package + `spec.json` + optional health/audit/daemon + `SNAPSHOT.md` |
 | **cfn-skeleton** | `buildCfnSkeleton` | Deterministic CloudFormation YAML + APPLY markdown from journey map (plan-only; no CreateStack) |
 | **offline-adapters** | `createOfflineLocalAdapter`, `createOfflineAwsAdapter`, type `OfflineDiskDeps` | Disk-backed local (build/deploy/status/simulate/teardown) and AWS plan-only (writes `template.yaml`, `APPLY.md`) |
 | **offline-artifacts** | `createOfflineArtifactsAdapter`, type `OfflineArtifactsDeps` | Deterministic / optional-generate artifacts adapter for offline runtime |
@@ -33,6 +37,10 @@ Public surface is re-exported from `src/index.ts`.
 | **report** | `generateReport`, types `CxOpsReport`, `CxOpsReportEntry`, `ReportTarget`, `ReportDeps` | Cross-target status (+ simulate when capable); one scout-tier summary via injected `generate` |
 | **nba** | `opsRecommendNba`, `parseNbaContext`, type `NbaRecommendResult` | Pure graph NBA + confidence band + next stages; CLI key=value context parse |
 | **ontology** | `resolveOntologyPack`, `showOntology`, `validateOntologyPack`, `showStrongGraph`, type `OntologyPack` (`default` \| `local`), show/validate/graph result types | Closed-world catalog inventory, integrity + strong-graph stats |
+| **catalog** | `inventoryCatalog`, types `CatalogInventory`, `CatalogDomain`, `CatalogKpi`, `CatalogNbaRule` | Closed-world catalog browser (domains, intents, KPIs, NBA rules, channels/sentiments/urgencies); strong nodes only, zero model calls |
+| **health-history** | `appendHealthSample`, `loadHealthHistory`, types `HealthSample`, `HealthHistoryDeps` | Append-only per-spec `health-history.jsonl` from status polls; load last N samples for trend-ish ops |
+| **archive** | `archiveCxSpec`, `restoreCxSpec` | Soft-archive via rename to `.archived-<name>` (hidden from `listCxSpecs`); restore by renaming back; no delete |
+| **snapshot** | `snapshotCxSpec`, type `SnapshotResult` | Full program snapshot dir: CAB package base + `spec.json` + optional health-history/daemon/audit + `SNAPSHOT.md` |
 | **json-extract** | `extractJsonText`, `parseJsonLoose` | Weak-node helpers: strip fences / loose JSON for model output |
 
 ## Import law
@@ -64,6 +72,11 @@ brief:    load_workspace → render_brief → emit
 cab:      load_workspace → copy_aws → copy_remediations → write_state → write_brief → emit
 audit:    load_audit → append → emit  (or load_audit → emit for read)
 journeys: load_ontology → list_journeys → emit
+catalog:  load_strong → inventory_catalog → emit
+health:   load_health_history → emit  (append on status: summarize → append_sample)
+archive:  archive_spec → rename → emit
+restore:  restore_spec → rename → emit
+snapshot: snapshot → cab_base → copy_spec → copy_health → emit
 ```
 
 `cox cx run` prints both views: `path:` via `formatPathByPhase` (phase buckets) and
@@ -86,6 +99,10 @@ journeys: load_ontology → list_journeys → emit
 | `cox cx cab-export <name> [outDir]` | cab-export (`exportCabPackage`) |
 | `cox cx audit <name> [--limit N]` | audit (`loadAuditEvents`) |
 | `cox cx journeys [--pack default\|local]` | journeys (`listJourneys`) |
+| `cox cx catalog [section] [--pack default\|local]` | catalog (`inventoryCatalog`); section: `all`\|`domains`\|`intents`\|`kpis`\|`nba`\|`channels` |
+| `cox cx health-history <name> [--limit N]` | health-history (`loadHealthHistory`); samples written by `cox cx status` via `appendHealthSample` |
+| `cox cx archive <name>` / `restore <name>` | archive (`archiveCxSpec` / `restoreCxSpec`) |
+| `cox cx snapshot <name> [outDir]` | snapshot (`snapshotCxSpec`); default out `cx-snapshot/<name>` |
 | `cox cx ontology *` / `nba` | ontology / nba |
 | `cox cx doctor` | stack-health + ontology + workspace list |
 | `cox cx teardown` | status `runTeardown` / adapter teardown + `clearDeployment` |
@@ -209,6 +226,94 @@ Returns `{ pack, journeys, path: ["load_ontology", "list_journeys", "emit"] }`.
 cox cx journeys
 cox cx journeys --pack local
 cox cx journeys --pack default
+```
+
+## Catalog (closed-world inventory)
+
+`inventoryCatalog(pack: OntologyPack = "local"): CatalogInventory`
+
+Strong nodes only (zero model calls). Resolves the ontology pack and flattens browser-friendly slices:
+
+| Field | Contents |
+|---|---|
+| `domains` | id, name, intentCount, intents (`domainId.intentId`, name) |
+| `kpis` | id, name, unit, description |
+| `nbaRules` | id, name, priority, action, urgency, actionType |
+| `channels` / `sentiments` / `urgencies` | closed enum lists from pack |
+| `pack`, `version`, `source` | pack metadata |
+| `path` | `load_strong → inventory_catalog → emit` |
+
+Default pack is `local` (platform), not `default` (commercial seed).
+
+```text
+cox cx catalog
+cox cx catalog domains --pack default
+cox cx catalog nba
+cox cx catalog kpis --pack local
+# sections: all | domains | intents | kpis | nba | channels
+```
+
+## Health history (score samples)
+
+Append-only log at `.cox/cx/<spec>/health-history.jsonl` (one `HealthSample` JSON per line).
+
+| API | Role |
+|---|---|
+| `appendHealthSample(deps, specName, entries)` | `summarizeDeployments(entries)` → sample (`at`, score, healthy/degraded/down/errors/total, entries); append JSONL; returns sample |
+| `loadHealthHistory(deps, specName, limit = 20)` | Parse JSONL (skip bad lines); return last `limit` samples (`limit <= 0` → all); missing file → `[]` |
+
+Score weights match metrics-summary: healthy=100, degraded=50, down/error=0 (average over scored entries).
+
+CLI status writes a sample after each poll. When history has more than one sample, status also prints a short score trail. Read path:
+
+```text
+cox cx status <name>              # appends sample
+cox cx health-history <name>
+cox cx health-history <name> --limit 50
+# <at>  score=… healthy=… degraded=… down=… errors=…
+```
+
+## Archive / restore (soft hide)
+
+Rename on disk under `cxRoot`. No delete. Dot-prefixed dirs are skipped by `listCxSpecs`, so archived programs disappear from board/list until restored.
+
+| API | Effect | path |
+|---|---|---|
+| `archiveCxSpec(deps, name)` | `.cox/cx/<name>` → `.cox/cx/.archived-<name>` | `archive_spec → rename → emit` |
+| `restoreCxSpec(deps, name)` | reverse; accepts bare name or `.archived-<name>` | `restore_spec → rename → emit` |
+
+Guards: invalid names (`/`, `..`, leading `.` on active name), already archived, missing source, target already exists. Does not stop a running daemon; stop first if needed.
+
+```text
+cox cx archive <name>
+# archived <name> → …/.archived-<name>
+# next: cox cx restore <name>
+cox cx restore <name>
+```
+
+## Snapshot (full program package)
+
+`snapshotCxSpec(deps, specName, outDirRaw, cwd): Promise<SnapshotResult>`
+
+Broader than CAB: builds a CAB package first, then adds program state for backup/handoff. Resolves `outDir` under `cwd`. Never calls AWS APIs.
+
+| Written | Source |
+|---|---|
+| CAB contents (`aws/*`, remediations, proposals/tasks/deployments, `BRIEF.md`, `MANIFEST.md`, optional `audit.jsonl`) | `exportCabPackage` |
+| `spec.json` | workspace (when present) |
+| `health-history.jsonl` | workspace (optional) |
+| `daemon.json`, `audit.jsonl` | workspace when present (audit may already be in CAB) |
+| `SNAPSHOT.md` | note: export time + manual restore hint |
+
+Returns `{ outDir, files, path }` with path
+`snapshot → cab_base → copy_spec → copy_health → emit`.
+
+CLI default out dir: `cx-snapshot/<name>`. Appends audit event `kind: snapshot`. Restore is manual: copy files back under `.cox/cx/<spec>/`.
+
+```text
+cox cx snapshot <name>
+cox cx snapshot <name> ./my-snap
+# review SNAPSHOT.md + BRIEF.md + MANIFEST.md
 ```
 
 ## Proposals lifecycle (human-gated)
