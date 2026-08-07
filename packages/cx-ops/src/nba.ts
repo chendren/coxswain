@@ -1,7 +1,8 @@
-import type { CxNbaContext, CxNbaRule, CxOntology } from "@cox/cx-core";
+import type { CxNbaContext, CxNbaRule, CxOntology, CxSpec } from "@cox/cx-core";
 import {
   DEFAULT_ONTOLOGY,
   confidenceBand,
+  getJourney,
   nextStages,
   recommendNba,
 } from "@cox/cx-core";
@@ -70,4 +71,36 @@ export function parseNbaContext(pairs: string[]): CxNbaContext {
     }
   }
   return ctx;
+}
+
+/**
+ * Derive operate-time NBA context from a CX design journey + ontology.
+ * Journey: design.journeyMaps[0].id, else billing_dispute.
+ * Stage: non-terminal from ontology (prefer under_review, else second stage).
+ * Confidence: 0.75.
+ */
+export function resolveNbaContextFromSpec(
+  spec: CxSpec,
+  ontology: CxOntology = DEFAULT_ONTOLOGY,
+): CxNbaContext {
+  const mapId = spec.design?.journeyMaps?.[0]?.id;
+  const journey =
+    typeof mapId === "string" && mapId.length > 0 ? mapId : "billing_dispute";
+  const stage = resolveOperateStage(ontology, journey);
+  return { journey, stage, confidence: 0.75 };
+}
+
+function resolveOperateStage(ontology: CxOntology, journeyId: string): string {
+  const journey = getJourney(ontology, journeyId);
+  if (!journey || journey.stages.length === 0) return "under_review";
+
+  const terminals = new Set(journey.terminalStages);
+  const nonTerminal = journey.stages.filter((s) => !terminals.has(s.id));
+
+  if (nonTerminal.some((s) => s.id === "under_review")) return "under_review";
+
+  const second = journey.stages[1];
+  if (second && !terminals.has(second.id)) return second.id;
+
+  return nonTerminal[0]?.id ?? "under_review";
 }

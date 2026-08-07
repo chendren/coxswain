@@ -31,6 +31,7 @@ import {
   orchestrateStatus,
   parseNbaContext,
   parseTargets,
+  resolveNbaContextFromSpec,
   runConsoleTick,
   runWatchLoop,
   saveCxWorkspace,
@@ -377,6 +378,188 @@ export async function runCxBuild(
   return result.ok ? 0 : 1;
 }
 
+/**
+ * Golden path: new (if needed) → approve requirements → build+deploy all →
+ * status → simulate local (if deployed) → report. Prints path audit + next steps.
+ */
+export async function runCxRun(
+  ctx: CxCommandContext,
+  name: string,
+  ideaParts: string[],
+  targetsRaw?: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  printWiring(ctx, rt);
+
+  const audit: string[] = ["cx_run"];
+  const idea = ideaParts.join(" ").trim() || name;
+
+  let record = await loadCxWorkspace(rt.workspace, name);
+  if (!record) {
+    ctx.write(`creating CX spec "${name}"`);
+    record = await createCxSpec(rt.workspace, name, idea);
+    audit.push("create_spec");
+    ctx.write(`idea: ${idea}`);
+    ctx.write(`requirements: ${record.spec.requirements.length}`);
+  } else {
+    ctx.write(`CX spec "${name}" already exists`);
+    audit.push("load_existing");
+  }
+
+  if (record.spec.state.phases.requirements !== "approved") {
+    ctx.write(`approving requirements for "${name}"`);
+    record = await approveCxPhase(rt.workspace, name, "requirements");
+    audit.push("approve:requirements");
+  } else {
+    audit.push("requirements_already_approved");
+  }
+
+  if (!record.spec.design?.journeyMaps?.length) {
+    record = {
+      ...record,
+      spec: seedDesignFromIdea(record.spec, record.idea),
+      path: [...record.path, "seed_design"],
+    };
+    await saveCxWorkspace(rt.workspace, record);
+    audit.push("seed_design");
+  }
+
+  const targets = parseTargets(targetsRaw ?? "all");
+  ctx.write(`building ${name} targets=${targets.join(",")} mode=${rt.mode}`);
+
+  const orchDeps = {
+    ...rt.workspace,
+    adapters: rt.adapters,
+    ontology: rt.ontology,
+    generateSummary: rt.generate
+      ? (p: string) => rt.generate!(p, "scout")
+      : undefined,
+  };
+
+  const built = await orchestrateBuild(orchDeps, record, targets, { deploy: true });
+  audit.push(...built.path);
+  for (const t of built.targets) {
+    if (t.error) ctx.write(`  build ${t.targetId}: FAIL ${t.error}`);
+    else {
+      ctx.write(
+        `  build ${t.targetId}: ok steps=${t.planSteps ?? 0} artifacts=${t.artifacts?.length ?? 0} deployed=${Boolean(t.deployment)} wiring=${rt.wiring[t.targetId]}`,
+      );
+    }
+  }
+  if (!built.ok) {
+    ctx.write(`ok=false (build failed)`);
+    ctx.write(`path: ${audit.join(" → ")}`);
+    return 1;
+  }
+
+  record = built.record;
+  const depsFile = await loadDeployments(rt.workspace, name);
+  const deployed = Object.keys(depsFile.deployments) as import("@cox/cx-core").CxTargetId[];
+  const statusTargets = targets.filter((t) => depsFile.deployments[t]);
+
+  if (statusTargets.length > 0) {
+    const status = await orchestrateStatus(
+      orchDeps,
+      record,
+      depsFile.deployments,
+      statusTargets,
+    );
+    audit.push(...status.path);
+    for (const t of status.targets) {
+      if (t.error) ctx.write(`  status ${t.targetId}: ERROR ${t.error}`);
+      else {
+        const m = (t.health?.metrics ?? []).map((x) => `${x.name}=${x.value}`).join(" ");
+        ctx.write(`  status ${t.targetId}: ${t.health?.level}  ${m}`);
+      }
+    }
+  } else {
+    ctx.write("status: (no deployments)");
+    audit.push("status_skipped");
+  }
+
+  if (depsFile.deployments.local) {
+    const traffic: CxTrafficProfile = {
+      name: "smoke",
+      volumePerMinute: 12,
+      personaWeights: { primary: 1 },
+      durationMinutes: 1,
+    };
+    const sim = await orchestrateSimulate(
+      orchDeps,
+      record,
+      depsFile.deployments,
+      ["local"],
+      traffic,
+    );
+    audit.push(...sim.path);
+    for (const t of sim.targets) {
+      if (t.error) ctx.write(`  simulate ${t.targetId}: FAIL ${t.error}`);
+      else {
+        const outcomes = (t.sim?.outcomes ?? [])
+          .map(
+            (o) =>
+              `${o.kpiName}:${typeof o.achieved === "number" ? o.achieved.toFixed(1) : o.achieved}/${o.target}`,
+          )
+          .join(" ");
+        ctx.write(`  simulate ${t.targetId}: ${outcomes || "(no outcomes)"}`);
+      }
+    }
+  } else {
+    ctx.write("simulate: skipped (local not deployed)");
+    audit.push("simulate_skipped");
+  }
+
+  const reportTargets =
+    statusTargets.length > 0
+      ? statusTargets
+      : parseTargets(deployed.length ? deployed.join(",") : "all").filter(
+          (t) => depsFile.deployments[t],
+        );
+  const reportTraffic: CxTrafficProfile = {
+    name: "smoke",
+    volumePerMinute: 10,
+    personaWeights: { primary: 1 },
+    durationMinutes: 1,
+  };
+  const report = await orchestrateReport(
+    {
+      ...orchDeps,
+      generateSummary: orchDeps.generateSummary
+        ? orchDeps.generateSummary
+        : async () =>
+            `Offline report for ${name}: ${reportTargets.length} target(s) with deployments. Use cox cx status for details.`,
+    },
+    record,
+    depsFile.deployments,
+    reportTargets,
+    reportTraffic,
+    resolveNbaContextFromSpec(record.spec, rt.ontology),
+  );
+  audit.push(...report.path);
+
+  if (report.report) {
+    for (const t of report.report.targets) {
+      ctx.write(
+        `  report ${t.targetId}: ${t.health?.level ?? "n/a"}${t.error ? ` ERROR ${t.error}` : ""}`,
+      );
+    }
+    ctx.write(`summary: ${report.report.summary}`);
+  }
+  if (report.nba?.primary) {
+    ctx.write(
+      `nba: ${report.nba.primary.id} → ${report.nba.primary.action} (${report.nba.primary.urgency})`,
+    );
+  }
+
+  ctx.write(`ok=true deployments=${deployed.join(",") || "(none)"}`);
+  ctx.write(`path: ${audit.join(" → ")}`);
+  ctx.write("next steps:");
+  ctx.write(`  cox cx console ${name}     # poll status, propose gated NBA`);
+  ctx.write(`  cox cx apply ${name} <id>   # apply a proposal → task`);
+  ctx.write(`  cox cx daemon start ${name} # long-running watch loop`);
+  return 0;
+}
+
 export async function runCxDeploy(
   ctx: CxCommandContext,
   name: string,
@@ -466,7 +649,7 @@ export async function runCxReport(
     depsFile.deployments,
     targets,
     traffic,
-    { journey: "billing_dispute", stage: "under_review", confidence: 0.75 },
+    resolveNbaContextFromSpec(record.spec, rt.ontology),
   );
 
   if (result.report) {
@@ -575,16 +758,13 @@ export async function runCxConsole(
     targetsRaw ?? deployedKeys.join(","),
   ).filter((t) => depsFile.deployments[t]);
 
+  const nbaContext = resolveNbaContextFromSpec(record.spec, rt.ontology);
   const tick = await runConsoleTick(
     targets.map((targetId) => ({
       targetId,
       adapter: rt.adapters[targetId]!,
       dep: depsFile.deployments[targetId]!,
-      nbaContext: {
-        journey: record.spec.design?.journeyMaps[0]?.id ?? "billing_dispute",
-        stage: "under_review",
-        confidence: 0.7,
-      },
+      nbaContext,
     })),
     { ontology: rt.ontology },
   );
@@ -642,17 +822,14 @@ export async function runCxWatch(
   const maxTicks = opts?.maxTicks ?? 3;
   ctx.write(`watching ${name} ticks=${maxTicks} intervalMs=${intervalMs}`);
 
+  const nbaContext = resolveNbaContextFromSpec(record.spec, rt.ontology);
   const result = await runWatchLoop(
     name,
     targets.map((targetId) => ({
       targetId,
       adapter: rt.adapters[targetId]!,
       dep: depsFile.deployments[targetId]!,
-      nbaContext: {
-        journey: record.spec.design?.journeyMaps[0]?.id ?? "billing_dispute",
-        stage: "under_review",
-        confidence: 0.7,
-      },
+      nbaContext,
     })),
     {
       ...rt.workspace,
