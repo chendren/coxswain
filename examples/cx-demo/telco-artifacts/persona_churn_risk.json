@@ -1,0 +1,20 @@
+{
+  "kind": "persona",
+  "id": "persona_churn_risk",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "name": "Churn-risk postpaid subscriber",
+  "goals": [
+    "Feel valued with a fair save offer",
+    "Keep number and device financing intact",
+    "Exit cleanly if coverage remains poor"
+  ],
+  "painPoints": [
+    "Win-back offers worse than new-customer promos",
+    "Coverage issues dismissed as device fault",
+    "Port-out friction and surprise ETFs"
+  ]
+}

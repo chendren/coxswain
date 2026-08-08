@@ -1,0 +1,75 @@
+{
+  "kind": "journeyMap",
+  "id": "technical_troubleshooting",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "name": "Connectivity Troubleshooting",
+  "stages": [
+    {
+      "id": "reported",
+      "name": "Issue reported",
+      "description": "No service, slow data, or device failure reported",
+      "touchpoints": [
+        "phone",
+        "app",
+        "chat"
+      ]
+    },
+    {
+      "id": "diagnosing",
+      "name": "Diagnosing",
+      "description": "Line test, tower/region health, CPE/modem checks",
+      "touchpoints": [
+        "agent",
+        "network_ops"
+      ]
+    },
+    {
+      "id": "waiting_for_fix",
+      "name": "Waiting for fix",
+      "description": "Truck roll, remote reset, or network change pending",
+      "touchpoints": [
+        "field",
+        "sms"
+      ]
+    },
+    {
+      "id": "follow_up",
+      "name": "Follow up",
+      "description": "Confirm service restored with subscriber",
+      "touchpoints": [
+        "phone",
+        "app"
+      ]
+    },
+    {
+      "id": "escalated",
+      "name": "Escalated",
+      "description": "NOC / tier-3 for regional outage or complex CPE",
+      "touchpoints": [
+        "noc",
+        "supervisor"
+      ]
+    },
+    {
+      "id": "resolved",
+      "name": "Resolved",
+      "description": "Service restored or workaround accepted",
+      "touchpoints": [
+        "app",
+        "sms"
+      ]
+    },
+    {
+      "id": "abandoned",
+      "name": "Abandoned",
+      "description": "Customer exits without confirmation",
+      "touchpoints": [
+        "chat"
+      ]
+    }
+  ]
+}

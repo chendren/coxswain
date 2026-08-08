@@ -28,3 +28,4 @@ export * from "./snapshot";
 export * from "./fleet-queue";
 export * from "./dashboard-html";
 export * from "./graph-query";
+export * from "./telco-design-pack";

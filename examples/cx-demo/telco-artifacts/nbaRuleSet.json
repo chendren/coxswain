@@ -1,0 +1,83 @@
+{
+  "kind": "nbaRuleSet",
+  "id": "nbaRuleSet",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "rules": [
+    {
+      "id": "CHURN_RISK_HIGH",
+      "condition": "journey eq \"churn_prevention\" AND stage eq \"cancel_requested\"",
+      "action": "retention_offer",
+      "priority": 100
+    },
+    {
+      "id": "CHURN_FINAL",
+      "condition": "journey eq \"churn_prevention\" AND stage eq \"final_attempt\"",
+      "action": "escalate_retention_specialist",
+      "priority": 95
+    },
+    {
+      "id": "VIP_PRIORITY_ROUTING",
+      "condition": "customer_tier in [\"premium\",\"enterprise\"] AND routing_priority gte 8",
+      "action": "priority_route_to_senior_agent",
+      "priority": 92
+    },
+    {
+      "id": "COMPLAINT_HANDLING",
+      "condition": "intent eq \"general.complaint\"",
+      "action": "activate_complaint_protocol",
+      "priority": 90
+    },
+    {
+      "id": "SLA_AT_RISK",
+      "condition": "sla_status in [\"at_risk\",\"breached\"]",
+      "action": "queue_rebalance_and_escalate",
+      "priority": 88
+    },
+    {
+      "id": "CROSS_CHANNEL_FRUSTRATION",
+      "condition": "channels_used gte 3 AND sentiment in [\"negative\",\"frustrated\",\"angry\"]",
+      "action": "route_to_senior_omnichannel_specialist",
+      "priority": 85
+    },
+    {
+      "id": "BILLING_DISPUTE_STUCK",
+      "condition": "journey eq \"billing_dispute\" AND sla_status in [\"breached\",\"at_risk\"]",
+      "action": "escalate_to_supervisor",
+      "priority": 80
+    },
+    {
+      "id": "REPEATED_TECH_ISSUE",
+      "condition": "domain eq \"technical_support\" AND previous_interactions gt 3",
+      "action": "proactive_outreach_and_escalate",
+      "priority": 75
+    },
+    {
+      "id": "HIGH_EFFORT_RECOVERY",
+      "condition": "customer_effort_score gte 4 AND sentiment in [\"negative\",\"frustrated\",\"angry\"]",
+      "action": "effort_recovery_protocol",
+      "priority": 74
+    },
+    {
+      "id": "UPGRADE_OPPORTUNITY",
+      "condition": "domain eq \"sales\" AND intent_short in [\"upgrade\",\"product_inquiry\"] AND customer_tier neq \"enterprise\"",
+      "action": "present_upsell_offer",
+      "priority": 60
+    },
+    {
+      "id": "DIGITAL_DEFLECTION",
+      "condition": "should_deflect eq \"true\" AND intent neq \"account.password_reset\"",
+      "action": "offer_self_service_portal",
+      "priority": 55
+    },
+    {
+      "id": "NEW_CUSTOMER_ONBOARDING",
+      "condition": "journey eq \"new_account_setup\" AND stage eq \"started\" AND previous_interactions lte 2",
+      "action": "activate_onboarding_guide",
+      "priority": 50
+    }
+  ]
+}

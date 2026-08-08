@@ -1,0 +1,69 @@
+{
+  "kind": "journeyMap",
+  "id": "billing_dispute",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "name": "Billing Dispute Resolution",
+  "stages": [
+    {
+      "id": "initiated",
+      "name": "Dispute initiated",
+      "description": "Subscriber contests a charge via IVR, app, chat, or retail",
+      "touchpoints": [
+        "phone",
+        "app",
+        "chat",
+        "retail"
+      ]
+    },
+    {
+      "id": "under_review",
+      "name": "Under review",
+      "description": "Usage and rating events validated against plan and promos",
+      "touchpoints": [
+        "agent",
+        "backoffice"
+      ]
+    },
+    {
+      "id": "refund_processing",
+      "name": "Adjustment processing",
+      "description": "Approved credit or rebill applied to account",
+      "touchpoints": [
+        "billing_system",
+        "sms"
+      ]
+    },
+    {
+      "id": "escalated",
+      "name": "Escalated",
+      "description": "Complex case to retention or fraud queue",
+      "touchpoints": [
+        "agent",
+        "supervisor"
+      ]
+    },
+    {
+      "id": "resolved",
+      "name": "Resolved",
+      "description": "Subscriber accepts outcome; case closed",
+      "touchpoints": [
+        "app",
+        "email",
+        "sms"
+      ]
+    },
+    {
+      "id": "abandoned",
+      "name": "Abandoned",
+      "description": "Subscriber drops without resolution",
+      "touchpoints": [
+        "chat",
+        "phone"
+      ]
+    }
+  ]
+}

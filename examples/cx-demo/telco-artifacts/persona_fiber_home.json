@@ -1,0 +1,20 @@
+{
+  "kind": "persona",
+  "id": "persona_fiber_home",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "name": "Home broadband decision maker",
+  "goals": [
+    "Stable Wi-Fi for work and streaming",
+    "Transparent install and truck windows",
+    "Self-serve modem reboot that works"
+  ],
+  "painPoints": [
+    "Missed install appointments",
+    "Finger-pointing between Wi-Fi and access network",
+    "Slow callback after ticket open"
+  ]
+}

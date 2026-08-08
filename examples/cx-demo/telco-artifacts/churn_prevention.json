@@ -1,0 +1,67 @@
+{
+  "kind": "journeyMap",
+  "id": "churn_prevention",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "name": "Churn Prevention / Save",
+  "stages": [
+    {
+      "id": "cancel_requested",
+      "name": "Cancel requested",
+      "description": "Subscriber signals intent to leave (port-out or cancel)",
+      "touchpoints": [
+        "phone",
+        "chat",
+        "retail"
+      ]
+    },
+    {
+      "id": "reason_captured",
+      "name": "Reason captured",
+      "description": "Price, coverage, competitor, or life-event reason coded",
+      "touchpoints": [
+        "agent",
+        "app"
+      ]
+    },
+    {
+      "id": "offer_presented",
+      "name": "Save offer presented",
+      "description": "Closed-world NBA offer within policy guardrails",
+      "touchpoints": [
+        "agent",
+        "app"
+      ]
+    },
+    {
+      "id": "cooling_off",
+      "name": "Cooling off",
+      "description": "Subscriber considers offer; follow-up scheduled",
+      "touchpoints": [
+        "sms",
+        "email"
+      ]
+    },
+    {
+      "id": "retained",
+      "name": "Retained",
+      "description": "Offer accepted; plan change or credit applied",
+      "touchpoints": [
+        "billing_system",
+        "app"
+      ]
+    },
+    {
+      "id": "cancelled",
+      "name": "Cancelled",
+      "description": "Port-out or disconnect completed",
+      "touchpoints": [
+        "billing_system",
+        "sms"
+      ]
+    }
+  ]
+}

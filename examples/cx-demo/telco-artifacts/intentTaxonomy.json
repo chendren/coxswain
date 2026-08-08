@@ -1,0 +1,233 @@
+{
+  "kind": "intentTaxonomy",
+  "id": "intentTaxonomy",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "domains": [
+    {
+      "id": "billing",
+      "name": "Billing",
+      "intents": [
+        {
+          "id": "payment_issue",
+          "name": "Payment Issue",
+          "description": "Customer has trouble making a payment or payment failed",
+          "exemplars": [
+            "My payment didn't go through and I don't know why",
+            "I keep getting an error when trying to pay my bill online",
+            "The payment was declined but my card works everywhere else",
+            "I was double charged on my last payment",
+            "My autopay didn't process this month and now I have a late fee"
+          ]
+        },
+        {
+          "id": "billing_inquiry",
+          "name": "Billing Inquiry",
+          "description": "Customer wants to understand charges or billing details",
+          "exemplars": [
+            "Can you explain these charges on my bill?",
+            "Why is my bill higher than usual this month?",
+            "I don't recognize a $15 charge on my statement",
+            "When is my next payment due?",
+            "How do I read my billing statement?"
+          ]
+        },
+        {
+          "id": "refund_request",
+          "name": "Refund Request",
+          "description": "Customer requests a refund for charges or services",
+          "exemplars": [
+            "I want a refund for the service outage last week",
+            "I was overcharged and need my money back",
+            "I cancelled within the trial period and was still charged",
+            "I need a refund because the product didn't work as advertised",
+            "Can I get a credit for the days my service was down?",
+            "I want my money back for the 3 days everything was completely down",
+            "I deserve a refund since my internet was out for a whole week",
+            "Give me a credit for the time my service wasn't working"
+          ]
+        },
+        {
+          "id": "plan_change",
+          "name": "Plan Change",
+          "description": "Customer wants to modify their billing plan",
+          "exemplars": [
+            "I want to switch to a cheaper plan",
+            "Can I upgrade my plan without changing my billing date?",
+            "What happens to my current balance if I change plans?",
+            "I need to downgrade because I'm not using all my data",
+            "Can I change from monthly to annual billing?"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "technical_support",
+      "name": "Technical Support",
+      "intents": [
+        {
+          "id": "connectivity",
+          "name": "Connectivity Issue",
+          "description": "Customer experiencing internet, network, or connection problems",
+          "exemplars": [
+            "My internet has been cutting out all day",
+            "I can't connect to WiFi on any of my devices",
+            "The connection speed is way slower than what I'm paying for",
+            "I keep losing connection during video calls",
+            "My internet works fine in the morning but dies every evening"
+          ]
+        },
+        {
+          "id": "device_issue",
+          "name": "Device Issue",
+          "description": "Customer has problems with hardware or device functionality",
+          "exemplars": [
+            "My router keeps restarting on its own",
+            "The device won't turn on after the last update",
+            "My phone screen is frozen and won't respond to touch",
+            "The set-top box is showing a blinking red light",
+            "My device is overheating and shutting down"
+          ]
+        },
+        {
+          "id": "app_error",
+          "name": "Application Error",
+          "description": "Customer encounters errors in software or applications",
+          "exemplars": [
+            "The app crashes every time I try to log in",
+            "I'm getting an error code 503 when I try to stream",
+            "The mobile app won't load my account information",
+            "I keep getting 'session expired' even though I just logged in",
+            "The app is stuck on a loading screen"
+          ]
+        },
+        {
+          "id": "service_outage",
+          "name": "Service Outage",
+          "description": "Customer reports a service outage or asks about known issues",
+          "exemplars": [
+            "Is there an outage in my area? Nothing is working",
+            "All my services went down at the same time",
+            "Your website says everything is fine but my service is completely out",
+            "How long until the outage is fixed?",
+            "This is the third outage this month"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "account",
+      "name": "Account Management",
+      "intents": [
+        {
+          "id": "account_creation",
+          "name": "Account Creation",
+          "description": "Customer wants to create a new account",
+          "exemplars": [
+            "I'd like to set up a new account",
+            "How do I sign up for your service?",
+            "I want to create an account for my business",
+            "What do I need to open an account?",
+            "Can I create a family account with multiple users?"
+          ]
+        },
+        {
+          "id": "account_modification",
+          "name": "Account Modification",
+          "description": "Customer wants to update account details",
+          "exemplars": [
+            "I need to update my address on my account",
+            "Can I change the email associated with my account?",
+            "I want to add my spouse to my account",
+            "How do I update my payment method?",
+            "I need to change my account name due to a legal name change",
+            "I need to update my mailing address and phone number",
+            "Can I change my billing address on file?",
+            "I moved to a new house and need to update my account details"
+          ]
+        },
+        {
+          "id": "password_reset",
+          "name": "Password Reset",
+          "description": "Customer needs help resetting or recovering password",
+          "exemplars": [
+            "I forgot my password and can't log in",
+            "The password reset email never arrived",
+            "I need to reset my password but I don't have access to my old email",
+            "My account got locked after too many password attempts",
+            "How do I set up a new password?"
+          ]
+        },
+        {
+          "id": "cancellation",
+          "name": "Cancellation",
+          "description": "Customer wants to cancel service or close account",
+          "exemplars": [
+            "I want to cancel my subscription effective immediately",
+            "How do I close my account?",
+            "I'm switching to a competitor and need to cancel",
+            "Can I cancel without paying an early termination fee?",
+            "I want to cancel but keep my data for 30 days"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sales",
+      "name": "Sales",
+      "intents": [
+        {
+          "id": "product_inquiry",
+          "name": "Product Inquiry",
+          "description": "Customer wants information about products or services",
+          "exemplars": [
+            "What plans do you currently offer?",
+            "Tell me about your premium tier features",
+            "Do you offer any bundled packages?",
+            "What's the difference between the basic and pro plans?",
+            "Does your service work internationally?"
+          ]
+        },
+        {
+          "id": "upgrade",
+          "name": "Upgrade Request",
+          "description": "Customer wants to upgrade their current plan or service",
+          "exemplars": [
+            "I want to upgrade to the premium plan",
+            "Can I add more storage to my current plan?",
+            "What would it cost to upgrade to unlimited data?",
+            "I need more features than my current plan offers",
+            "Is there a discount if I upgrade for a full year?"
+          ]
+        },
+        {
+          "id": "new_service",
+          "name": "New Service",
+          "description": "Customer interested in adding new services",
+          "exemplars": [
+            "I'd like to add home security to my package",
+            "Do you offer any add-on services?",
+            "I want to start a new line of service",
+            "Can I add international calling to my plan?",
+            "I'm interested in your new streaming service"
+          ]
+        },
+        {
+          "id": "pricing",
+          "name": "Pricing Information",
+          "description": "Customer wants pricing details or comparisons",
+          "exemplars": [
+            "How much does the business plan cost?",
+            "Are there any current promotions?",
+            "What's your price match policy?",
+            "Can I get a discount for being a loyal customer?",
+            "How does your pricing compare to competitors?"
+          ]
+        }
+      ]
+    }
+  ]
+}

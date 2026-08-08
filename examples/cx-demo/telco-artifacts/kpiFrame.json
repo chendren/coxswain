@@ -1,0 +1,51 @@
+{
+  "kind": "kpiFrame",
+  "id": "kpiFrame",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "metrics": [
+    {
+      "name": "sla_compliance_rate",
+      "target": 90,
+      "unit": "percent"
+    },
+    {
+      "name": "avg_wait_time",
+      "target": 110,
+      "unit": "seconds"
+    },
+    {
+      "name": "deflection_rate",
+      "target": 88,
+      "unit": "percent"
+    },
+    {
+      "name": "total_contacts",
+      "target": 130,
+      "unit": "count"
+    },
+    {
+      "name": "csat",
+      "target": 86,
+      "unit": "score"
+    },
+    {
+      "name": "avg_contact_value",
+      "target": 150,
+      "unit": "currency"
+    },
+    {
+      "name": "high_priority_contacts",
+      "target": 160,
+      "unit": "count"
+    },
+    {
+      "name": "fcr_rate",
+      "target": 83,
+      "unit": "percent"
+    }
+  ]
+}

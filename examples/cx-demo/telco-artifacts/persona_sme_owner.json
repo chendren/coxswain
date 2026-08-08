@@ -1,0 +1,20 @@
+{
+  "kind": "persona",
+  "id": "persona_sme_owner",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "name": "Small business multi-line owner",
+  "goals": [
+    "Keep lines online for field staff",
+    "One bill and one admin contact",
+    "Fast restore during outages"
+  ],
+  "painPoints": [
+    "Per-line friction for adds/changes",
+    "Unclear SLA when multiple sites fail",
+    "Repeat authentication across channels"
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "kind": "journeyMap",
+  "id": "service_upgrade",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "name": "Plan Change / Upgrade",
+  "stages": [
+    {
+      "id": "browsing",
+      "name": "Browsing plans",
+      "description": "Subscriber compares rates, data, device promos",
+      "touchpoints": [
+        "app",
+        "web",
+        "retail"
+      ]
+    },
+    {
+      "id": "quote",
+      "name": "Quote",
+      "description": "Prorate and promo eligibility calculated",
+      "touchpoints": [
+        "agent",
+        "app"
+      ]
+    },
+    {
+      "id": "committed",
+      "name": "Committed",
+      "description": "Change order accepted; cooling-off if required",
+      "touchpoints": [
+        "app",
+        "sms"
+      ]
+    },
+    {
+      "id": "provisioned",
+      "name": "Provisioned",
+      "description": "Rating and entitlements updated mid-cycle",
+      "touchpoints": [
+        "billing_system",
+        "provisioning"
+      ]
+    },
+    {
+      "id": "completed",
+      "name": "Completed",
+      "description": "Confirmation and first-cycle bill preview",
+      "touchpoints": [
+        "app",
+        "email"
+      ]
+    },
+    {
+      "id": "abandoned",
+      "name": "Abandoned",
+      "description": "Customer backs out before commit",
+      "touchpoints": [
+        "web",
+        "chat"
+      ]
+    }
+  ]
+}

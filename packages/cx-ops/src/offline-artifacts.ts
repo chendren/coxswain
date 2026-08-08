@@ -28,31 +28,43 @@ import {
 } from "@cox/cx-core";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { isTelcoIdea, seedTelcoDesignPack } from "./telco-design-pack";
 
 export interface OfflineArtifactsDeps {
   cxRoot: string;
   now: () => string;
   generate?: (prompt: string, tier: Tier) => Promise<string>;
   ontology?: CxOntology;
+  /** Prefer multi-journey telco pack when idea matches CSP language (default true). */
+  telcoPack?: boolean;
 }
 
 function dir(deps: OfflineArtifactsDeps, specName: string): string {
   return join(deps.cxRoot, specName, "artifacts");
 }
 
-function seedArtifacts(spec: CxSpec, ontology: CxOntology): CxArtifact[] {
+function seedArtifacts(spec: CxSpec, ontology: CxOntology, preferTelco = true): CxArtifact[] {
   const prov = {
     specName: spec.state.name,
     phase: "design" as const,
     targetId: "artifacts" as const,
   };
-  const idea = spec.requirements[0]?.text ?? spec.state.name;
+  const idea =
+    [spec.requirements.map((r) => r.text).join(" "), spec.state.name].filter(Boolean).join(" ") ||
+    spec.state.name;
+
+  // Rich multi-journey pack for typical telco / CSP programs
+  if (preferTelco && isTelcoIdea(idea)) {
+    return seedTelcoDesignPack(spec, ontology);
+  }
 
   const journeyMap: JourneyMap = {
     kind: "journeyMap",
     id: "billing_dispute",
     provenance: prov,
-    name: idea.includes("dispute") ? "Billing Dispute Resolution" : "Primary CX Journey",
+    name: idea.toLowerCase().includes("dispute")
+      ? "Billing Dispute Resolution"
+      : "Primary CX Journey",
     stages: [
       {
         id: "initiated",
@@ -158,27 +170,64 @@ export function createOfflineArtifactsAdapter(deps: OfflineArtifactsDeps): CxTar
     capabilities: () => ["build", "deploy", "status", "teardown"],
 
     async plan(spec: CxSpec): Promise<CxBuildPlan> {
+      const idea = (spec as { idea?: string }).idea ?? spec.requirements[0]?.text ?? "";
+      const telco = (deps.telcoPack !== false) && isTelcoIdea(`${idea} ${spec.state.name}`);
+      const steps = telco
+        ? [
+            "journeyMap:billing_dispute",
+            "journeyMap:technical_troubleshooting",
+            "journeyMap:churn_prevention",
+            "journeyMap:new_account_setup",
+            "journeyMap:service_upgrade",
+            "persona:price_sensitive",
+            "persona:sme",
+            "persona:fiber",
+            "persona:churn_risk",
+            "intentTaxonomy",
+            "nbaRuleSet",
+            "kpiFrame",
+            "architectureDoc",
+          ]
+        : [
+            "journeyMap",
+            "persona",
+            "intentTaxonomy",
+            "nbaRuleSet",
+            "kpiFrame",
+            "architectureDoc",
+          ];
       return {
         targetId: "artifacts",
         specName: spec.state.name,
-        steps: [
-          "journeyMap",
-          "persona",
-          "intentTaxonomy",
-          "nbaRuleSet",
-          "kpiFrame",
-          "architectureDoc",
-        ].map((kind) => ({
-          id: kind,
-          description: "offline deterministic seed",
-          producesArtifactKind: kind as CxArtifact["kind"],
+        steps: steps.map((id) => ({
+          id,
+          description: telco ? "offline telco design pack" : "offline deterministic seed",
+          producesArtifactKind: (id.includes(":")
+            ? id.split(":")[0]
+            : id) as CxArtifact["kind"],
         })),
       };
     },
 
     async build(plan: CxBuildPlan): Promise<CxArtifact[]> {
-      // Seed always; optional generate ignored for full determinism in offline path.
-      // Spec name recovered from plan.
+      // Prefer workspace idea when present so telco pack triggers correctly.
+      let ideaText = plan.specName;
+      try {
+        const raw = await readFile(
+          join(deps.cxRoot, plan.specName, "spec.json"),
+          "utf8",
+        );
+        const rec = JSON.parse(raw) as {
+          idea?: string;
+          spec?: { requirements?: { text: string }[] };
+        };
+        ideaText = [rec.idea, ...(rec.spec?.requirements?.map((r) => r.text) ?? [])]
+          .filter(Boolean)
+          .join(" ");
+      } catch {
+        /* offline unit tests may not have workspace */
+      }
+
       const fakeSpec: CxSpec = {
         state: {
           name: plan.specName,
@@ -187,9 +236,10 @@ export function createOfflineArtifactsAdapter(deps: OfflineArtifactsDeps): CxTar
           tasks: [],
           approvals: [],
         },
-        requirements: [{ id: "R1.1", text: plan.steps[0]?.description ?? plan.specName }],
+        requirements: [{ id: "R1.1", text: ideaText || plan.specName }],
       };
-      const seeded = seedArtifacts(fakeSpec, ontology);
+      const preferTelco = deps.telcoPack !== false;
+      const seeded = seedArtifacts(fakeSpec, ontology, preferTelco);
       const out: CxArtifact[] = [];
       for (const a of seeded) {
         if (a.kind === "kpiFrame" || a.kind === "intentTaxonomy") {

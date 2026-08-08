@@ -1,0 +1,20 @@
+{
+  "kind": "persona",
+  "id": "persona_price_sensitive_mobile",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "name": "Price-sensitive mobile subscriber",
+  "goals": [
+    "Predictable monthly bill",
+    "Easy plan comparison",
+    "Fast dispute resolution without store visit"
+  ],
+  "painPoints": [
+    "Surprise overage and promo cliffs",
+    "Long hold times for billing questions",
+    "Conflicting digital vs agent offers"
+  ]
+}

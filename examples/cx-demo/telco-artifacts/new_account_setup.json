@@ -1,0 +1,69 @@
+{
+  "kind": "journeyMap",
+  "id": "new_account_setup",
+  "provenance": {
+    "specName": "telco-core",
+    "phase": "design",
+    "targetId": "artifacts"
+  },
+  "name": "New Line / Account Activation",
+  "stages": [
+    {
+      "id": "started",
+      "name": "Order started",
+      "description": "New postpaid/prepaid order in digital or retail",
+      "touchpoints": [
+        "app",
+        "web",
+        "retail"
+      ]
+    },
+    {
+      "id": "identity_verified",
+      "name": "Identity verified",
+      "description": "KYC / credit / eligibility checks complete",
+      "touchpoints": [
+        "backoffice",
+        "app"
+      ]
+    },
+    {
+      "id": "provisioning",
+      "name": "Provisioning",
+      "description": "SIM/eSIM, number, and plan profile provisioned",
+      "touchpoints": [
+        "provisioning",
+        "sms"
+      ]
+    },
+    {
+      "id": "device_setup",
+      "name": "Device setup",
+      "description": "Handset or CPE activated; first-use guidance",
+      "touchpoints": [
+        "app",
+        "retail",
+        "chat"
+      ]
+    },
+    {
+      "id": "active",
+      "name": "Active",
+      "description": "Line live; welcome and first-bill education",
+      "touchpoints": [
+        "app",
+        "email",
+        "sms"
+      ]
+    },
+    {
+      "id": "abandoned",
+      "name": "Abandoned",
+      "description": "Order incomplete or cancelled pre-activation",
+      "touchpoints": [
+        "web",
+        "app"
+      ]
+    }
+  ]
+}
