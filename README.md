@@ -296,23 +296,38 @@ offline commands verified live.
 **Next (M3):** live-API smoke — `cox explain`, a `--print` run, one full
 spec flow against `examples/demo-project` — then `v0.1.0`.
 
-**CXOS (working loop):** closed-world ontology + strong graph, offline/live
-hybrid composition, ops orchestration, console proposals, CLI:
+### CXOS — Customer Experience Operating System
+
+Closed-world **build and operate** loop on top of `cox` (`pnpm cox cx …`):
+
+- **Catalog:** ontology, journeys, catalog browser, strong-graph find  
+- **Program:** multi-target build (`artifacts` → `local` → `aws` plan-only)  
+- **Operate:** console/watch/daemon propose → claim → task → done (human-gated)  
+- **Fleet:** board, queue, fleet-status, HTML dashboard  
+- **Govern:** brief, audit, cab-export, snapshot, archive/restore  
 
 ```bash
-pnpm cox cx doctor
-pnpm cox cx new billing-dispute "reduce dispute handle time"
-pnpm cox cx approve billing-dispute requirements
-pnpm cox cx build billing-dispute --target all          # offline default
-pnpm cox cx build billing-dispute --live --target all   # hybrid if platform/models up
-pnpm cox cx status billing-dispute
-pnpm cox cx simulate billing-dispute --target local
-pnpm cox cx report billing-dispute
-pnpm cox cx console billing-dispute                     # gated NBA proposals
-pnpm cox cx nba journey=churn_prevention stage=cancel_requested confidence=0.9
+# Offline golden path (any empty cwd for state)
+pnpm cox --cwd /tmp/cx-demo cx run billing "reduce dispute handle time" --target all
+pnpm cox --cwd /tmp/cx-demo cx board
+pnpm cox --cwd /tmp/cx-demo cx queue
+pnpm cox --cwd /tmp/cx-demo cx dashboard /tmp/cx-demo/ops.html
+pnpm cox --cwd /tmp/cx-demo cx cab-export billing
+
+# Telco multi-journey design pack (5 journeys, 4 personas, architecture)
+pnpm cox --cwd /tmp/telco cx run telco-core \
+  "Typical telco mobile and broadband CX: billing, outages, upgrades, activation, churn" \
+  --target artifacts
+# Sample checked in: examples/cx-demo/telco-artifacts/
+# Ready workspace repo: https://github.com/chendren/TelcoCXOS
 ```
 
-See `examples/cx-demo/README.md`. AWS remains plan-only (no live mutation).
+Live local stack (optional): `./scripts/cx-stack-up.sh` then `pnpm cox cx doctor --live`.
+
+**Hard rules:** offline-first; console proposes only; AWS is plan-only (never
+CreateStack from Coxswain). Maps: `docs/CXOS-COMPLETE.md`,
+`docs/CXOS-OPERATOR-RUNBOOK.md`, `docs/SUPERHEAVY-SUMMARY.md`,
+`examples/cx-demo/README.md`.
 
 **v2 candidates:** MCP servers (the tool registry is shaped for it),
 watch-mode daemon for agent hooks, Grok-style parallel subagent fan-out (the
