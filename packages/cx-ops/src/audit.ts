@@ -12,6 +12,8 @@ export interface CxAuditEvent {
   message: string;
   ref?: string;
   path?: string[];
+  /** Human operator identity (from --actor / CX_ACTOR). */
+  actor?: string;
 }
 
 export interface AuditDeps {
@@ -34,6 +36,7 @@ export async function appendAuditEvent(
     message: event.message,
     ref: event.ref,
     path: event.path,
+    actor: event.actor,
   };
   const dir = join(deps.cxRoot, event.specName);
   await mkdir(dir, { recursive: true });

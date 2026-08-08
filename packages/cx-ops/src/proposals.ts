@@ -23,6 +23,13 @@ export interface CxProposal {
   createdAt: string;
   updatedAt: string;
   path: string[];
+  /** Operator who claimed / applied (human identity). */
+  claimedBy?: string;
+  claimedAt?: string;
+  /** Operator who resolved or dismissed. */
+  resolvedBy?: string;
+  resolvedAt?: string;
+  dismissedBy?: string;
 }
 
 export interface ProposalStoreDeps {
@@ -159,6 +166,7 @@ export async function transitionProposal(
   specName: string,
   id: string,
   status: ProposalStatus,
+  opts?: { actor?: string },
 ): Promise<CxProposal | null> {
   const all = await loadProposals(deps, specName);
   const idx = all.findIndex((p) => p.id === id);
@@ -169,7 +177,21 @@ export async function transitionProposal(
       `illegal proposal transition ${current.status} → ${status} (id=${id})`,
     );
   }
-  const next = { ...current, status, updatedAt: deps.now() };
+  const now = deps.now();
+  const actor = opts?.actor?.trim() || undefined;
+  const next: CxProposal = { ...current, status, updatedAt: now };
+  if (status === "claimed" && actor) {
+    next.claimedBy = actor;
+    next.claimedAt = now;
+  }
+  if (status === "resolved" && actor) {
+    next.resolvedBy = actor;
+    next.resolvedAt = now;
+  }
+  if (status === "dismissed" && actor) {
+    next.dismissedBy = actor;
+    next.resolvedAt = now;
+  }
   all[idx] = next;
   await saveProposals(deps, specName, all);
   return next;

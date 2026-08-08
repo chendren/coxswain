@@ -22,7 +22,7 @@ import {
   createOfflineArtifactsAdapter,
   createOfflineAwsAdapter,
   createOfflineLocalAdapter,
-  defaultCxRoot,
+  resolveCxRoot,
   extractJsonText,
   type OrchestratorAdapters,
   type CxWorkspaceDeps,
@@ -163,7 +163,7 @@ export async function createCxRuntime(opts: CxRuntimeOpts): Promise<CxRuntime> {
   const path: string[] = ["load_config"];
   const cfg = opts.config ?? loadConfig(opts.cwd);
   const now = opts.now ?? (() => new Date().toISOString());
-  const cxRoot = defaultCxRoot(opts.cwd);
+  const cxRoot = resolveCxRoot(opts.cwd);
   const mode: CxRuntimeMode = opts.mode ?? (opts.tierModel ? "hybrid" : "offline");
   const pack = opts.pack ?? "local";
   const ontology = pack === "default" ? DEFAULT_ONTOLOGY : LOCAL_PLATFORM_ONTOLOGY;
@@ -293,7 +293,7 @@ export async function createCxRuntime(opts: CxRuntimeOpts): Promise<CxRuntime> {
 /** Sync offline-only factory for tests that cannot await. */
 export function createOfflineCxRuntime(opts: Omit<CxRuntimeOpts, "mode">): CxRuntime {
   const now = opts.now ?? (() => new Date().toISOString());
-  const cxRoot = defaultCxRoot(opts.cwd);
+  const cxRoot = resolveCxRoot(opts.cwd);
   const pack = opts.pack ?? "local";
   const ontology = pack === "default" ? DEFAULT_ONTOLOGY : LOCAL_PLATFORM_ONTOLOGY;
   const generate = opts.tierModel
@@ -342,5 +342,5 @@ export function requireAdapter(
 }
 
 export function runtimeCxRoot(cwd: string): string {
-  return join(defaultCxRoot(cwd));
+  return resolveCxRoot(cwd);
 }

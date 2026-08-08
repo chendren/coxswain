@@ -64,6 +64,13 @@ import {
   renderOpsDashboardHtml,
   lookupStrongNode,
   proposalUrgencyScore,
+  notifyWebhook,
+  seedOperateDrill,
+  appendDeployHistory,
+  loadDeployHistory,
+  checkAwsDrift,
+  exportBoardSync,
+  importBoardSync,
   type OntologyPack,
   type CxPhase,
   type ProposalStatus,
@@ -89,6 +96,13 @@ export interface CxCommandContext {
   live?: boolean;
   /** Prefer hybrid without an explicit --live (also CX_AUTO_LIVE=1). */
   autoLive?: boolean;
+  /** Operator identity for claim/close/audit (also CX_ACTOR). */
+  actor?: string;
+}
+
+function actorOf(ctx: CxCommandContext): string | undefined {
+  const a = (ctx.actor ?? process.env.CX_ACTOR ?? "").trim();
+  return a || undefined;
 }
 
 function packOf(raw?: string): OntologyPack {
@@ -376,10 +390,21 @@ export async function runCxStatus(
   ctx.write(
     `summary score: ${summary.score} (healthy=${summary.healthy} degraded=${summary.degraded} down=${summary.down} errors=${summary.errors})`,
   );
-  await appendHealthSample(rt.workspace, name, entries);
+  const sample = await appendHealthSample(rt.workspace, name, entries);
   const hist = await loadHealthHistory(rt.workspace, name, 5);
   if (hist.length > 1) {
     ctx.write(`health history (last ${hist.length}): ${hist.map((h) => h.score).join(" → ")}`);
+    const prev = hist[hist.length - 2]!;
+    if (sample.score < prev.score) {
+      const n = await notifyWebhook({
+        event: "health.score_drop",
+        specName: name,
+        message: `score ${prev.score} → ${sample.score}`,
+        actor: actorOf(ctx),
+        extra: { previous: prev.score, current: sample.score },
+      });
+      if (n.sent) ctx.write(`notify webhook score_drop status=${n.status ?? "?"}`);
+    }
   }
   ctx.write(`path: ${formatPathAudit(result.path)}`);
   return result.ok ? 0 : 1;
@@ -438,6 +463,13 @@ export async function runCxBuild(
       );
     }
   }
+  await appendDeployHistory(rt.workspace, name, {
+    targets: targets.map(String),
+    ok: result.ok,
+    mode: rt.mode,
+    actor: actorOf(ctx),
+    note: deploy ? "build+deploy" : "build",
+  });
   ctx.write(`ok=${result.ok}`);
   ctx.write(`path: ${result.path.join(" → ")}`);
   return result.ok ? 0 : 1;
@@ -863,7 +895,16 @@ export async function runCxConsole(
         message: p.summary,
         ref: p.id,
         path: p.path,
+        actor: actorOf(ctx),
       });
+      const n = await notifyWebhook({
+        event: "proposal.opened",
+        specName: name,
+        message: p.summary,
+        ref: p.id,
+        actor: actorOf(ctx),
+      });
+      if (n.sent) ctx.write(`  notify webhook status=${n.status ?? "?"}`);
     }
   } else {
     ctx.write("(no new proposals to persist)");
@@ -978,13 +1019,22 @@ export async function runCxProposalTransition(
   status: ProposalStatus,
 ): Promise<number> {
   const rt = await runtimeFrom(ctx);
+  const actor = actorOf(ctx);
   try {
-    const next = await transitionProposal(rt.workspace, name, id, status);
+    const next = await transitionProposal(rt.workspace, name, id, status, { actor });
     if (!next) {
       ctx.write(`proposal ${id} not found`);
       return 1;
     }
-    ctx.write(`${next.id} → ${next.status}`);
+    ctx.write(`${next.id} → ${next.status}${actor ? ` by ${actor}` : ""}`);
+    await appendAuditEvent(rt.workspace, {
+      kind: "proposal_transition",
+      specName: name,
+      message: `${id} → ${status}`,
+      ref: id,
+      actor,
+      path: ["load_proposals", `transition:${status}`, "emit"],
+    });
     ctx.write(`path: load_proposals → transition:${status} → emit`);
     return 0;
   } catch (e) {
@@ -1092,9 +1142,10 @@ export async function runCxApply(
   ctx: CxCommandContext,
   name: string,
   proposalId: string,
-  opts?: { resolve?: boolean },
+  opts?: { resolve?: boolean; actor?: string },
 ): Promise<number> {
   const rt = await runtimeFrom(ctx);
+  const actor = opts?.actor ?? actorOf(ctx);
   const proposals = await loadProposals(rt.workspace, name);
   const prop = proposals.find((p) => p.id === proposalId);
   if (!prop) {
@@ -1108,22 +1159,24 @@ export async function runCxApply(
   try {
     const result = await applyProposal(rt.workspace, name, prop, {
       resolve: Boolean(opts?.resolve),
+      actor,
     });
     await appendAuditEvent(rt.workspace, {
       kind: "proposal_applied",
       specName: name,
-      message: `task=${result.task.id} resolve=${Boolean(opts?.resolve)}`,
+      message: `task=${result.task.id} resolve=${Boolean(opts?.resolve)} actor=${actor ?? "-"}`,
       ref: proposalId,
       path: result.path,
+      actor,
     });
     ctx.write(
-      `applied ${proposalId} → task ${result.task.id} (proposal → ${opts?.resolve ? "resolved" : "claimed"})`,
+      `applied ${proposalId} → task ${result.task.id} (proposal → ${opts?.resolve ? "resolved" : "claimed"})${actor ? ` by ${actor}` : ""}`,
     );
     ctx.write(`remediation: ${result.remediationPath}`);
     ctx.write(`path: ${result.path.join(" → ")}`);
     ctx.write(`next: cox cx task ${name} ${result.task.id} in_progress`);
     if (!opts?.resolve) {
-      ctx.write(`next: cox cx task ${name} ${result.task.id} done  # auto-resolves proposal`);
+      ctx.write(`next: cox cx task ${name} ${result.task.id} done --evidence "…"  # auto-resolves proposal`);
       ctx.write(`next: cox cx proposal ${name} ${proposalId} resolved`);
     }
     return 0;
@@ -1174,26 +1227,32 @@ export async function runCxTaskTransition(
   name: string,
   taskId: string,
   status: "pending" | "in_progress" | "done" | "cancelled",
-  opts?: { resolveSource?: boolean },
+  opts?: { resolveSource?: boolean; actor?: string; evidence?: string; evidenceUrl?: string },
 ): Promise<number> {
   const rt = await runtimeFrom(ctx);
+  const actor = opts?.actor ?? actorOf(ctx);
   const next = await transitionTask(rt.workspace, name, taskId, status, {
     resolveSource: opts?.resolveSource,
+    actor,
+    evidence: opts?.evidence,
+    evidenceUrl: opts?.evidenceUrl,
   });
   if (!next) {
     ctx.write(`task ${taskId} not found`);
     return 1;
   }
-  ctx.write(`${next.id} → ${next.status}`);
+  ctx.write(`${next.id} → ${next.status}${actor ? ` by ${actor}` : ""}`);
+  if (opts?.evidence) ctx.write(`evidence: ${opts.evidence}`);
   if (status === "done" && next.sourceProposalId && opts?.resolveSource !== false) {
     ctx.write(`source proposal ${next.sourceProposalId} → resolved (default)`);
   }
   await appendAuditEvent(rt.workspace, {
     kind: "task_transition",
     specName: name,
-    message: `${taskId} → ${status}`,
+    message: `${taskId} → ${status}${opts?.evidence ? ` evidence=${opts.evidence.slice(0, 80)}` : ""}`,
     ref: taskId,
     path: ["load_tasks", `transition:${status}`, "emit"],
+    actor,
   });
   ctx.write(`path: load_tasks → transition:${status} → emit`);
   return 0;
@@ -1349,7 +1408,7 @@ export async function runCxClaim(
   ctx: CxCommandContext,
   name: string,
   proposalId: string,
-  opts?: { resolve?: boolean },
+  opts?: { resolve?: boolean; actor?: string },
 ): Promise<number> {
   return runCxApply(ctx, name, proposalId, opts);
 }
@@ -1599,6 +1658,135 @@ export async function runCxGraphFind(
     ctx.write("(no matches — try a domain, journey, or intent fragment)");
   }
   ctx.write(`path: ${result.path.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxSeedOperate(
+  ctx: CxCommandContext,
+  name: string,
+  opts?: { force?: boolean },
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const rec = await loadCxWorkspace(rt.workspace, name);
+  if (!rec) {
+    ctx.write(`CX spec "${name}" not found`);
+    return 1;
+  }
+  const r = await seedOperateDrill(rt.workspace, name, { force: opts?.force });
+  if (r.added.length === 0) {
+    ctx.write(`seed-operate: skipped (already ${r.skipped} open/claimed proposals; use --force)`);
+    return 0;
+  }
+  for (const p of r.added) {
+    ctx.write(`+ ${p.id} [${p.kind}] ${p.summary}`);
+    await notifyWebhook({
+      event: "proposal.opened",
+      specName: name,
+      message: p.summary,
+      ref: p.id,
+      actor: actorOf(ctx),
+    });
+  }
+  await appendAuditEvent(rt.workspace, {
+    kind: "seed_operate",
+    specName: name,
+    message: `added=${r.added.length}`,
+    actor: actorOf(ctx),
+    path: r.path,
+  });
+  ctx.write(`seeded ${r.added.length} open proposal(s)`);
+  ctx.write(`next: cox cx queue`);
+  ctx.write(`next: cox cx claim ${name} ${r.added[0]!.id}`);
+  ctx.write(`path: ${r.path.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxDrift(
+  ctx: CxCommandContext,
+  name: string,
+  opts?: { skipLive?: boolean },
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const r = await checkAwsDrift(rt.workspace.cxRoot, name, {
+    skipLive: opts?.skipLive,
+  });
+  ctx.write(`aws-drift ${name}`);
+  ctx.write(`local_template=${r.hasLocalTemplate} format_ok=${r.localHasAwsTemplateFormatVersion}`);
+  ctx.write(`stack=${r.stackName} live_checked=${r.liveChecked} drift=${r.drift}`);
+  ctx.write(r.message);
+  if (r.error) ctx.write(`error: ${r.error}`);
+  ctx.write(`path: ${r.path.join(" → ")}`);
+  return r.hasLocalTemplate ? 0 : 1;
+}
+
+export async function runCxSyncExport(
+  ctx: CxCommandContext,
+  outFile?: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const file = outFile?.trim() || "cx-board-sync.json";
+  const r = await exportBoardSync(rt.workspace, file, ctx.cwd);
+  ctx.write(`board-sync exported specs=${r.specs}`);
+  ctx.write(`file: ${r.file}`);
+  ctx.write(`path: ${r.path.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxSyncImport(
+  ctx: CxCommandContext,
+  inFile: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  try {
+    const r = await importBoardSync(rt.workspace, inFile, ctx.cwd);
+    ctx.write(
+      `board-sync imported specs=${r.specs} proposals=${r.proposals} tasks=${r.tasks}`,
+    );
+    ctx.write(`path: ${r.path.join(" → ")}`);
+    return 0;
+  } catch (e) {
+    ctx.write(e instanceof Error ? e.message : String(e));
+    return 1;
+  }
+}
+
+export async function runCxDeployHistory(
+  ctx: CxCommandContext,
+  name: string,
+  limitRaw?: string,
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const limit = Math.max(1, Number(limitRaw ?? 20) || 20);
+  const rows = await loadDeployHistory(rt.workspace, name, limit);
+  if (rows.length === 0) {
+    ctx.write(`(no deploy history for ${name})`);
+    return 0;
+  }
+  ctx.write(`deploy-history ${name} (last ${rows.length})`);
+  for (const r of rows) {
+    ctx.write(
+      `${r.at}  ok=${r.ok} targets=${r.targets.join(",")} mode=${r.mode ?? "-"} actor=${r.actor ?? "-"} ${r.note ?? ""}`,
+    );
+  }
+  ctx.write(`path: load_deploy_history → emit`);
+  return 0;
+}
+
+/**
+ * Incident one-shot: status → seed if empty → operate/console → queue summary.
+ */
+export async function runCxIncident(
+  ctx: CxCommandContext,
+  name: string,
+  targetsRaw?: string,
+): Promise<number> {
+  ctx.write(`CXOS incident ${name}`);
+  await runCxStatus(ctx, name, targetsRaw ?? "all");
+  await runCxSeedOperate(ctx, name, {});
+  await runCxOperate(ctx, name, targetsRaw);
+  await runCxQueue(ctx);
+  ctx.write(`incident loop complete — claim with: cox cx claim ${name} <propId> --actor you@org`);
+  ctx.write(`path: status → seed_operate → operate → queue → emit`);
   return 0;
 }
 

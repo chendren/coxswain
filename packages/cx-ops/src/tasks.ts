@@ -9,6 +9,13 @@ import { transitionProposal, type ProposalStoreDeps } from "./proposals";
 
 export type CxTaskStatus = "pending" | "in_progress" | "done" | "cancelled";
 
+export interface TaskEvidence {
+  at: string;
+  note: string;
+  by?: string;
+  url?: string;
+}
+
 export interface CxTask {
   id: string;
   specName: string;
@@ -21,6 +28,13 @@ export interface CxTask {
   createdAt: string;
   updatedAt: string;
   path: string[];
+  /** Operator who applied / owns the task. */
+  assignedTo?: string;
+  /** Operator who marked done/cancelled. */
+  closedBy?: string;
+  closedAt?: string;
+  /** Human verify-back notes (proof of work outside CXOS). */
+  evidence?: TaskEvidence[];
 }
 
 function tasksPath(deps: ProposalStoreDeps, specName: string): string {
@@ -99,7 +113,7 @@ export async function applyProposal(
   deps: ProposalStoreDeps,
   specName: string,
   proposal: CxProposal,
-  opts?: { resolve?: boolean },
+  opts?: { resolve?: boolean; actor?: string },
 ): Promise<{ path: string[]; task: CxTask; remediationPath: string }> {
   const path = ["load_tasks", "apply_proposal", "write_remediation", "transition_proposal", "emit"];
   if (proposal.status === "resolved" || proposal.status === "dismissed") {
@@ -107,6 +121,7 @@ export async function applyProposal(
   }
   const now = deps.now();
   const tasks = await loadCxTasks(deps, specName);
+  const actor = opts?.actor?.trim() || undefined;
 
   const task: CxTask = {
     id: `task_${now.replace(/[^0-9]/g, "").slice(0, 14)}_${tasks.length}`,
@@ -120,6 +135,7 @@ export async function applyProposal(
     createdAt: now,
     updatedAt: now,
     path: [...proposal.path, "applied_to_task"],
+    assignedTo: actor,
   };
   tasks.push(task);
   await saveCxTasks(deps, specName, tasks);
@@ -157,7 +173,7 @@ export async function applyProposal(
 
   // resolve:true → resolved; default → claimed (human still owns close-out)
   const nextStatus = opts?.resolve ? "resolved" : "claimed";
-  await transitionProposal(deps, specName, proposal.id, nextStatus);
+  await transitionProposal(deps, specName, proposal.id, nextStatus, { actor });
 
   return { path, task, remediationPath };
 }
@@ -167,13 +183,28 @@ export async function transitionTask(
   specName: string,
   taskId: string,
   status: CxTaskStatus,
-  opts?: { resolveSource?: boolean },
+  opts?: { resolveSource?: boolean; actor?: string; evidence?: string; evidenceUrl?: string },
 ): Promise<CxTask | null> {
   const tasks = await loadCxTasks(deps, specName);
   const idx = tasks.findIndex((t) => t.id === taskId);
   if (idx < 0) return null;
   const current = tasks[idx]!;
-  const next = { ...current, status, updatedAt: deps.now() };
+  const now = deps.now();
+  const actor = opts?.actor?.trim() || undefined;
+  const next: CxTask = { ...current, status, updatedAt: now };
+  if (opts?.evidence?.trim()) {
+    const ev = {
+      at: now,
+      note: opts.evidence.trim(),
+      by: actor,
+      url: opts.evidenceUrl?.trim() || undefined,
+    };
+    next.evidence = [...(current.evidence ?? []), ev];
+  }
+  if ((status === "done" || status === "cancelled") && actor) {
+    next.closedBy = actor;
+    next.closedAt = now;
+  }
   tasks[idx] = next;
   await saveCxTasks(deps, specName, tasks);
 
@@ -181,7 +212,9 @@ export async function transitionTask(
   const resolveSource = opts?.resolveSource !== false;
   if (status === "done" && resolveSource && current.sourceProposalId) {
     try {
-      await transitionProposal(deps, specName, current.sourceProposalId, "resolved");
+      await transitionProposal(deps, specName, current.sourceProposalId, "resolved", {
+        actor,
+      });
     } catch {
       // Proposal may already be resolved/dismissed; task transition still succeeds.
     }

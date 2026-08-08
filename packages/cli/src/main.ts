@@ -63,6 +63,12 @@ import {
   runCxQueue,
   runCxDashboard,
   runCxGraphFind,
+  runCxSeedOperate,
+  runCxDrift,
+  runCxSyncExport,
+  runCxSyncImport,
+  runCxDeployHistory,
+  runCxIncident,
   type CxCommandContext,
 } from "./commands/cx";
 import { loadDeps, type LoadedDeps } from "./deps";
@@ -357,9 +363,10 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       mode?: string;
       localBaseUrl?: string;
       autoLive?: boolean;
+      actor?: string;
     },
   ): Promise<CxCommandContext> {
-    const opts = command.optsWithGlobals<GlobalOpts>();
+    const opts = command.optsWithGlobals<GlobalOpts & { actor?: string }>();
     const cwd = resolveCwd(opts);
     const cfg = loadConfig(cwd);
     const autoLive =
@@ -396,6 +403,8 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     // (createCxRuntime also resolveLocalBaseUrl as a backstop).
     const localBaseUrl =
       extra?.localBaseUrl ?? cfg.cx.targets.local?.baseUrl;
+    const actor =
+      (extra?.actor ?? opts.actor ?? process.env.CX_ACTOR ?? "").trim() || undefined;
     return {
       cwd,
       write,
@@ -405,6 +414,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
       localBaseUrl,
       live: Boolean(extra?.live),
       autoLive,
+      actor,
     };
   }
 
@@ -722,13 +732,15 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     cx
       .command("apply <name> <proposalId>")
       .description("apply proposal → CX task + remediation note (human-gated)")
-      .option("--resolve", "mark proposal resolved (default: claimed)"),
+      .option("--resolve", "mark proposal resolved (default: claimed)")
+      .option("--actor <id>", "operator identity (or CX_ACTOR)"),
   ).action(async (name: string, proposalId: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
-    const opts = command.optsWithGlobals<CxCmdOpts & { resolve?: boolean }>();
+    const opts = command.optsWithGlobals<CxCmdOpts & { resolve?: boolean; actor?: string }>();
     throw new CliExit(
-      await runCxApply(await cxCtx(command, f.pack, f), name, proposalId, {
+      await runCxApply(await cxCtx(command, f.pack, { ...f, actor: opts.actor }), name, proposalId, {
         resolve: Boolean(opts.resolve),
+        actor: opts.actor,
       }),
     );
   });
@@ -758,23 +770,38 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     cx
       .command("task <name> <id> <status>")
       .description("transition task: pending|in_progress|done|cancelled (done resolves source proposal)")
-      .option("--no-resolve-source", "do not auto-resolve linked proposal on done"),
+      .option("--no-resolve-source", "do not auto-resolve linked proposal on done")
+      .option("--actor <id>", "operator identity (or CX_ACTOR)")
+      .option("--evidence <note>", "verify-back note when closing")
+      .option("--evidence-url <url>", "optional evidence URL"),
   ).action(async (name: string, id: string, status: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     const allowed = ["pending", "in_progress", "done", "cancelled"] as const;
     if (!(allowed as readonly string[]).includes(status)) {
       throw new CliExit(2, `status must be one of ${allowed.join("|")}`);
     }
-    const opts = command.optsWithGlobals<CxCmdOpts & { resolveSource?: boolean }>();
+    const opts = command.optsWithGlobals<
+      CxCmdOpts & {
+        resolveSource?: boolean;
+        actor?: string;
+        evidence?: string;
+        evidenceUrl?: string;
+      }
+    >();
     // commander --no-resolve-source sets resolveSource=false when present
     const resolveSource = opts.resolveSource === false ? false : undefined;
     throw new CliExit(
       await runCxTaskTransition(
-        await cxCtx(command, f.pack, f),
+        await cxCtx(command, f.pack, { ...f, actor: opts.actor }),
         name,
         id,
         status as (typeof allowed)[number],
-        { resolveSource },
+        {
+          resolveSource,
+          actor: opts.actor,
+          evidence: opts.evidence,
+          evidenceUrl: opts.evidenceUrl,
+        },
       ),
     );
   });
@@ -865,14 +892,21 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     cx
       .command("claim <name> <proposalId>")
       .description("alias for apply (ops claim language)")
-      .option("--resolve", "mark proposal resolved after apply"),
+      .option("--resolve", "mark proposal resolved after apply")
+      .option("--actor <id>", "operator identity (or CX_ACTOR)"),
   ).action(async (name: string, proposalId: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
-    const opts = command.optsWithGlobals<CxCmdOpts & { resolve?: boolean }>();
+    const opts = command.optsWithGlobals<CxCmdOpts & { resolve?: boolean; actor?: string }>();
     throw new CliExit(
-      await runCxClaim(await cxCtx(command, f.pack, f), name, proposalId, {
-        resolve: Boolean(opts.resolve),
-      }),
+      await runCxClaim(
+        await cxCtx(command, f.pack, { ...f, actor: opts.actor }),
+        name,
+        proposalId,
+        {
+          resolve: Boolean(opts.resolve),
+          actor: opts.actor,
+        },
+      ),
     );
   });
 
@@ -976,6 +1010,82 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   ).action(async (query: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     throw new CliExit(await runCxGraphFind(await cxCtx(command, f.pack, f), query, f.pack));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("seed-operate <name>")
+      .description("seed open proposals for operate drills (skip if open work exists)")
+      .option("--force", "re-seed even if open proposals exist"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { force?: boolean }>();
+    throw new CliExit(
+      await runCxSeedOperate(await cxCtx(command, f.pack, f), name, { force: opts.force }),
+    );
+  });
+
+  addGlobalOptions(
+    cx
+      .command("aws-drift <name>")
+      .description("read-only: local CFN plan vs live stack (never mutates AWS)")
+      .option("--skip-live", "only check local template.yaml"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { skipLive?: boolean }>();
+    throw new CliExit(
+      await runCxDrift(await cxCtx(command, f.pack, f), name, { skipLive: opts.skipLive }),
+    );
+  });
+
+  addGlobalOptions(
+    cx
+      .command("sync-export [outFile]")
+      .description("export fleet proposals/tasks JSON for multi-host handoff"),
+  ).action(async (outFile: string | undefined, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxSyncExport(await cxCtx(command, f.pack, f), outFile));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("sync-import <inFile>")
+      .description("import/merge fleet proposals/tasks from board-sync JSON"),
+  ).action(async (inFile: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxSyncImport(await cxCtx(command, f.pack, f), inFile));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("deploy-history <name>")
+      .description("show build/deploy history samples")
+      .option("--limit <n>", "max rows", "20"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { limit?: string }>();
+    throw new CliExit(await runCxDeployHistory(await cxCtx(command, f.pack, f), name, opts.limit));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("incident <name>")
+      .description("one-shot: status → seed-operate → operate → queue")
+      .option("--target <list>", "targets for status/operate", "all")
+      .option("--live", "prefer live platform")
+      .option("--auto-live", "hybrid without --live")
+      .option("--base-url <url>", "local platform base URL")
+      .option("--actor <id>", "operator identity"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { actor?: string }>();
+    throw new CliExit(
+      await runCxIncident(
+        await cxCtx(command, f.pack, { ...f, actor: opts.actor }),
+        name,
+        f.target,
+      ),
+    );
   });
 
   return program;
