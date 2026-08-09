@@ -11,6 +11,8 @@
     { "path": "packages/hooks" },
     { "path": "packages/tui" },
     { "path": "packages/cx-core" },
+    { "path": "packages/cx-pack-registry" },
+    { "path": "packages/cx-pack-retail" },
     { "path": "packages/cx-artifacts" },
     { "path": "packages/cx-aws" },
     { "path": "packages/cx-local" },

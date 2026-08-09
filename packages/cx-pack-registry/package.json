@@ -1,12 +1,10 @@
 {
-  "name": "@cox/cx-ops",
+  "name": "@cox/cx-pack-registry",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": {
-    ".": "./dist/index.js"
-  },
+  "exports": { ".": "./dist/index.js" },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -15,14 +13,10 @@
   },
   "dependencies": {
     "@cox/core": "workspace:*",
-    "@cox/cx-core": "workspace:*",
-    "@cox/cx-pack-registry": "workspace:*",
-    "@cox/cx-pack-retail": "workspace:*"
+    "@cox/cx-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0"
   },
-  "files": [
-    "dist"
-  ]
+  "files": ["dist"]
 }

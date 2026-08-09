@@ -29,6 +29,8 @@ import {
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { isTelcoIdea, seedTelcoDesignPack } from "./telco-design-pack";
+import { detectPack } from "@cox/cx-pack-registry";
+import { seedRetailDesignPack } from "@cox/cx-pack-retail";
 
 export interface OfflineArtifactsDeps {
   cxRoot: string;
@@ -53,8 +55,13 @@ function seedArtifacts(spec: CxSpec, ontology: CxOntology, preferTelco = true): 
     [spec.requirements.map((r) => r.text).join(" "), spec.state.name].filter(Boolean).join(" ") ||
     spec.state.name;
 
-  // Rich multi-journey pack for typical telco / CSP programs
-  if (preferTelco && isTelcoIdea(idea)) {
+  // Domain packs via registry (retail first, then telco legacy)
+  const pack = detectPack(idea);
+  if (pack === "retail") {
+    return seedRetailDesignPack(spec, ontology);
+  }
+  // Rich multi-journey pack for typical telco / CSP programs (legacy)
+  if (preferTelco && pack === "telco" && isTelcoIdea(idea)) {
     return seedTelcoDesignPack(spec, ontology);
   }
 
