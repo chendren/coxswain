@@ -8,6 +8,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CxTargetId } from "@cox/cx-core";
 import type { ConsoleProposal } from "./console";
+import { getCxDb, isSqliteEnabled } from "./sqlite.js";
 
 export type ProposalStatus = "open" | "claimed" | "resolved" | "dismissed";
 
@@ -45,6 +46,36 @@ export async function loadProposals(
   deps: ProposalStoreDeps,
   specName: string,
 ): Promise<CxProposal[]> {
+  if (isSqliteEnabled()) {
+    try {
+      const db = getCxDb(deps.cxRoot);
+      const rows = db
+        .prepare<{ id: string; spec_name: string; target_id: string; kind: string; summary: string; nba_action: string | null; nba_rule_id: string | null; status: string; created_at: string; updated_at: string; path_json: string | null; claimed_by: string | null; claimed_at: string | null; resolved_by: string | null; resolved_at: string | null; dismissed_by: string | null }>(
+          "SELECT * FROM proposals WHERE spec_name = ? ORDER BY created_at ASC",
+        )
+        .all(specName);
+      return rows.map((r) => ({
+        id: r.id,
+        specName: r.spec_name,
+        targetId: r.target_id as CxTargetId,
+        kind: r.kind as ConsoleProposal["kind"],
+        summary: r.summary,
+        nbaAction: r.nba_action ?? undefined,
+        nbaRuleId: r.nba_rule_id ?? undefined,
+        status: r.status as ProposalStatus,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+        path: r.path_json ? JSON.parse(r.path_json) : [],
+        claimedBy: r.claimed_by ?? undefined,
+        claimedAt: r.claimed_at ?? undefined,
+        resolvedBy: r.resolved_by ?? undefined,
+        resolvedAt: r.resolved_at ?? undefined,
+        dismissedBy: r.dismissed_by ?? undefined,
+      }));
+    } catch {
+      return [];
+    }
+  }
   try {
     const raw = await readFile(storePath(deps, specName), "utf8");
     const data = JSON.parse(raw) as { proposals?: CxProposal[] };
@@ -59,6 +90,42 @@ async function saveProposals(
   specName: string,
   proposals: CxProposal[],
 ): Promise<void> {
+  if (isSqliteEnabled()) {
+    const db = getCxDb(deps.cxRoot);
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("DELETE FROM proposals WHERE spec_name = ?").run(specName);
+      for (const p of proposals) {
+        db.prepare(
+          "INSERT INTO proposals (id, spec_name, target_id, kind, summary, nba_action, nba_rule_id, status, created_at, updated_at, path_json, claimed_by, claimed_at, resolved_by, resolved_at, dismissed_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ).run(
+          p.id,
+          p.specName,
+          p.targetId,
+          p.kind,
+          p.summary,
+          p.nbaAction ?? null,
+          p.nbaRuleId ?? null,
+          p.status,
+          p.createdAt,
+          p.updatedAt,
+          JSON.stringify(p.path),
+          p.claimedBy ?? null,
+          p.claimedAt ?? null,
+          p.resolvedBy ?? null,
+          p.resolvedAt ?? null,
+          p.dismissedBy ?? null,
+        );
+      }
+      db.exec("COMMIT");
+    } catch (e) {
+      try {
+        db.exec("ROLLBACK");
+      } catch {}
+      throw e;
+    }
+    return;
+  }
   const dir = join(deps.cxRoot, specName);
   await mkdir(dir, { recursive: true });
   await writeFile(
