@@ -65,6 +65,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -99,3 +100,27 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+          sbom: true
+          provenance: mode=max
+
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          npm install -g @cyclonedx/cyclonedx-npm@latest
+          cyclonedx-npm --output-file bom.json --output-format JSON --package-lock-only false || npx --yes @cyclonedx/cyclonedx-npm --output-file bom.json --output-format JSON
+          ls -lh bom.json
+          echo "--- SBOM preview (first 2000 chars) ---"
+          head -c 2000 bom.json; echo
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: bom.json
+          retention-days: 30
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@v2
+        if: hashFiles('bom.json') != ''
+        with:
+          subject-path: bom.json
+          sbom-path: bom.json
