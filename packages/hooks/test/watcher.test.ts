@@ -97,6 +97,10 @@ afterEach(async () => {
     } catch {}
   }
   tmpDirs.clear();
+  // Give FSEvents a tick to release the underlying handle before the
+  // next test creates its own recursive watch (EMFILE mitigation on macOS
+  // where ulimit -n is 256 by default).
+  await new Promise((r) => setTimeout(r, 150));
 });
 
 function collector(): { triggers: { hook: string; file: string }[]; onTrigger: (hook: { name: string }, file: string) => void } {

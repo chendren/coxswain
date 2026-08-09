@@ -4,6 +4,10 @@ export default defineConfig({
   test: {
     exclude: ["node_modules/**", "dist/**", "coverage/**", ".cox/**"],
     environment: "node",
+    fileParallelism: false,
+    sequence: { concurrent: false },
+    pool: "forks",
+    poolOptions: { forks: { singleFork: true } },
     coverage: {
       provider: "c8",
       reporter: ["text", "lcov", "html", "json-summary"],
