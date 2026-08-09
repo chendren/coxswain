@@ -84,12 +84,19 @@ function startWatching(
   cwd: string,
   onEvent: (eventType: string, filename: string | Buffer | null) => void,
 ): FSWatcher {
+  let watcher: FSWatcher;
   try {
-    return watch(cwd, { recursive: true }, onEvent);
+    watcher = watch(cwd, { recursive: true }, onEvent);
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ERR_FEATURE_UNAVAILABLE_ON_PLATFORM") {
-      return watch(cwd, { recursive: false }, onEvent);
+      watcher = watch(cwd, { recursive: false }, onEvent);
+    } else {
+      throw err;
     }
-    throw err;
   }
+  // Prevent EMFILE (too many open files) from crashing the process when
+  // the OS limit is hit — tests and the afterEach cleanup close the handle
+  // promptly, but FSEvents may emit 'error' asynchronously before that.
+  watcher.on("error", () => {});
+  return watcher;
 }
