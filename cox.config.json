@@ -1,0 +1,25 @@
+{
+  "providers": {
+    "anthropic": { "apiKeyEnv": "ANTHROPIC_API_KEY" },
+    "openaiCompat": [
+      {
+        "id": "ollama",
+        "baseUrl": "http://localhost:11434/v1",
+        "models": ["qwen3:8b", "qwen3:32b", "qwen3:32b-instruct-q8_0", "qwen2.5-coder:32b", "qwen2.5:32b"]
+      }
+    ]
+  },
+  "tiers": {
+    "scout": { "primary": { "provider": "ollama", "model": "qwen3:8b" }, "fallbacks": [{ "provider": "ollama", "model": "qwen3:32b" }] },
+    "builder": { "primary": { "provider": "ollama", "model": "qwen3:32b" }, "fallbacks": [] },
+    "architect": { "primary": { "provider": "ollama", "model": "qwen3:32b" }, "fallbacks": [] }
+  },
+  "routing": {
+    "classifyWithScout": false,
+    "defaultTier": "builder",
+    "announce": true
+  },
+  "budgets": { "sessionUsd": 5, "specUsd": 2, "warnAt": 0.8, "hardStop": true },
+  "permissions": { "mode": "default", "allowBash": ["git status", "pnpm test"], "denyBash": ["rm -rf"] },
+  "steering": { "importCompat": true, "warnTokens": 2000 }
+}
