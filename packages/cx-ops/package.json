@@ -18,6 +18,8 @@
     "@cox/cx-core": "workspace:*",
     "@cox/cx-pack-registry": "workspace:*",
     "@cox/cx-pack-retail": "workspace:*",
+    "@cox/cx-pack-financial": "workspace:*",
+    "@cox/cx-pack-healthcare": "workspace:*",
     "@cox/cx-journey": "workspace:*",
     "@cox/cx-knowledge": "workspace:*"
   },

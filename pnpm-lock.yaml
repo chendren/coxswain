@@ -251,12 +251,44 @@ importers:
       '@cox/cx-knowledge':
         specifier: workspace:*
         version: link:../cx-knowledge
+      '@cox/cx-pack-financial':
+        specifier: workspace:*
+        version: link:../cx-pack-financial
+      '@cox/cx-pack-healthcare':
+        specifier: workspace:*
+        version: link:../cx-pack-healthcare
       '@cox/cx-pack-registry':
         specifier: workspace:*
         version: link:../cx-pack-registry
       '@cox/cx-pack-retail':
         specifier: workspace:*
         version: link:../cx-pack-retail
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+
+  packages/cx-pack-financial:
+    dependencies:
+      '@cox/core':
+        specifier: workspace:*
+        version: link:../core
+      '@cox/cx-core':
+        specifier: workspace:*
+        version: link:../cx-core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+
+  packages/cx-pack-healthcare:
+    dependencies:
+      '@cox/core':
+        specifier: workspace:*
+        version: link:../core
+      '@cox/cx-core':
+        specifier: workspace:*
+        version: link:../cx-core
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

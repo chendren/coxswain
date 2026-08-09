@@ -68,6 +68,12 @@
     },
     {
       "path": "packages/cx-govern"
+    },
+    {
+      "path": "packages/cx-pack-financial"
+    },
+    {
+      "path": "packages/cx-pack-healthcare"
     }
   ],
   "files": []

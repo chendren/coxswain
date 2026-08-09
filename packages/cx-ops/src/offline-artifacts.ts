@@ -31,6 +31,8 @@ import { join } from "node:path";
 import { isTelcoIdea, seedTelcoDesignPack } from "./telco-design-pack";
 import { detectPack } from "@cox/cx-pack-registry";
 import { seedRetailDesignPack } from "@cox/cx-pack-retail";
+import { seedFinancialDesignPack } from "@cox/cx-pack-financial";
+import { seedHealthcareDesignPack } from "@cox/cx-pack-healthcare";
 
 export interface OfflineArtifactsDeps {
   cxRoot: string;
@@ -55,10 +57,16 @@ function seedArtifacts(spec: CxSpec, ontology: CxOntology, preferTelco = true): 
     [spec.requirements.map((r) => r.text).join(" "), spec.state.name].filter(Boolean).join(" ") ||
     spec.state.name;
 
-  // Domain packs via registry (retail first, then telco legacy)
+  // Domain packs via registry (retail, financial, healthcare, then telco legacy)
   const pack = detectPack(idea);
   if (pack === "retail") {
     return seedRetailDesignPack(spec, ontology);
+  }
+  if (pack === "financial") {
+    return seedFinancialDesignPack(spec, ontology);
+  }
+  if (pack === "healthcare") {
+    return seedHealthcareDesignPack(spec, ontology);
   }
   // Rich multi-journey pack for typical telco / CSP programs (legacy)
   if (preferTelco && pack === "telco" && isTelcoIdea(idea)) {
