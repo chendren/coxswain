@@ -32,8 +32,12 @@ Initial public-facing release snapshot of Coxswain and the CX OS layer.
 - Human-gated operate loop (propose / claim / apply; no silent prod mutation)
 - Vertical packs: retail, financial, healthcare, travel (+ pack registry)
 - Offline golden path demo (`pnpm cx:golden:ci` / `examples/cx-demo`)
+- Offline golden path terminal GIF/MP4 for README (`examples/cx-demo/offline-golden.*`)
+- Optional live smoke guide (`docs/LIVE-SMOKE-M3.md`)
 - Community skeleton: Apache-2.0 license, CoC, CONTRIBUTING, SUPPORT, issue
   and PR templates
+- Branch protection on `main` requiring CI job `build`
+- Softened release: Docker only on `v*` tags / manual dispatch (linux/amd64)
 
 ### Security
 
