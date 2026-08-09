@@ -22,6 +22,11 @@ import type {
 } from "@cox/cx-core";
 import { CX_TARGET_IDS } from "@cox/cx-core";
 
+// SQLite opt-in — re-exported so callers do not need to import sqlite.ts directly.
+// When COX_SQLITE=1 the operate queue (proposals/tasks/audit/health_history)
+// uses SQLite (see docs/SQLITE-PLAN.md); otherwise filesystem JSON is used.
+export { isSqliteEnabled, sqliteDbPath, getCxDb, closeCxDb, closeAllCxDbs } from "./sqlite.js";
+
 export type CxPhase = "requirements" | "design" | "tasks";
 
 export interface CxWorkspaceRecord {

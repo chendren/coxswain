@@ -18,6 +18,7 @@ import { runHookRun } from "./commands/hook";
 import { runLedgerReport } from "./commands/ledger";
 import { runModelsReport } from "./commands/models";
 import { runDoctor } from "./commands/doctor";
+import { runCxServe } from "./commands/serve";
 import {
   runCxApprove,
   runCxBuild,
@@ -75,6 +76,7 @@ import { loadDeps, type LoadedDeps } from "./deps";
 import { buildSession } from "./wire";
 import { runPrint } from "./print";
 import type { CxRuntimeMode } from "./cx/runtime";
+import { getHealthz } from "@cox/cx-ops";
 
 /** Thrown by command handlers to exit with a specific code without a stack trace dump. */
 export class CliExit extends Error {
@@ -91,6 +93,7 @@ export interface GlobalOpts {
   print?: string;
   cwd?: string;
   yolo?: boolean;
+  health?: boolean;
 }
 
 export interface CliIo {
@@ -176,6 +179,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     .exitOverride()
     .configureOutput({ writeOut: io.writeOut, writeErr: io.writeErr })
     .showHelpAfterError(false);
+  program.option("--health", "print health status (JSON) and exit — /healthz equivalent");
   addGlobalOptions(program);
 
   // Bare `cox` — interactive session, or --print <prompt> for one plain
@@ -184,6 +188,11 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   // runtime error (R8.2) until every lane lands.
   program.action(async (_options: GlobalOpts, command: Command) => {
     const opts = command.optsWithGlobals<GlobalOpts>();
+    if (opts.health) {
+      const h = getHealthz();
+      io.writeOut(`${JSON.stringify(h, null, 2)}\n`);
+      throw new CliExit(0);
+    }
     const cwd = resolveCwd(opts);
     const cfg = loadConfig(cwd);
     const bus = new EventBus();
@@ -210,6 +219,14 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     const tui = startTui({ bus, controller: session.controller, getSnapshot: session.getSnapshot });
     await tui.waitUntilExit();
   });
+
+  addGlobalOptions(program.command("health").description("print health status (JSON) — /healthz equivalent")).action(
+    async () => {
+      const h = getHealthz();
+      io.writeOut(`${JSON.stringify(h, null, 2)}\n`);
+      throw new CliExit(0);
+    },
+  );
 
   const spec = program.command("spec").description("spec-driven feature workflow");
   addGlobalOptions(
@@ -1000,6 +1017,19 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   ).action(async (outFile: string | undefined, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     throw new CliExit(await runCxDashboard(await cxCtx(command, f.pack, f), outFile));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("serve")
+      .description("serve hosted dashboard via node:http (offline, no auth, localhost-only)")
+      .option("--port <n>", "port to listen on", "3000"),
+  ).action(async (_o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<CxCmdOpts & { port?: string }>();
+    const port = Number(opts.port ?? 3000);
+    const f = cxFlags(command);
+    const ctx = await cxCtx(command, f.pack, f);
+    throw new CliExit(await runCxServe(ctx, { port }));
   });
 
   addGlobalOptions(

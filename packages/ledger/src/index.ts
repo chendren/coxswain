@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import type {
   CoxConfig,
   Ledger,
@@ -41,11 +42,42 @@ function matches(entry: LedgerEntry, q: LedgerQuery): boolean {
 
 export function createLedger(deps: CreateLedgerDeps): LedgerWithDebug {
   let skippedLines = 0;
+  let cached:
+    | { entries: LedgerEntry[]; skipped: number; mtimeMs: number; size: number }
+    | null = null;
 
   async function readAll(): Promise<LedgerEntry[]> {
+    // Use mtime+size as a cheap invalidation token to avoid re-reading the
+    // file when multiple summary()/query() calls happen in the same tick
+    // (e.g. budgetState does two summary() calls). Invalidated on record()
+    // or when the file changes on disk.
+    try {
+      const s = await stat(deps.filePath);
+      if (cached && cached.mtimeMs === s.mtimeMs && cached.size === s.size) {
+        skippedLines = cached.skipped;
+        return cached.entries;
+      }
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+      if (cached && cached.mtimeMs === 0 && cached.size === 0) {
+        skippedLines = cached.skipped;
+        return cached.entries;
+      }
+    }
     const { entries, skipped } = await readEntries(deps.filePath);
     skippedLines = skipped;
+    try {
+      const s2 = await stat(deps.filePath);
+      cached = { entries, skipped, mtimeMs: s2.mtimeMs, size: s2.size };
+    } catch {
+      // file missing right after read -> treat as empty cache entry
+      cached = { entries, skipped, mtimeMs: 0, size: 0 };
+    }
     return entries;
+  }
+
+  function invalidateCache(): void {
+    cached = null;
   }
 
   function architectPricing(): ModelPricing | null {
@@ -62,6 +94,7 @@ export function createLedger(deps: CreateLedgerDeps): LedgerWithDebug {
   const ledger: LedgerWithDebug = {
     async record(entry: LedgerEntry) {
       await appendEntry(deps.filePath, entry);
+      invalidateCache();
     },
 
     async query(q: LedgerQuery) {

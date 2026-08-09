@@ -11,6 +11,8 @@
   "scripts": {
     "typecheck": "pnpm -r --no-bail typecheck",
     "test": "pnpm -r --no-bail test",
+    "test:coverage": "vitest run --coverage",
+    "coverage": "vitest run --coverage --coverage.provider=c8",
     "build": "pnpm -r build && node scripts/fix-esm-imports.mjs",
     "build:all": "pnpm -r build && node scripts/fix-esm-imports.mjs",
     "clean": "pnpm -r clean && rm -rf dist",
@@ -36,11 +38,16 @@
     "cx:operate": "pnpm cox cx operate",
     "cx:queue": "pnpm cox cx queue",
     "cx:dashboard": "pnpm cox cx dashboard",
-    "cx:graph-find": "pnpm cox cx graph-find"
+    "cx:graph-find": "pnpm cox cx graph-find",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish",
+    "release": "pnpm changeset version && pnpm install --lockfile-only"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-c8": "^2.1.0",
+    "@vitest/coverage-v8": "^2.1.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.3.0",

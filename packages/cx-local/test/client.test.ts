@@ -1,49 +1,53 @@
-import type { AddressInfo } from "node:net";
-import { createServer, type Server } from "node:http";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getJson, postJson, type LocalPlatformClientDeps } from "../src/client";
 import { isCxAdapterError } from "@cox/cx-core";
 
 describe("client", () => {
-  let server: Server;
   let deps: LocalPlatformClientDeps;
 
-  beforeEach(async () => {
-    server = createServer((req, res) => {
-      if (req.method === "GET" && req.url === "/api/ok") {
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ hello: "world" }));
-        return;
-      }
-      if (req.method === "POST" && req.url === "/api/echo") {
-        let body = "";
-        req.on("data", (chunk) => (body += chunk));
-        req.on("end", () => {
-          res.writeHead(200, { "content-type": "application/json" });
-          res.end(body);
-        });
-        return;
-      }
-      if (req.url === "/api/notfound") {
-        res.writeHead(404, { "content-type": "application/json" });
-        res.end(JSON.stringify({ error: "not found" }));
-        return;
-      }
-      if (req.url === "/api/broken") {
-        res.writeHead(500, { "content-type": "application/json" });
-        res.end(JSON.stringify({ error: "internal" }));
-        return;
-      }
-      res.writeHead(404);
-      res.end();
-    });
-    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-    const addr = server.address() as AddressInfo;
-    deps = { baseUrl: `http://127.0.0.1:${addr.port}` };
+  beforeEach(() => {
+    deps = { baseUrl: "http://dummy.test" };
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const u = String(url);
+        const method = init?.method ?? "GET";
+
+        if (u.endsWith("/api/ok")) {
+          return new Response(JSON.stringify({ hello: "world" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (u.endsWith("/api/echo") && method === "POST") {
+          // Echo the request body back as JSON
+          const body = init?.body ? String(init.body) : "{}";
+          return new Response(body, {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (u.endsWith("/api/notfound")) {
+          return new Response(JSON.stringify({ error: "not found" }), {
+            status: 404,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (u.endsWith("/api/broken")) {
+          return new Response(JSON.stringify({ error: "internal" }), {
+            status: 500,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
   });
 
-  afterEach(async () => {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("getJson returns the parsed response body", async () => {
@@ -54,6 +58,16 @@ describe("client", () => {
   it("postJson sends the body and returns the parsed response", async () => {
     const result = await postJson(deps, "/api/echo", { a: 1 }, "deploy");
     expect(result).toEqual({ a: 1 });
+    // verify fetch was called with JSON body and content-type
+    const mockedFetch = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    expect(mockedFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/api/echo"),
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({ "content-type": "application/json" }),
+        body: JSON.stringify({ a: 1 }),
+      }),
+    );
   });
 
   it("throws a non-retryable CxAdapterError on 4xx", async () => {
@@ -82,6 +96,14 @@ describe("client", () => {
   });
 
   it("throws a retryable CxAdapterError on network failure", async () => {
+    // Override fetch to simulate network error for this test
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("ECONNREFUSED");
+      }),
+    );
+    // baseUrl still dummy — network error is simulated by fetch throwing
     const badDeps: LocalPlatformClientDeps = { baseUrl: "http://127.0.0.1:1" };
     try {
       await getJson(badDeps, "/api/ok", "status");

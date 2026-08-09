@@ -47,13 +47,22 @@ export function createFileWatcher(opts: {
   }
 
   const watcher = startWatching(opts.cwd, handleEvent);
+  let closed = false;
 
   return {
     close(): void {
       // R11.4: stop watching and cancel every pending debounced trigger.
-      watcher.close();
+      // Idempotent — prevents EMFILE from double-close races and ensures
+      // debounce timers never fire after teardown.
+      if (closed) return;
+      closed = true;
       for (const timer of pending.values()) clearTimeout(timer);
       pending.clear();
+      try {
+        watcher.close();
+      } catch {
+        // ignore already-closed watcher
+      }
     },
   };
 }

@@ -23,6 +23,7 @@ describe("R7.1: command surface", () => {
         "cx",
         "doctor",
         "explain",
+        "health",
         "hook",
         "ledger",
         "models",

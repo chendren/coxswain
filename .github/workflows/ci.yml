@@ -30,6 +30,10 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile || pnpm install
 
+      - name: pnpm audit
+        run: pnpm audit --audit-level=moderate
+        continue-on-error: true
+
       - name: Typecheck
         run: pnpm typecheck
 
@@ -43,6 +47,13 @@ jobs:
           node packages/cli/dist/main.js --help
           node packages/cli/dist/main.js doctor --offline
 
+      - name: Verify healthz
+        run: |
+          node packages/cli/dist/main.js --health | tee /tmp/healthz.json
+          node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync('/tmp/healthz.json','utf8')); if(j.status!=='ok') throw new Error('healthz status not ok: '+JSON.stringify(j)); console.log('healthz ok', j.version)"
+          node packages/cli/dist/main.js health | tee /tmp/healthz2.json
+          node -e "const fs=require('fs'); const j=JSON.parse(fs.readFileSync('/tmp/healthz2.json','utf8')); if(j.status!=='ok') throw new Error('health command not ok'); console.log('health command ok')"
+
       - name: Lint
         run: pnpm lint
         continue-on-error: true # warn until eslint lands in all packages
@@ -52,11 +63,18 @@ jobs:
         env:
           CI: true
 
+      - name: Coverage (enforce 80% threshold via c8)
+        run: pnpm coverage
+        env:
+          CI: true
+
       - name: Verify offline commands
         run: |
           pnpm cox --help
           pnpm cox doctor --offline || true
           pnpm cox models || true
+          pnpm cox --health
+          pnpm cox health
 
       - name: Upload audit on failure
         if: failure()

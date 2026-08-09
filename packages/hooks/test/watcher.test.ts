@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 // Vitest hoists vi.mock calls above regular imports, but the flag below
 // must exist before the factory runs — vi.hoisted() guarantees that.
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { watchBehavior } = vi.hoisted(() => ({
   watchBehavior: { forceNextCallToThrowUnavailable: false },
@@ -42,6 +42,10 @@ async function probeRecursiveWatchSupport(): Promise<boolean> {
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ERR_FEATURE_UNAVAILABLE_ON_PLATFORM") return false;
     throw err;
+  } finally {
+    try {
+      await rm(dir, { recursive: true, force: true });
+    } catch {}
   }
 }
 
@@ -50,8 +54,49 @@ async function probeRecursiveWatchSupport(): Promise<boolean> {
 // via the forced-failure mock, independent of the host's real capability.
 const RECURSIVE_WATCH_SUPPORTED = await probeRecursiveWatchSupport();
 
+// Track every watcher and tmp dir so EMFILE leaks are closed even if a
+// test forgets its finally block or throws before reaching it.
+const activeWatchers = new Set<{ close(): void }>();
+const tmpDirs = new Set<string>();
+
+function trackWatcher(w: { close(): void }): typeof w {
+  activeWatchers.add(w);
+  const origClose = w.close.bind(w);
+  w.close = () => {
+    try {
+      origClose();
+    } finally {
+      activeWatchers.delete(w);
+    }
+  };
+  return w;
+}
+
+async function trackedTmpCwd(): Promise<string> {
+  const dir = await makeTmpCwd();
+  tmpDirs.add(dir);
+  return dir;
+}
+
 beforeEach(() => {
   watchBehavior.forceNextCallToThrowUnavailable = false;
+});
+
+afterEach(async () => {
+  // Close any leaked watchers first (debounce timers cancelled inside close)
+  for (const w of [...activeWatchers]) {
+    try {
+      w.close();
+    } catch {}
+  }
+  activeWatchers.clear();
+  // Remove tmp dirs — prevents descriptor buildup across retries
+  for (const dir of [...tmpDirs]) {
+    try {
+      await rm(dir, { recursive: true, force: true });
+    } catch {}
+  }
+  tmpDirs.clear();
 });
 
 function collector(): { triggers: { hook: string; file: string }[]; onTrigger: (hook: { name: string }, file: string) => void } {
@@ -63,11 +108,11 @@ describe("createFileWatcher", () => {
   it.skipIf(!RECURSIVE_WATCH_SUPPORTED)(
     "R11.1/R11.2: recursive watch detects a change in a subdirectory and fires the matching fileSave hook",
     async () => {
-      const cwd = await makeTmpCwd();
+      const cwd = await trackedTmpCwd();
       await mkdir(join(cwd, "src", "nested"), { recursive: true });
       const hook = makeAgentHook({ name: "ts-hook", trigger: { type: "fileSave", pattern: "src/**/*.ts" } });
       const { triggers, onTrigger } = collector();
-      const watcher = createFileWatcher({ cwd, hooks: [hook], onTrigger });
+      const watcher = trackWatcher(createFileWatcher({ cwd, hooks: [hook], onTrigger }));
 
       try {
         await writeFile(join(cwd, "src", "nested", "thing.ts"), "export {}\n", "utf8");
@@ -83,11 +128,11 @@ describe("createFileWatcher", () => {
   it(
     "R11.1: falls back to a non-recursive watch when recursive watch throws ERR_FEATURE_UNAVAILABLE_ON_PLATFORM, and still detects top-level changes",
     async () => {
-      const cwd = await makeTmpCwd();
+      const cwd = await trackedTmpCwd();
       watchBehavior.forceNextCallToThrowUnavailable = true;
       const hook = makeAgentHook({ name: "top-level-hook", trigger: { type: "fileSave", pattern: "*.md" } });
       const { triggers, onTrigger } = collector();
-      const watcher = createFileWatcher({ cwd, hooks: [hook], onTrigger });
+      const watcher = trackWatcher(createFileWatcher({ cwd, hooks: [hook], onTrigger }));
 
       try {
         await writeFile(join(cwd, "readme.md"), "# hi\n", "utf8");
@@ -103,10 +148,10 @@ describe("createFileWatcher", () => {
   it(
     "R11.2: picomatch runs with dot:true, so fileSave patterns reach dotfiles",
     async () => {
-      const cwd = await makeTmpCwd();
+      const cwd = await trackedTmpCwd();
       const hook = makeAgentHook({ name: "dot-hook", trigger: { type: "fileSave", pattern: "*" } });
       const { triggers, onTrigger } = collector();
-      const watcher = createFileWatcher({ cwd, hooks: [hook], onTrigger });
+      const watcher = trackWatcher(createFileWatcher({ cwd, hooks: [hook], onTrigger }));
 
       try {
         await writeFile(join(cwd, ".env.example"), "KEY=value\n", "utf8");
@@ -122,10 +167,10 @@ describe("createFileWatcher", () => {
   it(
     "R11.3: changes under .git/, node_modules/, and .cox/ never trigger, even with a catch-all pattern",
     async () => {
-      const cwd = await makeTmpCwd();
+      const cwd = await trackedTmpCwd();
       const hook = makeAgentHook({ name: "any-hook", trigger: { type: "fileSave", pattern: "**/*" } });
       const { triggers, onTrigger } = collector();
-      const watcher = createFileWatcher({ cwd, hooks: [hook], onTrigger });
+      const watcher = trackWatcher(createFileWatcher({ cwd, hooks: [hook], onTrigger }));
 
       try {
         await mkdir(join(cwd, ".git"), { recursive: true });
@@ -150,10 +195,10 @@ describe("createFileWatcher", () => {
   it(
     "R11.3: events for paths that no longer exist by event time are ignored",
     async () => {
-      const cwd = await makeTmpCwd();
+      const cwd = await trackedTmpCwd();
       const hook = makeAgentHook({ name: "any-hook", trigger: { type: "fileSave", pattern: "*.tmp" } });
       const { triggers, onTrigger } = collector();
-      const watcher = createFileWatcher({ cwd, hooks: [hook], onTrigger });
+      const watcher = trackWatcher(createFileWatcher({ cwd, hooks: [hook], onTrigger }));
 
       try {
         const filePath = join(cwd, "scratch.tmp");
@@ -171,10 +216,10 @@ describe("createFileWatcher", () => {
   it(
     "R11.2: a 500ms trailing debounce collapses rapid writes to the same file into a single trigger",
     async () => {
-      const cwd = await makeTmpCwd();
+      const cwd = await trackedTmpCwd();
       const hook = makeAgentHook({ name: "debounced", trigger: { type: "fileSave", pattern: "*.txt" } });
       const { triggers, onTrigger } = collector();
-      const watcher = createFileWatcher({ cwd, hooks: [hook], onTrigger });
+      const watcher = trackWatcher(createFileWatcher({ cwd, hooks: [hook], onTrigger }));
 
       try {
         const filePath = join(cwd, "rapid.txt");
@@ -194,10 +239,10 @@ describe("createFileWatcher", () => {
   );
 
   it("R11.5: manual-trigger hooks never fire from the watcher", async () => {
-    const cwd = await makeTmpCwd();
+    const cwd = await trackedTmpCwd();
     const manualHook = makeAgentHook({ name: "manual-only", trigger: { type: "manual" } });
     const { triggers, onTrigger } = collector();
-    const watcher = createFileWatcher({ cwd, hooks: [manualHook], onTrigger });
+    const watcher = trackWatcher(createFileWatcher({ cwd, hooks: [manualHook], onTrigger }));
 
     try {
       await writeFile(join(cwd, "anything.ts"), "export {}\n", "utf8");
@@ -209,10 +254,10 @@ describe("createFileWatcher", () => {
   });
 
   it("R11.4: close() cancels pending debounced triggers — no trigger fires after close", async () => {
-    const cwd = await makeTmpCwd();
+    const cwd = await trackedTmpCwd();
     const hook = makeAgentHook({ name: "cancel-me", trigger: { type: "fileSave", pattern: "*.txt" } });
     const { triggers, onTrigger } = collector();
-    const watcher = createFileWatcher({ cwd, hooks: [hook], onTrigger });
+    const watcher = trackWatcher(createFileWatcher({ cwd, hooks: [hook], onTrigger }));
 
     await writeFile(join(cwd, "closing.txt"), "hi\n", "utf8");
     // Close well before the 500ms debounce would have fired.
@@ -224,10 +269,10 @@ describe("createFileWatcher", () => {
   });
 
   it("R11.4: close() stops the underlying watcher — changes afterward never trigger", async () => {
-    const cwd = await makeTmpCwd();
+    const cwd = await trackedTmpCwd();
     const hook = makeAgentHook({ name: "stop-me", trigger: { type: "fileSave", pattern: "*.txt" } });
     const { triggers, onTrigger } = collector();
-    const watcher = createFileWatcher({ cwd, hooks: [hook], onTrigger });
+    const watcher = trackWatcher(createFileWatcher({ cwd, hooks: [hook], onTrigger }));
     watcher.close();
 
     await writeFile(join(cwd, "after-close.txt"), "hi\n", "utf8");

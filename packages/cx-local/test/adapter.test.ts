@@ -1,9 +1,7 @@
-import type { AddressInfo } from "node:net";
-import { createServer, type Server } from "node:http";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createLocalAdapter, type LocalAdapterDeps } from "../src/adapter";
 import type { CxSpec } from "@cox/cx-core";
 
@@ -28,53 +26,64 @@ const spec: CxSpec = {
 };
 
 describe("createLocalAdapter", () => {
-  let server: Server;
   let cxRoot: string;
   let deps: LocalAdapterDeps;
   let posted: { path: string; body: unknown }[];
 
   beforeEach(async () => {
     posted = [];
-    server = createServer((req, res) => {
-      if (req.method === "GET" && req.url === "/api/journeys/definitions") {
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ billing_dispute: { label: "Billing Dispute Resolution" } }));
-        return;
-      }
-      if (req.method === "GET" && req.url === "/api/health/ready") {
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ status: "healthy" }));
-        return;
-      }
-      if (req.method === "GET" && req.url?.startsWith("/api/journeys")) {
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ stats: { billing_dispute: { active: 3 } } }));
-        return;
-      }
-      if (req.method === "POST" && req.url === "/api/events/batch") {
-        let body = "";
-        req.on("data", (chunk) => (body += chunk));
-        req.on("end", () => {
-          posted.push({ path: "/api/events/batch", body: JSON.parse(body) });
-          res.writeHead(200, { "content-type": "application/json" });
-          res.end(JSON.stringify({ processed: 2, results: [] }));
-        });
-        return;
-      }
-      if (req.method === "GET" && req.url === "/api/dashboard/kpis") {
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ sla_compliance_rate: 280, sentiment_distribution: { positive: 3, negative: 1 } }));
-        return;
-      }
-      res.writeHead(404);
-      res.end();
-    });
-    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-    const addr = server.address() as AddressInfo;
     cxRoot = await mkdtemp(join(tmpdir(), "cox-cx-local-adapter-"));
+
+    // Mock fetch instead of listening on 127.0.0.1 (EPERM-safe)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: RequestInit) => {
+        const u = String(url);
+        const method = init?.method ?? "GET";
+
+        if (method === "GET" && u.endsWith("/api/journeys/definitions")) {
+          return new Response(JSON.stringify({ billing_dispute: { label: "Billing Dispute Resolution" } }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (method === "GET" && u.endsWith("/api/health/ready")) {
+          return new Response(JSON.stringify({ status: "healthy" }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (method === "GET" && u.includes("/api/journeys")) {
+          return new Response(JSON.stringify({ stats: { billing_dispute: { active: 3 } } }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (method === "POST" && u.endsWith("/api/events/batch")) {
+          const bodyText = init?.body ? String(init.body) : "{}";
+          const body = JSON.parse(bodyText) as unknown;
+          posted.push({ path: "/api/events/batch", body });
+          return new Response(JSON.stringify({ processed: 2, results: [] }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          });
+        }
+        if (method === "GET" && u.endsWith("/api/dashboard/kpis")) {
+          return new Response(
+            JSON.stringify({ sla_compliance_rate: 280, sentiment_distribution: { positive: 3, negative: 1 } }),
+            {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            },
+          );
+        }
+        return new Response(null, { status: 404 });
+      }),
+    );
+
     deps = {
       cxRoot,
-      baseUrl: `http://127.0.0.1:${addr.port}`,
+      baseUrl: "http://dummy.test",
       now: () => "2026-07-22T00:00:00Z",
       randomFn: () => 0,
       generate: async (prompt) => {
@@ -87,7 +96,8 @@ describe("createLocalAdapter", () => {
   });
 
   afterEach(async () => {
-    await new Promise<void>((resolve) => server.close(() => resolve()));
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     await rm(cxRoot, { recursive: true, force: true });
   });
 

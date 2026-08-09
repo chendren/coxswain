@@ -1,0 +1,17 @@
+# pre-commit hooks — install with: pip install pre-commit && pre-commit install
+# Run all hooks: pre-commit run --all-files
+# gitleaks requires: brew install gitleaks  (or download from https://github.com/gitleaks/gitleaks)
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.22.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]

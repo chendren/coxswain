@@ -1,6 +1,9 @@
 import type { AgentEvent } from "./types.js";
+import { createLogger } from "./logger.js";
 
 export type EventListener = (event: AgentEvent) => void;
+
+const log = createLogger("eventbus");
 
 /**
  * Minimal synchronous event bus. One bus per session; the TUI, ledger, and
@@ -19,8 +22,12 @@ export class EventBus {
     for (const l of this.listeners) {
       try {
         l(event);
-      } catch {
-        // renderer/listener errors never propagate into the agent loop
+      } catch (err) {
+        try {
+          log.error({ err, eventType: event.type }, "EventBus listener error");
+        } catch {
+          // logger must never throw into agent loop
+        }
       }
     }
   }
