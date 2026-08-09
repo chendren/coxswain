@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install
@@ -34,11 +34,12 @@ jobs:
         run: pnpm audit --audit-level=moderate
         continue-on-error: true
 
-      - name: Typecheck
-        run: pnpm typecheck
-
+      # Build first so workspace packages resolve @cox/core and @cox/cx-core types from dist/
       - name: Build
         run: pnpm build
+
+      - name: Typecheck
+        run: pnpm typecheck
 
       - name: Verify dist
         run: |
@@ -62,14 +63,30 @@ jobs:
         run: pnpm test:coverage
         env:
           CI: true
+          OPENAI_API_KEY: ""
+          XAI_API_KEY: ""
+          ANTHROPIC_API_KEY: ""
+          CX_AUTO_LIVE: ""
 
       - name: Verify offline commands
         run: |
           pnpm cox --help
-          pnpm cox doctor --offline || true
+          pnpm cox doctor --offline
           pnpm cox models || true
           pnpm cox --health
           pnpm cox health
+        env:
+          OPENAI_API_KEY: ""
+          XAI_API_KEY: ""
+          ANTHROPIC_API_KEY: ""
+
+      - name: Offline CX golden path
+        run: pnpm cx:golden:ci
+        env:
+          OPENAI_API_KEY: ""
+          XAI_API_KEY: ""
+          ANTHROPIC_API_KEY: ""
+          CX_AUTO_LIVE: ""
 
       - name: Upload audit on failure
         if: failure()

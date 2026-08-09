@@ -81,7 +81,22 @@ export async function runDoctor(deps: DoctorDeps): Promise<boolean> {
   }
 
   if (cfg) {
-    checks.push(...checkApiKeyEnvVars(cfg, deps.env ?? process.env));
+    const keyChecks = checkApiKeyEnvVars(cfg, deps.env ?? process.env);
+    if (deps.offline) {
+      // Offline-first: missing keys are advisory, not hard failures.
+      for (const c of keyChecks) {
+        if (c.ok) checks.push(c);
+        else {
+          checks.push({
+            label: `${c.label} (optional offline)`,
+            ok: true,
+            detail: "not set — cloud models unavailable; offline CX path still works",
+          });
+        }
+      }
+    } else {
+      checks.push(...keyChecks);
+    }
     checks.push(await checkCoxDirWritable(deps.cwd));
   }
 

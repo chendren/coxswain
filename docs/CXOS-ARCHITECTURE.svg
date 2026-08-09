@@ -1,0 +1,342 @@
+<svg width="1920" height="1280" viewBox="0 0 1920 1280" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>CX OS Architecture — Seven Layers, Closed-World, Human-Gated, Plan-Only</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0b1020"/><stop offset="100%" stop-color="#0f1a33"/></linearGradient>
+    <linearGradient id="catalog" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#4f46e5"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+    <linearGradient id="program" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient>
+    <linearGradient id="observe" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#0d9488"/><stop offset="100%" stop-color="#14b8a6"/></linearGradient>
+    <linearGradient id="operate" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#d97706"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>
+    <linearGradient id="fleet" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient>
+    <linearGradient id="govern" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#059669"/><stop offset="100%" stop-color="#10b981"/></linearGradient>
+    <linearGradient id="fabric" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#334155"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.35"/></filter>
+    <style>.mono{font-family: ui-monospace, SFMono-Regular, Menlo, monospace;}.sans{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;}</style>
+  </defs>
+  <rect width="1920" height="1280" rx="24" fill="url(#bg)"/>
+  <g opacity="0.07">
+    <circle cx="200" cy="160" r="1.4" fill="#fff"/><circle cx="520" cy="160" r="1.4" fill="#fff"/><circle cx="840" cy="160" r="1.4" fill="#fff"/><circle cx="1160" cy="160" r="1.4" fill="#fff"/><circle cx="1480" cy="160" r="1.4" fill="#fff"/><circle cx="1800" cy="160" r="1.4" fill="#fff"/>
+  </g>
+  <!-- Header -->
+  <g transform="translate(32,24)">
+    <rect width="1856" height="92" rx="16" fill="#141a2e" stroke="#243056"/>
+    <text x="20" y="32" class="sans" font-size="28" font-weight="800" fill="#e6ecff">CX OS</text>
+    <text x="140" y="32" class="sans" font-size="13" fill="#5b8cff" font-weight="700" letter-spacing="0.08em">CUSTOMER EXPERIENCE OPERATING SYSTEM</text>
+    <text x="20" y="54" class="sans" font-size="11" fill="#8b95b5">DOMAIN-AGNOSTIC · CLOSED-WORLD · OFFLINE-FIRST · HUMAN-GATED OPERATE · PLAN-ONLY AWS · 6 SPECS · 35 ARTIFACTS · 5 PACKS</text>
+    <text x="20" y="74" class="mono" font-size="10" fill="#5a6585">core (retail) · fin-core (financial) · health-core (healthcare) · travel-core (travel) · holiday-returns-2026 (retail surge) · starter  •  cox cx run / status / console / board / brief / cab-export</text>
+    <g transform="translate(1320,16)">
+      <rect width="112" height="28" rx="14" fill="#0b1020" stroke="#2a3a6a"/><circle cx="14" cy="14" r="6" fill="#3dd68c"/><text x="26" y="18" class="sans" font-size="11" font-weight="700" fill="#b8d0ff">OFFLINE-FIRST</text>
+    </g>
+    <g transform="translate(1444,16)">
+      <rect width="126" height="28" rx="14" fill="#0b1020" stroke="#2a3a6a"/><circle cx="14" cy="14" r="6" fill="#f5a524"/><text x="26" y="18" class="sans" font-size="11" font-weight="700" fill="#b8d0ff">HUMAN-GATED</text>
+    </g>
+    <g transform="translate(1582,16)">
+      <rect width="124" height="28" rx="14" fill="#0b1020" stroke="#2a3a6a"/><circle cx="14" cy="14" r="6" fill="#5b8cff"/><text x="26" y="18" class="sans" font-size="11" font-weight="700" fill="#b8d0ff">PLAN-ONLY AWS</text>
+    </g>
+    <g transform="translate(1718,16)">
+      <rect width="118" height="56" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="mono" font-size="10" fill="#8b95b5">FLEET 6 HEALTHY</text>
+      <text x="12" y="36" class="mono" font-size="14" font-weight="800" fill="#3dd68c">100 SCORE</text>
+      <text x="12" y="48" class="mono" font-size="9" fill="#5a6585">BOARD • QUEUE • DASH</text>
+    </g>
+  </g>
+
+  <g transform="translate(32,132)" filter="url(#shadow)">
+    <rect width="1856" height="148" rx="16" fill="#141a2e" stroke="#1e2a4a" stroke-width="1"/>
+    <!-- left accent bar -->
+    <rect width="8" height="148" rx="4" fill="url(#catalog)"/>
+    <!-- left label -->
+    <g transform="translate(22,18)">
+      <text class="sans" font-size="11" font-weight="700" fill="#fff" opacity="0.9">01</text>
+      <text x="0" y="24" class="sans" font-size="16" font-weight="800" fill="#e6ecff">CATALOG</text>
+      <text x="0" y="40" class="sans" font-size="10" fill="#8b95b5" letter-spacing="0.08em">CLOSED-WORLD GROUNDING</text>
+    </g>
+
+    <g transform="translate(260,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Ontology Packs</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">retail · financial · healthcare · travel · telco · default (223 nodes)</text>
+      <circle cx="306" cy="14" r="4" fill="url(#catalog)" opacity="0.9"/>
+    </g>
+    <g transform="translate(596,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Journeys</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">5 per pack: returns, loyalty, booking, disruption, etc.</text>
+      <circle cx="306" cy="14" r="4" fill="url(#catalog)" opacity="0.9"/>
+    </g>
+    <g transform="translate(932,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Intents / KPIs / NBA</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">closed taxonomy, CSAT/FCR, confidence bands</text>
+      <circle cx="306" cy="14" r="4" fill="url(#catalog)" opacity="0.9"/>
+    </g>
+    <g transform="translate(1268,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Channels</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">app · web · chat · phone · kiosk · gate · POS · retail</text>
+      <circle cx="306" cy="14" r="4" fill="url(#catalog)" opacity="0.9"/>
+    </g>
+    <g transform="translate(260,66)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Graph (Strong)</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">deterministic, zero model calls, absorb weak</text>
+      <circle cx="306" cy="14" r="4" fill="url(#catalog)" opacity="0.9"/>
+    </g>
+  </g><g transform="translate(960,286)"><path d="M0 0 L0 12 L-6 8 M0 12 L6 8" stroke="#5b8cff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/><circle cx="0" cy="6" r="2" fill="#5b8cff" opacity="0.3"/></g>
+  <g transform="translate(32,298)" filter="url(#shadow)">
+    <rect width="1856" height="148" rx="16" fill="#141a2e" stroke="#1e2a4a" stroke-width="1"/>
+    <!-- left accent bar -->
+    <rect width="8" height="148" rx="4" fill="url(#program)"/>
+    <!-- left label -->
+    <g transform="translate(22,18)">
+      <text class="sans" font-size="11" font-weight="700" fill="#fff" opacity="0.9">02</text>
+      <text x="0" y="24" class="sans" font-size="16" font-weight="800" fill="#e6ecff">PROGRAM</text>
+      <text x="0" y="40" class="sans" font-size="10" fill="#8b95b5" letter-spacing="0.08em">BUILD &amp; DEPLOY (GRAPH)</text>
+    </g>
+
+    <g transform="translate(260,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Spec Lifecycle</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">new → seed → approve:requirements/design → tasks</text>
+      <circle cx="306" cy="14" r="4" fill="url(#program)" opacity="0.9"/>
+    </g>
+    <g transform="translate(596,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Targets</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">artifacts (offline) · local (offline) · aws (plan-only)</text>
+      <circle cx="306" cy="14" r="4" fill="url(#program)" opacity="0.9"/>
+    </g>
+    <g transform="translate(932,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Design Merge</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">artifacts → merge_design → local/aws plan</text>
+      <circle cx="306" cy="14" r="4" fill="url(#program)" opacity="0.9"/>
+    </g>
+    <g transform="translate(1268,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Gates</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">requirements approved · design approved · tasks missing</text>
+      <circle cx="306" cy="14" r="4" fill="url(#program)" opacity="0.9"/>
+    </g>
+    <g transform="translate(260,66)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Orchestrate</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">graph: load_workspace → route_targets → emit</text>
+      <circle cx="306" cy="14" r="4" fill="url(#program)" opacity="0.9"/>
+    </g>
+  </g><g transform="translate(960,452)"><path d="M0 0 L0 12 L-6 8 M0 12 L6 8" stroke="#5b8cff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/><circle cx="0" cy="6" r="2" fill="#5b8cff" opacity="0.3"/></g>
+  <g transform="translate(32,464)" filter="url(#shadow)">
+    <rect width="1856" height="148" rx="16" fill="#141a2e" stroke="#1e2a4a" stroke-width="1"/>
+    <!-- left accent bar -->
+    <rect width="8" height="148" rx="4" fill="url(#observe)"/>
+    <!-- left label -->
+    <g transform="translate(22,18)">
+      <text class="sans" font-size="11" font-weight="700" fill="#fff" opacity="0.9">03</text>
+      <text x="0" y="24" class="sans" font-size="16" font-weight="800" fill="#e6ecff">OBSERVE</text>
+      <text x="0" y="40" class="sans" font-size="10" fill="#8b95b5" letter-spacing="0.08em">HEALTH &amp; SIM (READ-ONLY)</text>
+    </g>
+
+    <g transform="translate(260,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Health</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">probeStackHealth · probeOllama · score 100</text>
+      <circle cx="306" cy="14" r="4" fill="url(#observe)" opacity="0.9"/>
+    </g>
+    <g transform="translate(596,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Simulate</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">traffic profiles · SLA · deflection · wait</text>
+      <circle cx="306" cy="14" r="4" fill="url(#observe)" opacity="0.9"/>
+    </g>
+    <g transform="translate(932,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Report</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">cross-target report + scout summary</text>
+      <circle cx="306" cy="14" r="4" fill="url(#observe)" opacity="0.9"/>
+    </g>
+    <g transform="translate(1268,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">NBA / Catalog</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">recommendNba · inventoryCatalog · graph-query</text>
+      <circle cx="306" cy="14" r="4" fill="url(#observe)" opacity="0.9"/>
+    </g>
+    <g transform="translate(260,66)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Doctor</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">ontology + wiring + stack readiness</text>
+      <circle cx="306" cy="14" r="4" fill="url(#observe)" opacity="0.9"/>
+    </g>
+  </g><g transform="translate(960,618)"><path d="M0 0 L0 12 L-6 8 M0 12 L6 8" stroke="#5b8cff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/><circle cx="0" cy="6" r="2" fill="#5b8cff" opacity="0.3"/></g>
+  <g transform="translate(32,630)" filter="url(#shadow)">
+    <rect width="1856" height="148" rx="16" fill="#141a2e" stroke="#1e2a4a" stroke-width="1"/>
+    <!-- left accent bar -->
+    <rect width="8" height="148" rx="4" fill="url(#operate)"/>
+    <!-- left label -->
+    <g transform="translate(22,18)">
+      <text class="sans" font-size="11" font-weight="700" fill="#fff" opacity="0.9">04</text>
+      <text x="0" y="24" class="sans" font-size="16" font-weight="800" fill="#e6ecff">OPERATE</text>
+      <text x="0" y="40" class="sans" font-size="10" fill="#8b95b5" letter-spacing="0.08em">HUMAN-GATED OPERATE LOOP</text>
+    </g>
+
+    <g transform="translate(260,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Console Tick</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">poll status → route (healthy/degraded/down) → propose</text>
+      <circle cx="306" cy="14" r="4" fill="url(#operate)" opacity="0.9"/>
+    </g>
+    <g transform="translate(596,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Proposals</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">open · claimed · resolved · dismissed (open dedupe index)</text>
+      <circle cx="306" cy="14" r="4" fill="url(#operate)" opacity="0.9"/>
+    </g>
+    <g transform="translate(932,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Tasks</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">pending · in_progress · done · cancelled (apply bridge)</text>
+      <circle cx="306" cy="14" r="4" fill="url(#operate)" opacity="0.9"/>
+    </g>
+    <g transform="translate(1268,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Watch / Daemon</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">bounded loop · daemon.pid + O_EXCL · lastTick</text>
+      <circle cx="306" cy="14" r="4" fill="url(#operate)" opacity="0.9"/>
+    </g>
+    <g transform="translate(260,66)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Notify</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">webhook fire-and-forget · seed-operate drill</text>
+      <circle cx="306" cy="14" r="4" fill="url(#operate)" opacity="0.9"/>
+    </g>
+  </g><g transform="translate(960,784)"><path d="M0 0 L0 12 L-6 8 M0 12 L6 8" stroke="#5b8cff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/><circle cx="0" cy="6" r="2" fill="#5b8cff" opacity="0.3"/></g>
+  <g transform="translate(32,796)" filter="url(#shadow)">
+    <rect width="1856" height="148" rx="16" fill="#141a2e" stroke="#1e2a4a" stroke-width="1"/>
+    <!-- left accent bar -->
+    <rect width="8" height="148" rx="4" fill="url(#fleet)"/>
+    <!-- left label -->
+    <g transform="translate(22,18)">
+      <text class="sans" font-size="11" font-weight="700" fill="#fff" opacity="0.9">05</text>
+      <text x="0" y="24" class="sans" font-size="16" font-weight="800" fill="#e6ecff">FLEET</text>
+      <text x="0" y="40" class="sans" font-size="10" fill="#8b95b5" letter-spacing="0.08em">MULTI-SPEC ROLLUP</text>
+    </g>
+
+    <g transform="translate(260,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Board</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">6 specs rollup · R/D/T phases · deployed 5</text>
+      <circle cx="306" cy="14" r="4" fill="url(#fleet)" opacity="0.9"/>
+    </g>
+    <g transform="translate(596,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Queue</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">0 proposals · 0 tasks · sorted by urgency</text>
+      <circle cx="306" cy="14" r="4" fill="url(#fleet)" opacity="0.9"/>
+    </g>
+    <g transform="translate(932,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Dashboard</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">cxos-dashboard.html · 5.0kB · dark panel</text>
+      <circle cx="306" cy="14" r="4" fill="url(#fleet)" opacity="0.9"/>
+    </g>
+    <g transform="translate(1268,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Fleet-Status</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">per-spec health 100 → 100 → 100</text>
+      <circle cx="306" cy="14" r="4" fill="url(#fleet)" opacity="0.9"/>
+    </g>
+    <g transform="translate(260,66)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Board-Sync</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">export/import fleet JSON · 35 artifacts</text>
+      <circle cx="306" cy="14" r="4" fill="url(#fleet)" opacity="0.9"/>
+    </g>
+  </g><g transform="translate(960,950)"><path d="M0 0 L0 12 L-6 8 M0 12 L6 8" stroke="#5b8cff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/><circle cx="0" cy="6" r="2" fill="#5b8cff" opacity="0.3"/></g>
+  <g transform="translate(32,962)" filter="url(#shadow)">
+    <rect width="1856" height="148" rx="16" fill="#141a2e" stroke="#1e2a4a" stroke-width="1"/>
+    <!-- left accent bar -->
+    <rect width="8" height="148" rx="4" fill="url(#govern)"/>
+    <!-- left label -->
+    <g transform="translate(22,18)">
+      <text class="sans" font-size="11" font-weight="700" fill="#fff" opacity="0.9">06</text>
+      <text x="0" y="24" class="sans" font-size="16" font-weight="800" fill="#e6ecff">GOVERN</text>
+      <text x="0" y="40" class="sans" font-size="10" fill="#8b95b5" letter-spacing="0.08em">EVIDENCE &amp; HANDOFF</text>
+    </g>
+
+    <g transform="translate(260,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Brief</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">executive MD · journeys · KPIs · work queue</text>
+      <circle cx="306" cy="14" r="4" fill="url(#govern)" opacity="0.9"/>
+    </g>
+    <g transform="translate(596,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Audit</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">append-only audit.jsonl · 80 lines · actor path</text>
+      <circle cx="306" cy="14" r="4" fill="url(#govern)" opacity="0.9"/>
+    </g>
+    <g transform="translate(932,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Snapshot</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">CAB + spec + health · time-travel</text>
+      <circle cx="306" cy="14" r="4" fill="url(#govern)" opacity="0.9"/>
+    </g>
+    <g transform="translate(1268,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">CAB Export</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">MANIFEST.md · BRIEF.md · plan-only CFN</text>
+      <circle cx="306" cy="14" r="4" fill="url(#govern)" opacity="0.9"/>
+    </g>
+    <g transform="translate(260,66)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Export-AWS</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">template.yaml + APPLY.md · never CreateStack</text>
+      <circle cx="306" cy="14" r="4" fill="url(#govern)" opacity="0.9"/>
+    </g>
+  </g><g transform="translate(960,1116)"><path d="M0 0 L0 12 L-6 8 M0 12 L6 8" stroke="#5b8cff" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/><circle cx="0" cy="6" r="2" fill="#5b8cff" opacity="0.3"/></g>
+  <g transform="translate(32,1128)" filter="url(#shadow)">
+    <rect width="1856" height="148" rx="16" fill="#141a2e" stroke="#1e2a4a" stroke-width="1"/>
+    <!-- left accent bar -->
+    <rect width="8" height="148" rx="4" fill="url(#fabric)"/>
+    <!-- left label -->
+    <g transform="translate(22,18)">
+      <text class="sans" font-size="11" font-weight="700" fill="#fff" opacity="0.9">07</text>
+      <text x="0" y="24" class="sans" font-size="16" font-weight="800" fill="#e6ecff">FABRIC</text>
+      <text x="0" y="40" class="sans" font-size="10" fill="#8b95b5" letter-spacing="0.08em">ENTERPRISE SCALE &amp; OBSERVABILITY</text>
+    </g>
+
+    <g transform="translate(260,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">SQLite</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">cxops.db WAL · BEGIN IMMEDIATE · 5000 busyTimeout</text>
+      <circle cx="306" cy="14" r="4" fill="url(#fabric)" opacity="0.9"/>
+    </g>
+    <g transform="translate(596,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Ledger</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">mtime+size cache · O(n)→O(1) · pino fallback</text>
+      <circle cx="306" cy="14" r="4" fill="url(#fabric)" opacity="0.9"/>
+    </g>
+    <g transform="translate(932,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Logger / OTel</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">pino try/catch · OTel span when endpoint set</text>
+      <circle cx="306" cy="14" r="4" fill="url(#fabric)" opacity="0.9"/>
+    </g>
+    <g transform="translate(1268,18)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Healthz</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">GET /healthz · {status:ok, version, uptimeMs}</text>
+      <circle cx="306" cy="14" r="4" fill="url(#fabric)" opacity="0.9"/>
+    </g>
+    <g transform="translate(260,66)">
+      <rect width="320" height="82" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="12" font-weight="700" fill="#e6ecff">Docker / CI</text>
+      <text x="14" y="38" class="sans" font-size="10.5" fill="#8b95b5">node:20-slim · GHCR · coverage 80 · gitleaks · SBOM</text>
+      <circle cx="306" cy="14" r="4" fill="url(#fabric)" opacity="0.9"/>
+    </g>
+  </g>
+  <g transform="translate(32,1238)">
+    <rect width="1856" height="28" rx="10" fill="#141a2e" stroke="#243056"/>
+    <text x="14" y="18" class="mono" font-size="9" fill="#5a6585">WORKSPACE .cox/cx/&lt;spec&gt;/{artifacts,local,aws,deployments.json,spec.json} · CLI sole composition root · adapters never import each other · pnpm 10.23 · node &gt;=20 · type:module</text>
+    <text x="1856" y="18" text-anchor="end" class="mono" font-size="9" fill="#5a6585">docs/CXOS-COMPLETE.md · CX-OPS-SPLIT.md · SQLITE-PLAN.md  •  2026-08-09</text>
+  </g>
+</svg>

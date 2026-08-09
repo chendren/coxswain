@@ -62,14 +62,29 @@ describe("R10.1: cox doctor", () => {
     expect(lines.some((l) => l.includes("is writable"))).toBe(false);
   });
 
-  it("fails when the configured provider's apiKeyEnv is not set", async () => {
+  it("offline: missing api keys are advisory and still pass", async () => {
     const cwd = await tmpProject();
     const { lines, write } = collector();
     const ok = await runDoctor({
       cwd,
       offline: true,
       nodeVersion: "v22.0.0",
-      env: {}, // ANTHROPIC_API_KEY deliberately absent — zero env vars per docs/04
+      env: {}, // ANTHROPIC_API_KEY deliberately absent — offline-first
+      write,
+    });
+    expect(ok).toBe(true);
+    expect(lines.some((l) => l.includes("optional offline") && l.includes("ANTHROPIC_API_KEY"))).toBe(true);
+  });
+
+  it("online: fails when the configured provider's apiKeyEnv is not set", async () => {
+    const cwd = await tmpProject();
+    const { lines, write } = collector();
+    const ok = await runDoctor({
+      cwd,
+      offline: false,
+      nodeVersion: "v22.0.0",
+      env: {},
+      checkReachability: async () => true,
       write,
     });
     expect(ok).toBe(false);

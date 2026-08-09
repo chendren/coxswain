@@ -2,7 +2,7 @@
 
 Decisions and deviations for the integrator.
 
-- The real platform (`/Users/chadhendren/Projects/cx-platform/omnichannel-cx-platform`)
+- The real platform (`$CX_PLATFORM_DIR (default: ~/Projects/cx-platform/omnichannel-cx-platform)`)
   has NO write API for journey/NBA-rule definitions — they are static,
   code-defined config. This adapter never mutates the platform; it binds
   a CXOS spec's neutral journey to the closest matching one of the

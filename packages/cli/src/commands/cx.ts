@@ -1403,6 +1403,51 @@ export async function runCxInit(ctx: CxCommandContext): Promise<number> {
   return 0;
 }
 
+/**
+ * Offline-first onboarding: doctor + init + sample run + board + next steps.
+ * Name defaults to "quickstart". Idea defaults to a retail-neutral sample.
+ */
+export async function runCxQuickstart(
+  ctx: CxCommandContext,
+  nameArg?: string,
+  ideaParts?: string[],
+): Promise<number> {
+  const name = (nameArg ?? "quickstart").trim() || "quickstart";
+  const idea =
+    (ideaParts ?? []).join(" ").trim() ||
+    "Customer experience quickstart: returns and refunds, loyalty, support, retention";
+
+  ctx.write("CXOS quickstart (offline-first)");
+  ctx.write("hard rules: no silent prod mutation · AWS plan-only · offline-first · strong graph first");
+
+  const offlineCtx: CxCommandContext = { ...ctx, mode: "offline", live: false, autoLive: false };
+  const doctorCode = await runCxDoctor(offlineCtx);
+  if (doctorCode !== 0) {
+    ctx.write("quickstart: doctor failed (ontology); fix pack and retry");
+    return doctorCode;
+  }
+
+  await runCxInit(offlineCtx);
+
+  const existing = await loadCxWorkspace(
+    (await runtimeFrom(offlineCtx)).workspace,
+    name,
+  );
+  if (!existing) {
+    const runCode = await runCxRun(offlineCtx, name, idea.split(/\s+/), "all");
+    if (runCode !== 0) return runCode;
+  } else {
+    ctx.write(`spec "${name}" already exists — skipping run; showing board`);
+  }
+
+  await runCxBoard(offlineCtx);
+  ctx.write("next: cox cx brief " + name);
+  ctx.write("next: cox cx cab-export " + name);
+  ctx.write("next: cox cx console " + name + "   # proposes only; never mutates prod");
+  ctx.write("path: quickstart → doctor → init → run → board → emit");
+  return 0;
+}
+
 /** Alias for apply — claim language for ops leads. */
 export async function runCxClaim(
   ctx: CxCommandContext,

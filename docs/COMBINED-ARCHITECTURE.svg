@@ -1,0 +1,251 @@
+<svg width="1920" height="1280" viewBox="0 0 1920 1280" xmlns="http://www.w3.org/2000/svg">
+  <title>Combined — Coxswain Engine Powers CX OS Fleet</title>
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0b1020"/><stop offset="100%" stop-color="#0f1933"/></linearGradient>
+    <linearGradient id="coxGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+    <linearGradient id="cxGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#ec4899"/></linearGradient>
+    <filter id="shadow3" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.32"/></filter>
+    <style>.mono{font-family: ui-monospace, SFMono-Regular, Menlo, monospace;}.sans{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;}</style>
+  </defs>
+  <rect width="1920" height="1280" rx="24" fill="url(#bg3)"/>
+  <!-- Header -->
+  <g transform="translate(32,24)">
+    <rect width="1856" height="90" rx="16" fill="#141a2e" stroke="#243056"/>
+    <text x="20" y="34" class="sans" font-size="26" font-weight="800" fill="#e6ecff">COXSWAIN</text>
+    <text x="150" y="34" class="sans" font-size="12" fill="#5b8cff" font-weight="800" letter-spacing="0.1em">ENGINE</text>
+    <text x="220" y="34" class="sans" font-size="26" font-weight="300" fill="#5a6585">×</text>
+    <text x="240" y="34" class="sans" font-size="26" font-weight="800" fill="#e6ecff">CX OS</text>
+    <text x="330" y="34" class="sans" font-size="12" fill="#a78bfa" font-weight="800" letter-spacing="0.1em">FLEET</text>
+    <text x="20" y="58" class="sans" font-size="11" fill="#8b95b5">HOW THE ENGINE POWERS THE OPERATING SYSTEM — IDEA → PACK → ARTIFACTS → HEALTH → PROPOSE → TASK → CLOSE — CLOSED-WORLD · HUMAN-GATED · PLAN-ONLY</text>
+    <text x="20" y="78" class="mono" font-size="10" fill="#5a6585">coxswain (27 pkgs) is build-time engine · CXOS (~6 specs) is runtime workspace · TelcoCXOS is telco demo · pnpm cox cx run "idea" --target all</text>
+    <g transform="translate(1650,20)">
+      <rect width="186" height="52" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">FLEET 6 HEALTHY</text>
+      <text x="12" y="36" class="mono" font-size="12" font-weight="800" fill="#3dd68c">100 SCORE</text>
+      <text x="12" y="48" class="mono" font-size="9" fill="#5a6585">RETAIL ×2 · FIN · HEALTH · TRAVEL</text>
+    </g>
+  </g>
+
+  <!-- Top: CXOS workspace -->
+  <g transform="translate(32,130)" filter="url(#shadow3)">
+    <rect width="1856" height="290" rx="16" fill="#141a2e" stroke="#a78bfa" stroke-width="1.1"/>
+    <rect width="6" height="290" rx="3" fill="url(#cxGrad)"/>
+    <text x="20" y="28" class="sans" font-size="12" font-weight="800" fill="#a78bfa" letter-spacing="0.08em">CX OS WORKSPACE — ~/CXOS (PRIMARY, DOMAIN-AGNOSTIC) + ~/TelcoCXOS (TELCO DEMO)</text>
+    <text x="20" y="46" class="sans" font-size="11" fill="#8b95b5">6 SPECS · 35 ARTIFACTS · 5 PACKS · .cox/cx/&lt;spec&gt;/{artifacts,local,aws} · cox.config.json · pnpm cox proxy</text>
+    <!-- specs row -->
+    <g transform="translate(20,62)">
+      <g>
+        <rect width="286" height="100" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="12" font-weight="800" fill="#e6ecff">core</text>
+        <text x="80" y="20" class="sans" font-size="10" fill="#3dd68c">● RETAIL</text>
+        <text x="12" y="36" class="mono" font-size="9" fill="#8b95b5">returns · loyalty · pickup · order · retention</text>
+        <text x="12" y="52" class="mono" font-size="10" fill="#e6ecff">6 artifacts · healthy 100</text>
+        <text x="12" y="68" class="mono" font-size="9" fill="#5a6585">returns_refunds · loyalty_program · store_pickup</text>
+        <text x="12" y="82" class="mono" font-size="9" fill="#5b8cff">artifacts,local,aws → template.yaml</text>
+        <circle cx="272" cy="14" r="4" fill="#3dd68c"/>
+      </g>
+      <g transform="translate(300,0)">
+        <rect width="286" height="100" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="12" font-weight="800" fill="#e6ecff">fin-core</text>
+        <text x="100" y="20" class="sans" font-size="10" fill="#f5a524">● FINANCIAL</text>
+        <text x="12" y="36" class="mono" font-size="9" fill="#8b95b5">account · loan · fraud · onboarding · retention</text>
+        <text x="12" y="52" class="mono" font-size="10" fill="#e6ecff">6 artifacts · healthy 100</text>
+        <text x="12" y="68" class="mono" font-size="9" fill="#5a6585">account_inquiry · fraud_alert · loan_support</text>
+        <circle cx="272" cy="14" r="4" fill="#f5a524"/>
+      </g>
+      <g transform="translate(600,0)">
+        <rect width="286" height="100" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="12" font-weight="800" fill="#e6ecff">health-core</text>
+        <text x="110" y="20" class="sans" font-size="10" fill="#10b981">● HEALTHCARE</text>
+        <text x="12" y="36" class="mono" font-size="9" fill="#8b95b5">appointment · claims · prior_auth · benefits</text>
+        <text x="12" y="52" class="mono" font-size="10" fill="#e6ecff">6 artifacts · healthy 100 · HIPAA-aware</text>
+        <text x="12" y="68" class="mono" font-size="9" fill="#5a6585">appointment · claims · prior_auth</text>
+        <circle cx="272" cy="14" r="4" fill="#10b981"/>
+      </g>
+      <g transform="translate(900,0)">
+        <rect width="286" height="100" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="12" font-weight="800" fill="#e6ecff">travel-core</text>
+        <text x="118" y="20" class="sans" font-size="10" fill="#06b6d4">● TRAVEL</text>
+        <text x="12" y="36" class="mono" font-size="9" fill="#8b95b5">booking · disruption · loyalty · check-in · retention</text>
+        <text x="12" y="52" class="mono" font-size="10" fill="#e6ecff">6 artifacts · healthy 100</text>
+        <text x="12" y="68" class="mono" font-size="9" fill="#5a6585">booking · disruption · loyalty_program</text>
+        <circle cx="272" cy="14" r="4" fill="#06b6d4"/>
+      </g>
+      <g transform="translate(1200,0)">
+        <rect width="286" height="100" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="12" font-weight="800" fill="#e6ecff">holiday-returns</text>
+        <text x="150" y="20" class="sans" font-size="10" fill="#3dd68c">● RETAIL SURGE</text>
+        <text x="12" y="36" class="mono" font-size="9" fill="#8b95b5">3x returns Dec-Jan · CAB · dashboard</text>
+        <text x="12" y="52" class="mono" font-size="10" fill="#e6ecff">6 artifacts · brief + CAB</text>
+        <text x="12" y="68" class="mono" font-size="9" fill="#5a6585">cx-cab-holiday · cxos-dashboard-holiday.html</text>
+        <circle cx="272" cy="14" r="4" fill="#ec4899"/>
+      </g>
+      <g transform="translate(1500,0)">
+        <rect width="286" height="100" rx="12" fill="#0b1020" stroke="#1e2a4a" stroke-dasharray="6 6"/>
+        <text x="12" y="20" class="sans" font-size="12" font-weight="800" fill="#8b95b5">starter</text>
+        <text x="70" y="20" class="sans" font-size="10" fill="#5a6585">○ TEMPLATE</text>
+        <text x="12" y="36" class="mono" font-size="9" fill="#5a6585">replace idea and run build</text>
+        <text x="12" y="52" class="mono" font-size="10" fill="#475569">R=d D=m T=m · not deployed</text>
+        <text x="12" y="68" class="mono" font-size="9" fill="#475569">pnpm cox cx run starter "…"</text>
+      </g>
+    </g>
+    <!-- fleet row -->
+    <g transform="translate(20,176)">
+      <rect width="620" height="94" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">FLEET VIEW</text>
+      <text x="100" y="20" class="mono" font-size="10" fill="#3dd68c">board · queue · fleet-status · dashboard</text>
+      <text x="12" y="38" class="mono" font-size="10" fill="#8b95b5">CXOS board  specs=6 deployed=5 proposals_open=0 tasks_open=0 daemons=0</text>
+      <text x="12" y="54" class="mono" font-size="10" fill="#8b95b5">CXOS queue  proposals=0 tasks=0 · sorted urgency</text>
+      <text x="12" y="70" class="mono" font-size="9" fill="#5a6585">path: list_specs → load_each → rollup → emit</text>
+      <text x="12" y="84" class="mono" font-size="9" fill="#5b8cff">wrote cxos-dashboard.html (6 specs, 5.0kB)</text>
+    </g>
+    <g transform="translate(654,176)">
+      <rect width="620" height="94" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">GOVERNANCE</text>
+      <text x="104" y="20" class="mono" font-size="10" fill="#f5a524">BRIEF · AUDIT · SNAPSHOT · CAB · EXPORT-AWS</text>
+      <text x="12" y="38" class="mono" font-size="10" fill="#8b95b5">BRIEF.md + MANIFEST.md + template.yaml + APPLY.md</text>
+      <text x="12" y="54" class="mono" font-size="10" fill="#ec4899">human applies: aws cloudformation deploy --template-file template.yaml</text>
+      <text x="12" y="70" class="mono" font-size="9" fill="#5a6585">append-only audit.jsonl · deploy-history.jsonl</text>
+      <text x="12" y="84" class="mono" font-size="9" fill="#059669">plan-only: never CreateStack from Coxswain</text>
+    </g>
+    <g transform="translate(1288,176)">
+      <rect width="498" height="94" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">TELCO DEMO</text>
+      <text x="110" y="20" class="mono" font-size="10" fill="#8b95b5">~/TelcoCXOS · telco-core</text>
+      <text x="12" y="38" class="mono" font-size="10" fill="#8b95b5">triggers telco pack on “telco/mobile/broadband”</text>
+      <text x="12" y="54" class="mono" font-size="10" fill="#e6ecff">5 journeys · 4 personas · billing dispute</text>
+      <text x="12" y="70" class="mono" font-size="9" fill="#5a6585">board-sync.json · separate PRIVATE repo</text>
+      <text x="12" y="84" class="mono" font-size="9" fill="#7c3aed">demo only — primary is ~/CXOS core</text>
+    </g>
+  </g>
+  <!-- Arrow down -->
+  <g transform="translate(960,436)"><path d="M0 0 L0 18 L-7 10 M0 18 L7 10" stroke="#a78bfa" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/><circle cx="0" cy="9" r="2.5" fill="#a78bfa" opacity="0.35"/><text x="12" y="14" class="mono" font-size="9" fill="#a78bfa">USES</text></g>
+  <!-- Middle: Packs + Adapters -->
+  <g transform="translate(32,464)" filter="url(#shadow3)">
+    <rect width="1856" height="150" rx="16" fill="#141a2e" stroke="#5b8cff" stroke-width="1"/>
+    <rect width="6" height="150" rx="3" fill="url(#coxGrad)"/>
+    <text x="20" y="28" class="sans" font-size="12" font-weight="800" fill="#5b8cff" letter-spacing="0.08em">PACKS &amp; ADAPTERS — DOMAIN ROUTING + MULTI-TARGET BUILD</text>
+    <text x="20" y="46" class="sans" font-size="11" fill="#8b95b5">detectPack(idea) → score 0-1 → seed*DesignPack() → 5 journeys + architectureDoc → artifacts/local/aws adapters</text>
+    <g transform="translate(20,60)">
+      <rect width="220" height="72" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="mono" font-size="10" fill="#8b95b5">REGISTRY</text>
+      <text x="12" y="36" class="mono" font-size="11" font-weight="700" fill="#e6ecff">detectPack()</text>
+      <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">threshold 0.3 → retail 0.85</text>
+      <text x="12" y="66" class="mono" font-size="9" fill="#5b8cff">isTelcoIdea → score</text>
+    </g>
+    <g transform="translate(252,60)">
+      <rect width="520" height="72" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="mono" font-size="10" fill="#a78bfa">5 PACKS</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#e6ecff">retail · financial · healthcare · travel · telco + default</text>
+      <text x="12" y="52" class="mono" font-size="9" fill="#8b95b5">180-223 nodes each · keywords[] + ontology overlap</text>
+      <text x="12" y="66" class="mono" font-size="9" fill="#5a6585">cx-pack-retail etc. · @cox/cx-core DEFAULT_ONTOLOGY</text>
+    </g>
+    <g transform="translate(784,60)">
+      <rect width="520" height="72" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="mono" font-size="10" fill="#06b6d4">ADAPTERS</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#e6ecff">cx-artifacts (offline) · cx-local (offline) · cx-aws (plan-only CFN)</text>
+      <text x="12" y="52" class="mono" font-size="9" fill="#8b95b5">offline-artifacts.ts → seedRetail/Financial/Healthcare/Travel/Telco</text>
+      <text x="12" y="66" class="mono" font-size="9" fill="#ec4899">template.yaml + APPLY.md — human gate</text>
+    </g>
+    <g transform="translate(1316,60)">
+      <rect width="520" height="72" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="mono" font-size="10" fill="#f5a524">FLOW</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#e6ecff">idea → pack → seed → plan → build → merge_design → deploy</text>
+      <text x="12" y="52" class="mono" font-size="9" fill="#8b95b5">orchestrateBuild() graph: artifacts → local/aws ordered</text>
+      <text x="12" y="66" class="mono" font-size="9" fill="#3dd68c">health → simulate → report → nba</text>
+    </g>
+  </g>
+  <g transform="translate(960,630)"><path d="M0 0 L0 18 L-7 10 M0 18 L7 10" stroke="#5b8cff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/><circle cx="0" cy="9" r="2.5" fill="#5b8cff" opacity="0.35"/><text x="12" y="14" class="mono" font-size="9" fill="#5b8cff">POWERED BY</text></g>
+  <!-- Bottom: Coxswain engine -->
+  <g transform="translate(32,658)" filter="url(#shadow3)">
+    <rect width="1856" height="480" rx="16" fill="#141a2e" stroke="#0ea5e9" stroke-width="1"/>
+    <rect width="6" height="480" rx="3" fill="url(#coxGrad)"/>
+    <text x="20" y="28" class="sans" font-size="12" font-weight="800" fill="#0ea5e9" letter-spacing="0.08em">COXSWAIN ENGINE — ~/coxswain · 27 PACKAGES · CLI IS SOLE COMPOSITION ROOT</text>
+    <text x="20" y="46" class="sans" font-size="11" fill="#8b95b5">spec-driven · steerable · token-frugal · offline-first · pnpm 10.23 · Node &gt;=20 · ESM fix-esm · PRIVATE</text>
+    <!-- CLI bar -->
+    <g transform="translate(20,62)">
+      <rect width="1816" height="70" rx="12" fill="#0b1020" stroke="#5b8cff" stroke-width="1"/>
+      <text x="12" y="20" class="mono" font-size="10" fill="#5b8cff">COMPOSITION ROOT</text>
+      <text x="12" y="38" class="mono" font-size="12" font-weight="800" fill="#e6ecff">packages/cli → deps.ts · wire.ts · main.ts</text>
+      <text x="12" y="56" class="mono" font-size="10" fill="#8b95b5">cox --health · cox cx board/queue/dashboard · --cwd --model --print --live --target artifacts,local,aws</text>
+      <g transform="translate(560,12)">
+        <rect width="180" height="46" rx="10" fill="#141a2e" stroke="#243056"/><text x="10" y="16" class="mono" font-size="9" fill="#8b95b5">HEALTHZ</text><text x="10" y="30" class="mono" font-size="11" font-weight="700" fill="#3dd68c">{"status":"ok"}</text>
+      </g>
+      <g transform="translate(752,12)">
+        <rect width="200" height="46" rx="10" fill="#141a2e" stroke="#243056"/><text x="10" y="16" class="mono" font-size="9" fill="#8b95b5">27 PACKAGES</text><text x="10" y="30" class="mono" font-size="11" font-weight="700" fill="#e6ecff">16 dists · 64 fixed</text>
+      </g>
+      <g transform="translate(964,12)">
+        <rect width="220" height="46" rx="10" fill="#141a2e" stroke="#243056"/><text x="10" y="16" class="mono" font-size="9" fill="#f5a524">TOKEN-FRUGAL</text><text x="10" y="30" class="mono" font-size="10" fill="#e6ecff">70% savings · ledger cache</text>
+      </g>
+      <g transform="translate(1196,12)">
+        <rect width="200" height="46" rx="10" fill="#141a2e" stroke="#243056"/><text x="10" y="16" class="mono" font-size="9" fill="#a78bfa">RELEASE</text><text x="10" y="30" class="mono" font-size="10" fill="#e6ecff">GHCR · SBOM · coverage 80</text>
+      </g>
+      <g transform="translate(1408,12)">
+        <rect width="180" height="46" rx="10" fill="#141a2e" stroke="#243056"/><text x="10" y="16" class="mono" font-size="9" fill="#059669">PRIVATE</text><text x="10" y="30" class="mono" font-size="10" fill="#e6ecff">workflow scope · 0.1.0</text>
+      </g>
+      <g transform="translate(1600,12)">
+        <rect width="200" height="46" rx="10" fill="#141a2e" stroke="#243056"/><text x="10" y="16" class="mono" font-size="9" fill="#06b6d4">FABRIC</text><text x="10" y="30" class="mono" font-size="10" fill="#e6ecff">SQLite WAL · pino · OTel</text>
+      </g>
+    </g>
+    <!-- two columns -->
+    <g transform="translate(20,146)">
+      <rect width="894" height="314" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="11" font-weight="800" fill="#0ea5e9">ENGINE SUBSYSTEMS</text>
+      <text x="14" y="38" class="mono" font-size="10" fill="#8b95b5">steerable runtime</text>
+      <g transform="translate(14,50)">
+        <rect width="426" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a"/><text x="10" y="16" class="mono" font-size="10" font-weight="700" fill="#e6ecff">core</text><text x="10" y="30" class="mono" font-size="9" fill="#8b95b5">logger pino fallback · events · otel</text><text x="10" y="44" class="mono" font-size="8" fill="#5a6585">healthz · getHealthz() · EventBus</text>
+        <rect width="426" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="66"/><text x="10" y="82" class="mono" font-size="10" font-weight="700" fill="#e6ecff">router + ledger</text><text x="10" y="96" class="mono" font-size="9" fill="#8b95b5">scout 8b → builder 32b → architect</text><text x="10" y="110" class="mono" font-size="8" fill="#5a6585">mtime+size cache · budgets 5/2</text>
+        <rect width="426" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="132"/><text x="10" y="148" class="mono" font-size="10" font-weight="700" fill="#e6ecff">agent · spec · steering</text><text x="10" y="162" class="mono" font-size="9" fill="#8b95b5">session · spec lifecycle · steering</text>
+        <rect width="426" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="198"/><text x="10" y="214" class="mono" font-size="10" font-weight="700" fill="#e6ecff">tools · providers · hooks</text><text x="10" y="228" class="mono" font-size="9" fill="#8b95b5">qwen3:8b/32b · qwen2.5-coder · bash</text>
+      </g>
+      <g transform="translate(454,50)">
+        <rect width="426" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a"/><text x="10" y="16" class="mono" font-size="10" font-weight="700" fill="#e6ecff">tui + cli wiring</text><text x="10" y="30" class="mono" font-size="9" fill="#8b95b5">Ink · commands · print · replay</text>
+        <rect width="426" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="66"/><text x="10" y="82" class="mono" font-size="10" font-weight="700" fill="#e6ecff">ledger + budget</text><text x="10" y="96" class="mono" font-size="9" fill="#8b95b5">ledger.jsonl · summary · budgetState</text>
+        <rect width="426" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="132"/><text x="10" y="148" class="mono" font-size="10" font-weight="700" fill="#e6ecff">test &amp; build</text><text x="10" y="162" class="mono" font-size="9" fill="#8b95b5">forks singleFork · 15000ms · fix-esm</text>
+        <rect width="426" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="198"/><text x="10" y="214" class="mono" font-size="10" font-weight="700" fill="#e6ecff">Docker / CI</text><text x="10" y="228" class="mono" font-size="9" fill="#8b95b5">node:20-slim · GHCR · changeset</text>
+      </g>
+    </g>
+    <g transform="translate(928,146)">
+      <rect width="908" height="314" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="14" y="22" class="sans" font-size="11" font-weight="800" fill="#a78bfa">CX DOMAIN PACKS (27 PKGS TOTAL)</text>
+      <text x="14" y="38" class="mono" font-size="10" fill="#8b95b5">closed-world · 5 packs + telco + default · import law: cx-* → only core + cx-core</text>
+      <g transform="translate(14,50)">
+        <rect width="290" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a"/><text x="10" y="16" class="mono" font-size="10" font-weight="700" fill="#e6ecff">cx-core</text><text x="10" y="30" class="mono" font-size="9" fill="#8b95b5">ontology · artifacts · nba · health</text>
+        <rect width="290" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="66"/><text x="10" y="82" class="mono" font-size="10" font-weight="700" fill="#e6ecff">cx-journey</text><text x="10" y="96" class="mono" font-size="9" fill="#8b95b5">journeys · catalog · ontology · graph</text>
+        <rect width="290" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="132"/><text x="10" y="148" class="mono" font-size="10" font-weight="700" fill="#e6ecff">cx-knowledge</text><text x="10" y="162" class="mono" font-size="9" fill="#8b95b5">nba · evaluate</text>
+        <rect width="290" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="198"/><text x="10" y="214" class="mono" font-size="10" font-weight="700" fill="#e6ecff">cx-ops + sqlite</text><text x="10" y="228" class="mono" font-size="9" fill="#8b95b5">612 lines · WAL · BEGIN IMMEDIATE</text>
+      </g>
+      <g transform="translate(314,50)">
+        <rect width="290" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a"/><text x="10" y="16" class="mono" font-size="10" font-weight="700" fill="#e6ecff">cx-agent</text><text x="10" y="30" class="mono" font-size="9" fill="#8b95b5">console · watch · daemon · proposals</text>
+        <rect width="290" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="66"/><text x="10" y="82" class="mono" font-size="10" font-weight="700" fill="#e6ecff">cx-analytics</text><text x="10" y="96" class="mono" font-size="9" fill="#8b95b5">health · metrics · report</text>
+        <rect width="290" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="132"/><text x="10" y="148" class="mono" font-size="10" font-weight="700" fill="#e6ecff">cx-govern</text><text x="10" y="162" class="mono" font-size="9" fill="#8b95b5">audit · brief · cab · snapshot</text>
+        <rect width="290" height="58" rx="10" fill="#141a2e" stroke="#1e2a4a" y="198"/><text x="10" y="214" class="mono" font-size="10" font-weight="700" fill="#e6ecff">adapters</text><text x="10" y="228" class="mono" font-size="9" fill="#8b95b5">artifacts · local · aws</text>
+      </g>
+      <g transform="translate(614,50)">
+        <rect width="280" height="256" rx="10" fill="#141a2e" stroke="#2a3a6a"/>
+        <text x="10" y="18" class="mono" font-size="10" font-weight="700" fill="#a78bfa">PACKS</text>
+        <text x="10" y="34" class="mono" font-size="9" fill="#e6ecff">retail  180n  returns · loyalty · pickup</text>
+        <text x="10" y="50" class="mono" font-size="9" fill="#e6ecff">financial 200n  fraud · loan · kyc</text>
+        <text x="10" y="66" class="mono" font-size="9" fill="#e6ecff">healthcare 190n  appointment · claims</text>
+        <text x="10" y="82" class="mono" font-size="9" fill="#e6ecff">travel  170n  booking · disruption</text>
+        <text x="10" y="98" class="mono" font-size="9" fill="#e6ecff">telco   5 journeys · churn · outage</text>
+        <text x="10" y="114" class="mono" font-size="9" fill="#8b95b5">default 223n · fallback</text>
+        <text x="10" y="136" class="mono" font-size="9" fill="#5b8cff">registry listPacks() · scorePack()</text>
+        <text x="10" y="152" class="mono" font-size="9" fill="#5a6585">detectPack idea: retail 0.85</text>
+        <text x="10" y="170" class="mono" font-size="9" fill="#3dd68c">6 specs → 5 packs used</text>
+        <text x="10" y="188" class="mono" font-size="9" fill="#8b95b5">import: only core+cx-core</text>
+        <text x="10" y="206" class="mono" font-size="9" fill="#5a6585">workspace 5 specs · docs</text>
+        <text x="10" y="222" class="mono" font-size="9" fill="#5a6585">examples/cx-demo/golden-path</text>
+      </g>
+    </g>
+  </g>
+  <!-- Footer -->
+  <g transform="translate(32,1156)">
+    <rect width="1856" height="92" rx="12" fill="#141a2e" stroke="#243056"/>
+    <text x="16" y="20" class="mono" font-size="10" fill="#8b95b5">END-TO-END FLOW:  idea "travel booking..." → detectPack=travel → seedTravelDesignPack() 5 journeys → orchestrateBuild() artifacts→local/aws → health 100 → console poll → 0 proposals (healthy) → board 6 healthy → dashboard 5.0kB → brief → cab-export → template.yaml (APPLY.md)</text>
+    <text x="16" y="38" class="mono" font-size="10" fill="#5a6585">OFFLINE-FIRST: every cox cx --offline works · HUMAN-GATED: console proposes, apply creates task · PLAN-ONLY: never CreateStack · STRONG GRAPH: nba pure, no model</text>
+    <text x="16" y="56" class="mono" font-size="10" fill="#5a6585">SCALE: 50 specs × 10 journeys &lt;2s · SQLite WAL · UNIQUE dedupe · pino + OTel · GHCR docker · PRIVATE until 0.2.0 · pnpm 10.23</text>
+    <text x="16" y="74" class="mono" font-size="9" fill="#5a6585">27 packages · 16 dists · fix-esm · vitest forks singleFork 15000ms · 88 passed | 3 skipped · 2026-08-09</text>
+    <text x="1836" y="74" text-anchor="end" class="mono" font-size="9" fill="#64748b">chendren/coxswain 0.1.0 · chendren/CXOS (6 specs) · chendren/TelcoCXOS (demo)</text>
+  </g>
+</svg>

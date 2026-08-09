@@ -1,0 +1,270 @@
+<svg width="1920" height="1280" viewBox="0 0 1920 1280" xmlns="http://www.w3.org/2000/svg">
+  <title>Coxswain Architecture — Spec-Driven, Steerable, Token-Frugal Coding Agent</title>
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0b1020"/><stop offset="100%" stop-color="#101f3a"/></linearGradient>
+    <linearGradient id="cli" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#5b8cff"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient>
+    <linearGradient id="core" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#06b6d4"/></linearGradient>
+    <linearGradient id="cx" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#ec4899"/></linearGradient>
+    <linearGradient id="infra" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#334155"/><stop offset="100%" stop-color="#64748b"/></linearGradient>
+    <filter id="shadow2" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity="0.32"/></filter>
+    <style>.mono{font-family: ui-monospace, SFMono-Regular, Menlo, monospace;}.sans{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;}</style>
+  </defs>
+  <rect width="1920" height="1280" rx="24" fill="url(#bg2)"/>
+  <g transform="translate(32,24)">
+    <rect width="1856" height="92" rx="16" fill="#141a2e" stroke="#243056"/>
+    <text x="20" y="34" class="sans" font-size="28" font-weight="800" fill="#e6ecff">COXSWAIN</text>
+    <text x="188" y="34" class="sans" font-size="13" fill="#5b8cff" font-weight="700" letter-spacing="0.08em">SPEC-DRIVEN · STEERABLE · TOKEN-FRUGAL CODING AGENT</text>
+    <text x="20" y="56" class="sans" font-size="11" fill="#8b95b5">27 PACKAGES · pnpm 10.23 · Node &gt;=20 · ESM with fix-esm · PRIVATE until 0.2.0 · CLI is sole composition root</text>
+    <text x="20" y="76" class="mono" font-size="10" fill="#5a6585">cox --health → getHealthz() {status:ok} · cox --cwd &lt;dir&gt; cx … · COX_SQLITE=1 → cxops.db WAL · OTEL_EXPORTER_OTLP_ENDPOINT → spans</text>
+    <g transform="translate(1360,18)">
+      <rect width="124" height="26" rx="13" fill="#0b1020" stroke="#2a3a6a"/><circle cx="14" cy="13" r="5" fill="#3dd68c"/><text x="26" y="17" class="sans" font-size="11" font-weight="700" fill="#b8d0ff">TYPECHECK GREEN</text>
+    </g>
+    <g transform="translate(1496,18)">
+      <rect width="110" height="26" rx="13" fill="#0b1020" stroke="#2a3a6a"/><circle cx="14" cy="13" r="5" fill="#5b8cff"/><text x="26" y="17" class="sans" font-size="11" font-weight="700" fill="#b8d0ff">PINO FALLBACK</text>
+    </g>
+    <g transform="translate(1618,18)">
+      <rect width="118" height="26" rx="13" fill="#0b1020" stroke="#2a3a6a"/><circle cx="14" cy="13" r="5" fill="#f5a524"/><text x="26" y="17" class="sans" font-size="11" font-weight="700" fill="#b8d0ff">LEDGER CACHE</text>
+    </g>
+    <g transform="translate(1748,18)">
+      <rect width="88" height="56" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="10" y="20" class="mono" font-size="10" fill="#8b95b5">VERSION</text>
+      <text x="10" y="38" class="mono" font-size="16" font-weight="800" fill="#e6ecff">0.1.0</text>
+      <text x="10" y="50" class="mono" font-size="9" fill="#5a6585">PRIVATE GHCR</text>
+    </g>
+  </g>
+
+  <!-- CLI composition root -->
+  <g transform="translate(32,132)" filter="url(#shadow2)">
+    <rect width="1856" height="110" rx="16" fill="#141a2e" stroke="#5b8cff" stroke-width="1.2"/>
+    <rect width="6" height="110" rx="3" fill="url(#cli)"/>
+    <text x="22" y="28" class="sans" font-size="12" font-weight="800" fill="#5b8cff" letter-spacing="0.08em">COMPOSITION ROOT</text>
+    <text x="22" y="52" class="sans" font-size="18" font-weight="800" fill="#e6ecff">packages/cli</text>
+    <text x="22" y="70" class="sans" font-size="11" fill="#8b95b5">deps.ts · wire.ts · main.ts (--health / health) · cx.* commands · Ink TUI</text>
+    <text x="22" y="88" class="mono" font-size="10" fill="#5a6585">imports all @cox/* — no cx-* may import another cx-* — law enforced by pnpm typecheck</text>
+    <g transform="translate(520,18)">
+      <rect width="190" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="18" class="mono" font-size="10" fill="#5b8cff">ENTRY</text>
+      <text x="12" y="36" class="mono" font-size="11" font-weight="700" fill="#e6ecff">node dist/main.js</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#8b95b5">--health → getHealthz()</text>
+      <text x="12" y="66" class="mono" font-size="10" fill="#3dd68c">cx board/queue/dashboard</text>
+    </g>
+    <g transform="translate(730,18)">
+      <rect width="200" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="18" class="mono" font-size="10" fill="#f5a524">FLAGS</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#e6ecff">--cwd --model --print</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#8b95b5">--live / --mode offline|hybrid</text>
+      <text x="12" y="66" class="mono" font-size="10" fill="#8b95b5">--target artifacts,local,aws</text>
+    </g>
+    <g transform="translate(950,18)">
+      <rect width="220" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="18" class="mono" font-size="10" fill="#059669">WIRING</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#e6ecff">COX_SQLITE=1 → sqlite</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#e6ecff">OTEL_EXPORTER → spans</text>
+      <text x="12" y="66" class="mono" font-size="10" fill="#8b95b5">COXSWAIN_ROOT → CXOS</text>
+    </g>
+    <g transform="translate(1190,18)">
+      <rect width="260" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="18" class="mono" font-size="10" fill="#7c3aed">SUBSYSTEMS</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#e6ecff">agent · router · spec · steering · tools</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#e6ecff">ledger · providers · hooks · tui</text>
+      <text x="12" y="66" class="mono" font-size="10" fill="#8b95b5">16 dists · fix-esm · --health</text>
+    </g>
+    <g transform="translate(1470,18)">
+      <rect width="170" height="74" rx="12" fill="#0b1020" stroke="#1e2a4a"/>
+      <text x="12" y="18" class="mono" font-size="10" fill="#8b95b5">HEALTHZ</text>
+      <text x="12" y="36" class="mono" font-size="11" font-weight="700" fill="#3dd68c">{"status":"ok"}</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#8b95b5">/healthz · health command</text>
+      <text x="12" y="66" class="mono" font-size="9" fill="#5a6585">pino + OTel · mtime cache</text>
+    </g>
+    <g transform="translate(1660,18)">
+      <rect width="176" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="18" class="mono" font-size="10" fill="#8b95b5">DELIVER</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#e6ecff">Docker GHCR :latest/:sha</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#e6ecff">changesets · SBOM CycloneDX</text>
+      <text x="12" y="66" class="mono" font-size="9" fill="#f5a524">PRIVATE · workflow scope</text>
+    </g>
+  </g>
+  <g transform="translate(960,258)"><path d="M0 0 L0 18 L-7 10 M0 18 L7 10" stroke="#5b8cff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/><circle cx="0" cy="9" r="2.5" fill="#5b8cff" opacity="0.35"/></g>
+
+  <!-- Engine -->
+  <g transform="translate(32,284)">
+    <g filter="url(#shadow2)">
+      <rect width="910" height="320" rx="16" fill="#141a2e" stroke="#0ea5e9" stroke-width="1"/>
+      <rect width="6" height="320" rx="3" fill="url(#core)"/>
+      <text x="20" y="28" class="sans" font-size="12" font-weight="800" fill="#0ea5e9" letter-spacing="0.08em">ENGINE — @cox/core &amp; SUBSYSTEMS</text>
+      <text x="20" y="48" class="sans" font-size="11" fill="#8b95b5">steerable runtime · token-frugal routing · budgets · tools</text>
+      <!-- left column -->
+      <g transform="translate(20,66)">
+        <rect width="430" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">core</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">logger pino fallback · events · healthz · otel wrapper</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">LOG_LEVEL · OTEL_EXPORTER_OTLP_ENDPOINT · getHealthz()</text>
+        <circle cx="416" cy="14" r="4" fill="#0ea5e9"/>
+      </g>
+      <g transform="translate(20,150)">
+        <rect width="430" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">router + ledger</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">scout→builder→architect · 70% savings · mtime+size cache</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">budget governor 80% → degrade architect→builder</text>
+        <circle cx="416" cy="14" r="4" fill="#0ea5e9"/>
+      </g>
+      <g transform="translate(20,234)">
+        <rect width="430" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">agent · spec · steering</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">session · controller · spec lifecycle · steering compat</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">approve:requirements/design · tasks</text>
+      </g>
+      <!-- right column -->
+      <g transform="translate(460,66)">
+        <rect width="430" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">providers · tools · hooks</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">anthropic · ollama qwen3:8b/32b · qwen2.5-coder:32b · bash/grep</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">classifyWithScout false · defaultTier builder</text>
+      </g>
+      <g transform="translate(460,150)">
+        <rect width="430" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">tui + cli wiring</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">Ink TUI · commands · print · replay · cx.*</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">pnpm cox --print · wire.ts · deps.ts</text>
+      </g>
+      <g transform="translate(460,234)">
+        <rect width="430" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">test &amp; build</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">vitest forks singleFork · fileParallelism false · 15000ms</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">pnpm typecheck · build + fix-esm · lint</text>
+      </g>
+    </g>
+    <g transform="translate(930,0)" filter="url(#shadow2)">
+      <rect width="926" height="320" rx="16" fill="#141a2e" stroke="#8b5cf6" stroke-width="1"/>
+      <rect width="6" height="320" rx="3" fill="url(#cx)"/>
+      <text x="20" y="28" class="sans" font-size="12" font-weight="800" fill="#a78bfa" letter-spacing="0.08em">CX DOMAIN — @cox/cx-*</text>
+      <text x="20" y="48" class="sans" font-size="11" fill="#8b95b5">closed-world design packs · multi-target · human-gated operate · plan-only AWS</text>
+      <g transform="translate(20,66)">
+        <rect width="290" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">cx-core + ontology</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">DEFAULT_ONTOLOGY · recommendNba · runClosedWorld</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">DEFAULT vs LOCAL pack</text>
+      </g>
+      <g transform="translate(320,66)">
+        <rect width="290" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">cx-packs (5+1)</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">retail · financial · healthcare · travel · telco</text>
+        <text x="12" y="52" class="mono" font-size="8.5" fill="#5a6585">registry detectPack() · score 0-1 · threshold 0.3</text>
+      </g>
+      <g transform="translate(620,66)">
+        <rect width="286" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">cx-journey / knowledge</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">journeys · catalog · ontology · graph-query · nba</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">Stage 2 split from God cx-ops</text>
+      </g>
+      <g transform="translate(20,150)">
+        <rect width="290" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">cx-ops (facade)</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">orchestrate · offline-artifacts · sqlite · 612 lines</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">COX_SQLITE=1 → cxops.db WAL</text>
+      </g>
+      <g transform="translate(320,150)">
+        <rect width="290" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">cx-agent / analytics / govern</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">console · queue · board · health · audit · cab</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">facades re-export @cox/cx-ops (Stage 3)</text>
+      </g>
+      <g transform="translate(620,150)">
+        <rect width="286" height="74" rx="12" fill="#0b1020" stroke="#243056"/>
+        <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">adapters</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">cx-artifacts · cx-local · cx-aws (plan-only CFN)</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">never CreateStack · APPLY.md gate</text>
+      </g>
+      <g transform="translate(20,234)">
+        <rect width="886" height="66" rx="12" fill="#0b1020" stroke="#2a3a6a"/>
+        <text x="12" y="18" class="mono" font-size="10" fill="#a78bfa">PACK REGISTRY FLOW</text>
+        <text x="12" y="36" class="mono" font-size="10" fill="#e6ecff">idea → detectPack() → score retail 0.85 / telco 0.12 → seedRetailDesignPack() → 5 journeys + architectureDoc</text>
+        <text x="12" y="52" class="mono" font-size="9" fill="#5a6585">retail: returns_refunds · loyalty_program · store_pickup · online_order_support · retention</text>
+      </g>
+    </g>
+  </g>
+  <g transform="translate(960,618)"><path d="M0 0 L0 18 L-7 10 M0 18 L7 10" stroke="#64748b" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/></g>
+  <!-- Infra -->
+  <g transform="translate(32,644)" filter="url(#shadow2)">
+    <rect width="1856" height="180" rx="16" fill="#141a2e" stroke="#334155" stroke-width="1"/>
+    <rect width="6" height="180" rx="3" fill="url(#infra)"/>
+    <text x="20" y="28" class="sans" font-size="12" font-weight="800" fill="#94a3b8" letter-spacing="0.08em">FABRIC &amp; RELEASE</text>
+    <text x="20" y="48" class="sans" font-size="11" fill="#8b95b5">enterprise safety · token-frugal · private · observable · releasable</text>
+    <g transform="translate(20,64)">
+      <rect width="300" height="96" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">Persistence</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">cxops.db WAL · BEGIN IMMEDIATE</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#8b95b5">proposals / tasks / audit / health_history</text>
+      <text x="12" y="70" class="mono" font-size="9" fill="#5a6585">migrateJsonToSqlite() idempotent</text>
+      <text x="12" y="84" class="mono" font-size="9" fill="#3dd68c">COX_SQLITE=1 → SQLite  •  0 → JSON</text>
+    </g>
+    <g transform="translate(336,64)">
+      <rect width="300" height="96" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">Observability</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">pino logger fallback · ledger mtime cache</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#8b95b5">OTel spans when OTLP set · healthz ok</text>
+      <text x="12" y="70" class="mono" font-size="9" fill="#5a6585">EventBus logs not swallows</text>
+      <text x="12" y="84" class="mono" font-size="9" fill="#3dd68c">node --health → {status:ok}</text>
+    </g>
+    <g transform="translate(652,64)">
+      <rect width="300" height="96" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">Safety</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">propose-only ops · plan-only CFN</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#8b95b5">append-only audit · secret scanning</text>
+      <text x="12" y="70" class="mono" font-size="9" fill="#5a6585">RBAC on apply · SBOM CycloneDX</text>
+      <text x="12" y="84" class="mono" font-size="9" fill="#f5a524">gitleaks · private scope</text>
+    </g>
+    <g transform="translate(968,64)">
+      <rect width="300" height="96" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">Token-Frugal</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">70%+ savings vs all-architect</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#8b95b5">ledger: savings vs baseline $X (Y%)</text>
+      <text x="12" y="70" class="mono" font-size="9" fill="#5a6585">scout 8b → builder 32b → architect</text>
+      <text x="12" y="84" class="mono" font-size="9" fill="#3dd68c">budgets sessionUsd 5 · specUsd 2</text>
+    </g>
+    <g transform="translate(1284,64)">
+      <rect width="270" height="96" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">CI / Release</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#8b95b5">pnpm 10.23 · Node 20 · build + fix-esm</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#8b95b5">typecheck · lint · test:coverage 80</text>
+      <text x="12" y="70" class="mono" font-size="9" fill="#5a6585">Docker GHCR · changesets</text>
+      <text x="12" y="84" class="mono" font-size="9" fill="#5a6585">PRIVATE until 0.2.0</text>
+    </g>
+    <g transform="translate(1570,64)">
+      <rect width="266" height="96" rx="12" fill="#0b1020" stroke="#243056"/>
+      <text x="12" y="20" class="sans" font-size="11" font-weight="700" fill="#e6ecff">Scale</text>
+      <text x="12" y="36" class="mono" font-size="10" fill="#e6ecff">50 specs × 10 journeys &lt;2s</text>
+      <text x="12" y="52" class="mono" font-size="10" fill="#8b95b5">board + queue sorted urgency</text>
+      <text x="12" y="70" class="mono" font-size="9" fill="#5a6585">WAL + UNIQUE dedupe</text>
+      <text x="12" y="84" class="mono" font-size="9" fill="#3dd68c">no JSON RMW lost-update</text>
+    </g>
+  </g>
+  <!-- Footer -->
+  <g transform="translate(32,844)">
+    <rect width="1856" height="68" rx="12" fill="#141a2e" stroke="#243056"/>
+    <text x="16" y="22" class="mono" font-size="10" fill="#8b95b5">IMPORT LAW:  cx-* → only @cox/core + @cox/cx-core  •  CLI is sole composition root  •  adapters never import each other  •  offline-first every cox cx --offline works</text>
+    <text x="16" y="40" class="mono" font-size="10" fill="#5a6585">examples/cx-demo/golden-path.sh → spec new → approve → run --target all → status → console → board  •  TelcoCXOS is telco demo, CXOS is primary domain-agnostic</text>
+    <text x="16" y="58" class="mono" font-size="9" fill="#5a6585">27 packages · 16 dists · pnpm-workspace.yaml packages/* · tsconfig.base.json · fix-esm-imports.mjs  •  2026-08-09</text>
+    <text x="1836" y="58" text-anchor="end" class="mono" font-size="9" fill="#64748b">chendren/coxswain · chendren/CXOS · chendren/TelcoCXOS (demo)</text>
+  </g>
+  <!-- hard rules badges bottom -->
+  <g transform="translate(32,928)">
+    <rect width="1856" height="56" rx="12" fill="#0b1020" stroke="#1e2a4a"/>
+    <text x="16" y="22" class="sans" font-size="11" font-weight="700" fill="#e6ecff">HARD RULES</text>
+    <g transform="translate(120,10)">
+      <rect width="300" height="36" rx="18" fill="#1a2744" stroke="#2a3a6a"/><text x="16" y="22" class="sans" font-size="11" font-weight="700" fill="#5b8cff">1 — No silent prod mutation</text>
+    </g>
+    <g transform="translate(432,10)">
+      <rect width="300" height="36" rx="18" fill="#1a2744" stroke="#2a3a6a"/><text x="16" y="22" class="sans" font-size="11" font-weight="700" fill="#5b8cff">2 — AWS is plan-only</text>
+    </g>
+    <g transform="translate(744,10)">
+      <rect width="320" height="36" rx="18" fill="#1a2744" stroke="#2a3a6a"/><text x="16" y="22" class="sans" font-size="11" font-weight="700" fill="#5b8cff">3 — Offline-first</text>
+    </g>
+    <g transform="translate(1076,10)">
+      <rect width="320" height="36" rx="18" fill="#1a2744" stroke="#2a3a6a"/><text x="16" y="22" class="sans" font-size="11" font-weight="700" fill="#5b8cff">4 — Strong graph first</text>
+    </g>
+    <g transform="translate(1408,10)">
+      <rect width="320" height="36" rx="18" fill="#1a2744" stroke="#2a3a6a"/><text x="16" y="22" class="sans" font-size="11" font-weight="700" fill="#5b8cff">5 — Import law (CLI root)</text>
+    </g>
+  </g>
+</svg>

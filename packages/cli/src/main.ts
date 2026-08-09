@@ -53,6 +53,7 @@ import {
   runCxAudit,
   runCxJourneys,
   runCxInit,
+  runCxQuickstart,
   runCxClaim,
   runCxOperate,
   runCxCatalog,
@@ -903,6 +904,17 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   ).action(async (_o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     throw new CliExit(await runCxInit(await cxCtx(command, f.pack, f)));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("quickstart [name] [idea...]")
+      .description("offline onboarding: doctor + init + sample run + board"),
+  ).action(async (name: string | undefined, idea: string[], _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(
+      await runCxQuickstart(await cxCtx(command, f.pack, f), name, idea),
+    );
   });
 
   addGlobalOptions(

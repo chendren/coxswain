@@ -29,20 +29,10 @@ pnpm cox --cwd "$CWD" cx proposals golden
 pnpm cox --cwd "$CWD" cx export-aws golden "${CWD}/cx-export/golden-aws"
 pnpm cox --cwd "$CWD" cx nba journey=churn_prevention stage=cancel_requested confidence=0.9
 
-# Fleet surfaces when present in this CLI build (offline workspace reads; live flags N/A)
-run_if_cx_cmd() {
-  local cmd="$1"
-  shift
-  if pnpm cox cx help "$cmd" >/dev/null 2>&1; then
-    pnpm cox --cwd "$CWD" cx "$cmd" "$@"
-  else
-    echo "skip: cx $cmd not available"
-  fi
-}
-
-run_if_cx_cmd board
-run_if_cx_cmd dashboard "$CWD/cxos-dashboard.html"
-run_if_cx_cmd queue
+# Fleet surfaces (offline workspace reads)
+pnpm cox --cwd "$CWD" cx board
+pnpm cox --cwd "$CWD" cx dashboard "$CWD/cxos-dashboard.html"
+pnpm cox --cwd "$CWD" cx queue
 
 # Stepwise equivalent (commented for reference):
 # pnpm cox --cwd "$CWD" cx new golden "golden path dispute"

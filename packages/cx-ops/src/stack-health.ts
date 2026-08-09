@@ -121,6 +121,8 @@ export async function probeStackHealth(opts?: {
     path,
     ollama,
     platform,
-    ready: ollama.ok && ollama.hasLlm,
+    // Live-local stack requires both local LLM fabric and the platform bind.
+    // Ollama alone is not enough for "stack ready for live local".
+    ready: ollama.ok && ollama.hasLlm && platform.ok,
   };
 }

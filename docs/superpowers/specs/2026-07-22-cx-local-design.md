@@ -7,7 +7,7 @@ Status: Approved (design), pending implementation plan
 
 `@cox/cx-local` is the second of three `CxTargetAdapter` implementations
 CXOS ships, targeting the real local omnichannel CX platform at
-`/Users/chadhendren/Projects/cx-platform/omnichannel-cx-platform`
+`$CX_PLATFORM_DIR (default: ~/Projects/cx-platform/omnichannel-cx-platform)`
 (Express + WebSocket, default port 3143, `CX_PORT` overrides). Unlike
 `cx-artifacts` (a pure document factory that writes fresh JSON to disk),
 `cx-local` targets a platform that already has 13 fixed journey types,
