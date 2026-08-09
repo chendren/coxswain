@@ -1,5 +1,5 @@
 {
-  "name": "@cox/cx-ops",
+  "name": "@cox/cx-pack-travel",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
@@ -9,20 +9,13 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "@cox/core": "workspace:*",
-    "@cox/cx-core": "workspace:*",
-    "@cox/cx-pack-registry": "workspace:*",
-    "@cox/cx-pack-retail": "workspace:*",
-    "@cox/cx-pack-financial": "workspace:*",
-    "@cox/cx-pack-healthcare": "workspace:*",
-    "@cox/cx-pack-travel": "workspace:*",
-    "@cox/cx-journey": "workspace:*",
-    "@cox/cx-knowledge": "workspace:*"
+    "@cox/cx-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0"

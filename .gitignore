@@ -10,6 +10,8 @@ dist/
 .cox/cx/*/daemon.log
 .cox/cx/*/daemon.json
 .cox/cx/*/health-history.jsonl
+.cox/cx/cxops.db
+.cox/cx/cxops.db-*
 .cox/cx/.archived-*
 coverage/
 .claude/
