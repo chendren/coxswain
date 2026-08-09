@@ -2,8 +2,9 @@
 
 **Customer Experience Operating System powered by a token-frugal coding agent (Coxswain)**
 
-[![CI](https://img.shields.io/badge/CI-passing-brightgreen)](../../actions)
+[![CI](https://github.com/chendren/coxswain/actions/workflows/ci.yml/badge.svg)](https://github.com/chendren/coxswain/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
+[![Release](https://img.shields.io/github/v/release/chendren/coxswain)](https://github.com/chendren/coxswain/releases/latest)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](./package.json)
 [![Offline-first](https://img.shields.io/badge/offline--first-yes-success)](#4-command-offline-quickstart)
 

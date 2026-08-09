@@ -10,7 +10,7 @@
   },
   "packageManager": "pnpm@10.23.0",
   "scripts": {
-    "pretypecheck": "pnpm --filter @cox/core build && pnpm --filter @cox/cx-core build",
+    "pretypecheck": "pnpm --filter @cox/core build && pnpm --filter @cox/cx-core build && node scripts/fix-esm-imports.mjs",
     "typecheck": "pnpm -r --no-bail typecheck",
     "test": "pnpm -r --no-bail test",
     "test:coverage": "vitest run --coverage",
