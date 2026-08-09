@@ -1,0 +1,27 @@
+{
+  "name": "@cox/cx-govern",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@cox/core": "workspace:*",
+    "@cox/cx-core": "workspace:*",
+    "@cox/cx-ops": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  },
+  "files": [
+    "dist"
+  ]
+}

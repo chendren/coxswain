@@ -59,6 +59,15 @@
     },
     {
       "path": "packages/cx-knowledge"
+    },
+    {
+      "path": "packages/cx-agent"
+    },
+    {
+      "path": "packages/cx-analytics"
+    },
+    {
+      "path": "packages/cx-govern"
     }
   ],
   "files": []
