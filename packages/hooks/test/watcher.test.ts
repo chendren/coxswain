@@ -14,6 +14,8 @@ const { watchBehavior } = vi.hoisted(() => ({
 // property"), same as node:child_process — see packages/hooks/NOTES.md.
 // vi.mock is used instead, delegating to the real implementation except
 // when a test explicitly arms the one-shot failure flag (R11.1 fallback).
+// EMFILE mitigation: polling mock avoids real FSEvent FDs that exhaust the
+// 256-fd limit on macOS when many tmp watchers are created rapidly.
 vi.mock("node:fs", async () => {
   const actual = await vi.importActual<typeof import("node:fs")>("node:fs");
   return {
@@ -25,7 +27,109 @@ vi.mock("node:fs", async () => {
         err.code = "ERR_FEATURE_UNAVAILABLE_ON_PLATFORM";
         throw err;
       }
-      return actual.watch(...args);
+      // Polling mock — no real FD, scans the directory every 40ms.
+      const [target, opts, maybeCb] = args as unknown as [string, { recursive?: boolean } | ((...a: unknown[]) => void), ((...a: unknown[]) => void)?];
+      const cb = typeof opts === "function" ? (opts as unknown as (a: string, b: string | Buffer | null) => void) : (maybeCb as unknown as (a: string, b: string | Buffer | null) => void);
+      const options = typeof opts === "function" ? {} : (opts as { recursive?: boolean }) ?? {};
+      const recursive = options.recursive ?? false;
+      const cwd = String(target);
+
+      let closed = false;
+      const prev = new Map<string, number>();
+
+      function walk(dir: string, base: string) {
+        let entries: ReturnType<typeof actual.readdirSync>;
+        try {
+          entries = actual.readdirSync(dir, { withFileTypes: true } as unknown as Parameters<typeof actual.readdirSync>[1]);
+        } catch {
+          return;
+        }
+        for (const ent of entries) {
+          const full = actual as unknown as { join?: unknown };
+          void full;
+          const fullPath = `${dir}/${ent.name}`;
+          const rel = fullPath.slice(cwd.length + 1).replace(/\\/g, "/");
+          if (ent.isDirectory()) {
+            if (recursive) walk(fullPath, rel);
+          } else if (ent.isFile()) {
+            try {
+              const st = actual.statSync(fullPath);
+              const m = st.mtimeMs;
+              const prevM = prev.get(rel);
+              if (prevM === undefined) {
+                prev.set(rel, m);
+                if (!closed) cb("change", rel);
+              } else if (prevM !== m) {
+                prev.set(rel, m);
+                if (!closed) cb("change", rel);
+              }
+            } catch {}
+          }
+        }
+      }
+
+      // Initial populate without firing
+      try {
+        const initialEntries = actual.readdirSync(cwd, { withFileTypes: true } as unknown as Parameters<typeof actual.readdirSync>[1]) as unknown as Array<{ name: string; isDirectory(): boolean; isFile(): boolean }>;
+        for (const ent of initialEntries) {
+          const fullPath = `${cwd}/${ent.name}`;
+          if (ent.isDirectory()) {
+            if (recursive) {
+              // prime prev by walking but not firing
+              const stack: string[] = [fullPath];
+              while (stack.length) {
+                const d = stack.pop()!;
+                let sub: typeof initialEntries;
+                try {
+                  sub = actual.readdirSync(d, { withFileTypes: true } as unknown as Parameters<typeof actual.readdirSync>[1]) as unknown as typeof initialEntries;
+                } catch { continue; }
+                for (const s of sub) {
+                  const fp = `${d}/${s.name}`;
+                  const rel = fp.slice(cwd.length + 1).replace(/\\/g, "/");
+                  if (s.isDirectory()) stack.push(fp);
+                  else if (s.isFile()) {
+                    try {
+                      const st = actual.statSync(fp);
+                      prev.set(rel, st.mtimeMs);
+                    } catch {}
+                  }
+                }
+              }
+            }
+          } else if (ent.isFile()) {
+            try {
+              const st = actual.statSync(fullPath);
+              prev.set(ent.name, st.mtimeMs);
+            } catch {}
+          }
+        }
+      } catch {}
+
+      const interval = setInterval(() => {
+        if (closed) return;
+        walk(cwd, "");
+        // Detect deletions to keep prev accurate (no event for deletes — watcher.ts checks existsSync)
+        for (const key of [...prev.keys()]) {
+          try {
+            actual.statSync(`${cwd}/${key}`);
+          } catch {
+            prev.delete(key);
+          }
+        }
+      }, 40);
+      // Don't keep process alive
+      // @ts-ignore
+      if (typeof (interval as unknown as { unref?: () => void }).unref === "function") (interval as unknown as { unref: () => void }).unref!();
+
+      return {
+        close: () => {
+          closed = true;
+          clearInterval(interval);
+        },
+        on: (_event: string, _handler: (...a: unknown[]) => void) => {},
+        ref: () => {},
+        unref: () => {},
+      } as unknown as ReturnType<typeof actual.watch>;
     },
   };
 });
