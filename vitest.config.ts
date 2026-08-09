@@ -8,6 +8,8 @@ export default defineConfig({
     sequence: { concurrent: false },
     pool: "forks",
     poolOptions: { forks: { singleFork: true } },
+    testTimeout: 15000,
+    hookTimeout: 15000,
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov", "html", "json-summary"],
