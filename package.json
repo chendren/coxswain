@@ -2,7 +2,7 @@
   "name": "coxswain",
   "version": "0.1.0",
   "private": true,
-  "description": "Coxswain (cox) — spec-driven, steerable, token-frugal coding agent CLI",
+  "description": "Coxswain (cox) \u2014 spec-driven, steerable, token-frugal coding agent CLI",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -46,7 +46,7 @@
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
-    "@vitest/coverage-c8": "^2.1.0",
+    "@vitest/coverage-c8": "^0.33.0",
     "@vitest/coverage-v8": "^2.1.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.1.0",

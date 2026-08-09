@@ -1,23 +1,65 @@
 {
   "references": [
-    { "path": "packages/core" },
-    { "path": "packages/providers" },
-    { "path": "packages/router" },
-    { "path": "packages/ledger" },
-    { "path": "packages/tools" },
-    { "path": "packages/agent" },
-    { "path": "packages/spec" },
-    { "path": "packages/steering" },
-    { "path": "packages/hooks" },
-    { "path": "packages/tui" },
-    { "path": "packages/cx-core" },
-    { "path": "packages/cx-pack-registry" },
-    { "path": "packages/cx-pack-retail" },
-    { "path": "packages/cx-artifacts" },
-    { "path": "packages/cx-aws" },
-    { "path": "packages/cx-local" },
-    { "path": "packages/cx-ops" },
-    { "path": "packages/cli" }
+    {
+      "path": "packages/core"
+    },
+    {
+      "path": "packages/providers"
+    },
+    {
+      "path": "packages/router"
+    },
+    {
+      "path": "packages/ledger"
+    },
+    {
+      "path": "packages/tools"
+    },
+    {
+      "path": "packages/agent"
+    },
+    {
+      "path": "packages/spec"
+    },
+    {
+      "path": "packages/steering"
+    },
+    {
+      "path": "packages/hooks"
+    },
+    {
+      "path": "packages/tui"
+    },
+    {
+      "path": "packages/cx-core"
+    },
+    {
+      "path": "packages/cx-pack-registry"
+    },
+    {
+      "path": "packages/cx-pack-retail"
+    },
+    {
+      "path": "packages/cx-artifacts"
+    },
+    {
+      "path": "packages/cx-aws"
+    },
+    {
+      "path": "packages/cx-local"
+    },
+    {
+      "path": "packages/cx-ops"
+    },
+    {
+      "path": "packages/cli"
+    },
+    {
+      "path": "packages/cx-journey"
+    },
+    {
+      "path": "packages/cx-knowledge"
+    }
   ],
   "files": []
 }
