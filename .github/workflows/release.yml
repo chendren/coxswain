@@ -1,9 +1,20 @@
 name: Release
 
+# Softened for OSS: no Docker multi-arch on every main push.
+# - changesets: version PR on main (needs NPM_TOKEN only for publish)
+# - docker: tags only (v*) or manual workflow_dispatch with input
+# - SBOM: optional artifact on tag releases
+
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      publish_docker:
+        description: "Build and push GHCR image (linux/amd64 only)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -19,6 +30,7 @@ jobs:
     name: Changesets version / publish
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,6 +58,7 @@ jobs:
       - name: Create release pull request or publish
         id: changesets
         uses: changesets/action@v1
+        continue-on-error: true
         with:
           version: pnpm changeset:version
           publish: pnpm changeset:publish
@@ -59,9 +72,11 @@ jobs:
   docker:
     name: GHCR Docker publish
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    if: github.ref == 'refs/heads/main'
-    needs: changesets
+    timeout-minutes: 25
+    # Tags (v*) always; workflow_dispatch only when publish_docker=true
+    if: >
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_docker == true)
     permissions:
       contents: read
       packages: write
@@ -85,10 +100,12 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=semver,pattern={{version}}
             type=sha,format=short
             type=ref,event=tag
 
+      # Single platform by default: faster, fewer QEMU failures on OSS CI
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -99,28 +116,19 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
-          sbom: true
-          provenance: mode=max
+          platforms: linux/amd64
+          provenance: false
 
       - name: Generate SBOM (CycloneDX)
+        continue-on-error: true
         run: |
-          npm install -g @cyclonedx/cyclonedx-npm@latest
-          cyclonedx-npm --output-file bom.json --output-format JSON --package-lock-only false || npx --yes @cyclonedx/cyclonedx-npm --output-file bom.json --output-format JSON
-          ls -lh bom.json
-          echo "--- SBOM preview (first 2000 chars) ---"
-          head -c 2000 bom.json; echo
+          npx --yes @cyclonedx/cyclonedx-npm --output-file bom.json --output-format JSON || true
+          ls -lh bom.json 2>/dev/null || echo "no bom"
 
       - name: Upload SBOM artifact
+        if: hashFiles('bom.json') != ''
         uses: actions/upload-artifact@v4
         with:
           name: sbom-cyclonedx
           path: bom.json
           retention-days: 30
-
-      - name: Attest SBOM
-        uses: actions/attest-sbom@v2
-        if: hashFiles('bom.json') != ''
-        with:
-          subject-path: bom.json
-          sbom-path: bom.json

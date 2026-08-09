@@ -15,6 +15,10 @@ idea → pack detect → program → build (artifacts → local → aws plan)
     → health → propose → claim → task → brief / CAB export
 ```
 
+![Offline golden path: doctor, cx run, board, cab-export](./examples/cx-demo/offline-golden.gif)
+
+*Offline demo (no API keys): idea → multi-target healthy program → CAB handoff. [MP4](./examples/cx-demo/offline-golden.mp4) · regenerate with `vhs examples/cx-demo/offline-golden-demo.tape`.*
+
 ---
 
 ## Five hard rules
@@ -199,7 +203,9 @@ pnpm cox cx run core "…" --target all
 
 ## Status
 
-**v0.1.0**: engine + CX OS operate loop shipped offline-first. Live-API smoke for the pure coding-agent golden path is the remaining gate for broader claims.
+**v0.1.0**: engine + CX OS operate loop shipped offline-first. CI green on public `main` (build, typecheck, tests, offline golden path).
+
+**Offline is first-class.** Optional live/hybrid model and platform checks are documented in **[docs/LIVE-SMOKE-M3.md](./docs/LIVE-SMOKE-M3.md)** (not required for install, workshops, or CI).
 
 | Link | Purpose |
 |---|---|

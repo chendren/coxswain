@@ -3,9 +3,21 @@
 End-to-end Customer Experience Operating System flow using **strong-graph**
 adapters. Default is fully offline (no live AWS or platform required).
 
+**Terminal demo (README GIF):**
+
+```bash
+# from monorepo root (requires VHS: brew install vhs)
+vhs examples/cx-demo/offline-golden-demo.tape
+# writes offline-golden.gif + offline-golden.mp4
+```
+
+Sim script: `offline-golden-sim.js` (accurate offline path, no keys).
+
 **Who this demo is for:** product, architecture, ops, partners, and workshop
 facilitators practicing the same loop. Deep persona playbooks and multi-role
 scenarios: [`docs/CXOS-PERSONAS-USE-CASES.md`](../../docs/CXOS-PERSONAS-USE-CASES.md).
+
+Optional live checks: [`docs/LIVE-SMOKE-M3.md`](../../docs/LIVE-SMOKE-M3.md).
 
 ### Demo tracks by persona (quick)
 
