@@ -8,8 +8,8 @@ import {
 } from "./enums";
 import type { CxOntology, CxOntologyCatalog } from "./types";
 
-import defaultCatalogJson from "./catalogs/default.json";
-import platformLocalCatalogJson from "./catalogs/platform-local.json";
+import defaultCatalogJson from "./catalogs/default.json" with { type: "json" };
+import platformLocalCatalogJson from "./catalogs/platform-local.json" with { type: "json" };
 
 const ALL_CAPABILITIES: readonly CxCapability[] = [
   "build",

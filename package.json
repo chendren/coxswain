@@ -11,6 +11,9 @@
   "scripts": {
     "typecheck": "pnpm -r --no-bail typecheck",
     "test": "pnpm -r --no-bail test",
+    "build": "pnpm -r build && node scripts/fix-esm-imports.mjs",
+    "build:all": "pnpm -r build && node scripts/fix-esm-imports.mjs",
+    "clean": "pnpm -r clean && rm -rf dist",
     "lint": "eslint packages --ext .ts",
     "lint:fix": "eslint packages --ext .ts --fix",
     "format": "prettier --write \"packages/**/*.{ts,js,json,md}\"",

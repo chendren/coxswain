@@ -2,12 +2,16 @@
   "name": "@cox/tui",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "exports": { ".": "./src/index.ts" },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "FORCE_COLOR=1 vitest run"
+    "test": "FORCE_COLOR=1 vitest run",
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "@cox/core": "workspace:*",
@@ -18,5 +22,8 @@
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",
     "ink-testing-library": "^4.0.0"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

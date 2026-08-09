@@ -18,3 +18,4 @@ cx-export/
 cx-snapshot/
 board-sync.local.json
 .tmp/
+*.tsbuildinfo
