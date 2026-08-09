@@ -4,10 +4,12 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": { ".": "./dist/index.js" },
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist"
   },
@@ -18,5 +20,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0"
   },
-  "files": ["dist"]
+  "files": [
+    "dist"
+  ]
 }

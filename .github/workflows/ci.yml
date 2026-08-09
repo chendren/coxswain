@@ -58,13 +58,8 @@ jobs:
         run: pnpm lint
         continue-on-error: true # warn until eslint lands in all packages
 
-      - name: Test
-        run: pnpm test
-        env:
-          CI: true
-
-      - name: Coverage (enforce 80% threshold via c8)
-        run: pnpm coverage
+      - name: Test (with coverage gate 80)
+        run: pnpm test:coverage
         env:
           CI: true
 

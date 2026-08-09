@@ -9,7 +9,7 @@ export default defineConfig({
     pool: "forks",
     poolOptions: { forks: { singleFork: true } },
     coverage: {
-      provider: "c8",
+      provider: "v8",
       reporter: ["text", "lcov", "html", "json-summary"],
       reportsDirectory: "./coverage",
       include: ["packages/*/src/**/*.ts"],
