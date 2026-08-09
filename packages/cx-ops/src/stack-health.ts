@@ -50,8 +50,8 @@ export async function probeOllama(
     }
     const data = (await res.json()) as { models?: Array<{ name?: string; model?: string }> };
     const models = (data.models ?? []).map((m) => m.name ?? m.model ?? "").filter(Boolean);
-    const hasEmbed = models.some((n) => n.startsWith("nomic-embed"));
-    const hasLlm = models.some((n) => n.startsWith("nemotron"));
+    const hasEmbed = models.some((n) => n.startsWith("nomic-embed") || n.startsWith("qwen") || n.startsWith("bge-") || n.includes("embed"));
+    const hasLlm = models.some((n) => n.startsWith("nemotron") || n.startsWith("qwen") || n.startsWith("llama") || n.startsWith("mistral"));
     return {
       ok: true,
       baseUrl: root,
@@ -121,6 +121,6 @@ export async function probeStackHealth(opts?: {
     path,
     ollama,
     platform,
-    ready: ollama.ok && ollama.hasEmbed && platform.ok,
+    ready: ollama.ok && ollama.hasLlm,
   };
 }
