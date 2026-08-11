@@ -75,6 +75,7 @@ const sampleQueue: WorkQueue = {
       summary: "fix billing path",
       ageHours: 12,
       next: "claim",
+      urgencyScore: 82,
       urgency: "high",
     },
   ],
@@ -89,6 +90,7 @@ const sampleQueue: WorkQueue = {
   ],
   totals: { proposals: 1, tasks: 1, specsWithWork: 1 },
   path: ["list_specs", "load_proposals_tasks", "sort", "emit"],
+  pathDisplay: "list_specs → load_proposals_tasks → sort → emit",
 };
 
 describe("renderOpsDashboardHtml", () => {
@@ -151,6 +153,7 @@ describe("renderOpsDashboardHtml", () => {
       tasks: [],
       totals: { proposals: 0, tasks: 0, specsWithWork: 0 },
       path: [],
+      pathDisplay: "",
     };
     const html = renderOpsDashboardHtml(emptyBoard(), emptyQ, "2026-08-07T18:00:00Z");
     expect(html).toContain("Open proposals (0)");

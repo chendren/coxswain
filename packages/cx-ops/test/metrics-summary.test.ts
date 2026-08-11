@@ -8,6 +8,7 @@ describe("summarizeDeployments", () => {
       { targetId: "b", level: "healthy" },
     ]);
     expect(s.score).toBe(100);
+    expect(s.band).toBe("green");
     expect(s.healthy).toBe(2);
   });
 
@@ -21,9 +22,12 @@ describe("summarizeDeployments", () => {
     expect(s.degraded).toBe(1);
     expect(s.errors).toBe(1);
     expect(s.score).toBe(50); // (100+50+0)/3
+    expect(s.band).toBe("yellow");
   });
 
   it("empty is zero", () => {
-    expect(summarizeDeployments([]).score).toBe(0);
+    const s = summarizeDeployments([]);
+    expect(s.score).toBe(0);
+    expect(s.band).toBe("red");
   });
 });

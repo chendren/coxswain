@@ -103,6 +103,7 @@ describe("buildWorkQueue", () => {
     expect(q.tasks).toEqual([]);
     expect(q.totals).toEqual({ proposals: 0, tasks: 0, specsWithWork: 0 });
     expect(q.path).toEqual(["list_specs", "load_proposals_tasks", "sort", "emit"]);
+    expect(q.pathDisplay).toBe("list_specs → load_proposals_tasks → sort → emit");
   });
 
   it("aggregates open proposals and open tasks across listCxSpecs", async () => {
@@ -348,6 +349,27 @@ describe("buildWorkQueue", () => {
       "p_inv_new", // med, newer
     ]);
     expect(q.tasks.map((t) => t.id)).toEqual(["t_old", "t_new"]);
+  });
+
+  it("raises urgency for aged investigate via score", async () => {
+    await createCxSpec({ cxRoot, now }, "aged", "a");
+    await seedProposal(cxRoot, now, "aged", {
+      id: "p_aged",
+      specName: "aged",
+      targetId: "local",
+      kind: "investigate",
+      summary: "stale investigate",
+      status: "open",
+      createdAt: "2026-08-06T12:00:00Z", // 30h before now → score 45+30=75 → high
+      updatedAt: "2026-08-06T12:00:00Z",
+      path: [],
+    });
+    const q = await buildWorkQueue({ cxRoot, now }, nowMs);
+    const p = q.proposals.find((x) => x.id === "p_aged")!;
+    expect(p.ageHours).toBe(30);
+    expect(p.urgencyScore).toBe(75);
+    expect(p.urgency).toBe("high");
+    expect(q.pathDisplay).toBe("list_specs → load_proposals_tasks → sort → emit");
   });
 
   it("ignores specs with only closed work for specsWithWork", async () => {

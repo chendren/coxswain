@@ -1,9 +1,16 @@
 /**
  * Cross-spec work queue: open proposals + open tasks for the whole CXOS fleet.
  */
-import { loadProposals, suggestedProposalNext, type CxProposal } from "./proposals";
+import {
+  loadProposals,
+  proposalUrgencyScore,
+  suggestedProposalNext,
+  type CxProposal,
+} from "./proposals";
 import { loadCxTasks, type CxTask } from "./tasks";
 import { listCxSpecs, type CxWorkspaceDeps } from "./workspace";
+import { urgencyLabel } from "./urgency-label";
+import { compactPath } from "./path-compact";
 
 export interface QueueProposalItem {
   specName: string;
@@ -14,6 +21,7 @@ export interface QueueProposalItem {
   summary: string;
   ageHours: number;
   next: string;
+  urgencyScore: number;
   urgency: "high" | "med" | "low";
 }
 
@@ -32,18 +40,13 @@ export interface WorkQueue {
   tasks: QueueTaskItem[];
   totals: { proposals: number; tasks: number; specsWithWork: number };
   path: string[];
+  pathDisplay: string;
 }
 
 function ageHours(iso: string, nowMs: number): number {
   const t = Date.parse(iso);
   if (!Number.isFinite(t)) return 0;
   return Math.floor(Math.max(0, nowMs - t) / 3_600_000);
-}
-
-function urg(kind: string): "high" | "med" | "low" {
-  if (kind === "remediate") return "high";
-  if (kind === "investigate") return "med";
-  return "low";
 }
 
 export async function buildWorkQueue(
@@ -61,6 +64,8 @@ export async function buildWorkQueue(
     for (const p of props) {
       if (p.status !== "open" && p.status !== "claimed") continue;
       specsWithWork.add(specName);
+      const age = ageHours(p.createdAt, nowMs);
+      const urgencyScore = proposalUrgencyScore(p.kind, age);
       proposals.push({
         specName,
         id: p.id,
@@ -68,9 +73,10 @@ export async function buildWorkQueue(
         kind: p.kind,
         targetId: p.targetId,
         summary: p.summary,
-        ageHours: ageHours(p.createdAt, nowMs),
+        ageHours: age,
         next: suggestedProposalNext(p.status),
-        urgency: urg(p.kind),
+        urgencyScore,
+        urgency: urgencyLabel(urgencyScore),
       });
     }
     const ts = await loadCxTasks(deps, specName);
@@ -106,12 +112,13 @@ export async function buildWorkQueue(
       specsWithWork: specsWithWork.size,
     },
     path,
+    pathDisplay: compactPath(path),
   };
 }
 
 /** @internal helper for tests */
 export function _urgencyFromKind(kind: string): "high" | "med" | "low" {
-  return urg(kind);
+  return urgencyLabel(proposalUrgencyScore(kind, 0));
 }
 
 export type { CxProposal, CxTask };

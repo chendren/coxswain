@@ -40,4 +40,5 @@ export * from "./sqlite";
 export * from "./urgency-label";
 export * from "./path-compact";
 export * from "./health-band";
+export * from "./age-hours";
 export * from "./spec-name";
