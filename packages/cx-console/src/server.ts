@@ -15,12 +15,14 @@ import {
   apiGraphPath,
   apiGraphStats,
   apiHealth,
+  apiAutopilot,
   apiIntent,
   apiNeighborhood,
   apiQueue,
   packOf,
 } from "./api.js";
 import { renderNeighborhoodSvg } from "./graph-svg.js";
+import { renderAutopilotPage } from "./pages/autopilot.js";
 import { renderFleetPage } from "./pages/fleet.js";
 import { renderGraphPage } from "./pages/graph.js";
 import { renderHealthPage } from "./pages/health.js";
@@ -130,6 +132,32 @@ export async function handleConsoleRequest(
       sendJson(res, 200, apiGraphStats(pack));
       return;
     }
+    if (url.pathname === "/api/autopilot") {
+      const specName = url.searchParams.get("spec") ?? "";
+      const utterance = url.searchParams.get("u") ?? url.searchParams.get("utterance") ?? "";
+      const apply = url.searchParams.get("apply") === "1" || url.searchParams.get("apply") === "true";
+      if (!specName) {
+        sendJson(res, 400, {
+          ok: false,
+          path: ["api_autopilot", "fail"],
+          error: "missing spec",
+          at: deps.now(),
+        });
+        return;
+      }
+      sendJson(
+        res,
+        200,
+        await apiAutopilot(deps, {
+          specName,
+          utterance,
+          apply,
+          pack,
+          actor: url.searchParams.get("actor") ?? undefined,
+        }),
+      );
+      return;
+    }
 
     if (url.pathname === "/" || url.pathname === "/console") {
       res.writeHead(302, {
@@ -208,6 +236,36 @@ export async function handleConsoleRequest(
           stats: stats.data,
           controlPath: stats.path,
           at: stats.at,
+        }),
+        "text/html; charset=utf-8",
+      );
+      return;
+    }
+    if (url.pathname === "/console/autopilot") {
+      const specName = url.searchParams.get("spec") ?? "";
+      const utterance = url.searchParams.get("u") ?? "";
+      const apply =
+        url.searchParams.get("apply") === "1" || url.searchParams.get("apply") === "true";
+      let result = null as Awaited<ReturnType<typeof apiAutopilot>>["data"] | null | undefined;
+      let error: string | undefined;
+      let controlPath = ["autopilot_page", "emit"];
+      if (specName && utterance) {
+        const api = await apiAutopilot(deps, { specName, utterance, apply, pack });
+        if (!api.ok && api.error) error = api.error;
+        result = api.data;
+        controlPath = api.path ?? controlPath;
+      }
+      send(
+        res,
+        200,
+        renderAutopilotPage({
+          pack,
+          specName,
+          utterance,
+          apply,
+          result: result ?? null,
+          error,
+          controlPath,
         }),
         "text/html; charset=utf-8",
       );

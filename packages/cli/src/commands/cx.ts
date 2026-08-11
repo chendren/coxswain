@@ -75,6 +75,7 @@ import {
   checkAwsDrift,
   exportBoardSync,
   importBoardSync,
+  runGraphAutopilot,
   type OntologyPack,
   type CxPhase,
   type ProposalStatus,
@@ -1779,6 +1780,74 @@ export async function runCxIntentRoute(
   }
   ctx.write(`control: ${r.controlPath.join(" → ")}`);
   return 0;
+}
+
+/**
+ * Graph Autopilot: utterance → closed-world intent → NBA → human-gated proposal.
+ */
+export async function runCxAutopilot(
+  ctx: CxCommandContext,
+  name: string,
+  opts: {
+    utterance?: string;
+    apply?: boolean;
+    actor?: string;
+    pack?: string;
+    context?: string[];
+  } = {},
+): Promise<number> {
+  const rt = await runtimeFrom(ctx);
+  const rec = await loadCxWorkspace(rt.workspace, name);
+  if (!rec) {
+    ctx.write(`CX spec "${name}" not found — run: cox cx new ${name} "<idea>"`);
+    return 1;
+  }
+  const utterance = (opts.utterance ?? "").trim();
+  if (!utterance && !(opts.context && opts.context.length > 0)) {
+    ctx.write(`usage: cox cx autopilot ${name} --utterance "..." [--apply]`);
+    ctx.write(`   or: cox cx autopilot ${name} --context journey=billing_dispute stage=under_review --apply`);
+    return 2;
+  }
+  const nbaContext =
+    opts.context && opts.context.length > 0 ? parseNbaContext(opts.context) : undefined;
+  const result = await runGraphAutopilot(rt.workspace, name, {
+    utterance: utterance || undefined,
+    apply: opts.apply === true,
+    actor: opts.actor,
+    ontology: rt.ontology,
+    spec: rec.spec,
+    nbaContext,
+  });
+
+  ctx.write(`CXOS autopilot  spec=${name} dryRun=${result.dryRun}`);
+  ctx.write(`summary: ${result.summary}`);
+  ctx.write(
+    `route: mode=${result.route.mode} risk=${result.route.risk} · ${result.route.reason}`,
+  );
+  if (result.primaryIntent) {
+    ctx.write(
+      `intent: ${result.primaryIntent.intentId}  score=${result.primaryIntent.score}  ${result.primaryIntent.name}`,
+    );
+  }
+  if (result.nba.primary) {
+    ctx.write(
+      `nba: ${result.nba.primary.id}  action=${result.nba.primary.action}  urgency=${result.nba.primary.urgency}`,
+    );
+  }
+  if (result.proposal) {
+    ctx.write(
+      `proposal: kind=${result.proposal.kind}  ${result.proposal.summary.slice(0, 160)}`,
+    );
+  }
+  if (result.persisted?.length) {
+    for (const p of result.persisted) {
+      ctx.write(`opened: ${p.id}  → cox cx claim ${name} ${p.id}`);
+    }
+  } else if (result.dryRun && result.proposal && result.proposal.kind !== "none") {
+    ctx.write(`hint: re-run with --apply to open a human-gated proposal`);
+  }
+  ctx.write(`path: ${result.path.join(" → ")}`);
+  return result.route.mode === "refuse" ? 1 : 0;
 }
 
 export async function runCxSeedOperate(

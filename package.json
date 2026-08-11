@@ -46,7 +46,8 @@
     "cx:graph-find": "pnpm cox cx graph-find",
     "changeset:version": "changeset version",
     "changeset:publish": "changeset publish",
-    "release": "pnpm changeset version && pnpm install --lockfile-only"
+    "release": "pnpm changeset version && pnpm install --lockfile-only",
+    "cx:autopilot": "pnpm cox cx autopilot"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",

@@ -1,6 +1,8 @@
 import {
   buildOpsBoard,
   buildWorkQueue,
+  loadCxWorkspace,
+  runGraphAutopilot,
   type CxWorkspaceDeps,
 } from "@cox/cx-ops";
 import {
@@ -68,4 +70,40 @@ export function apiGraphStats(pack: OntologyPack) {
 
 export function apiHealth() {
   return { ok: true, path: ["healthz"], data: { status: "ok" }, at: new Date().toISOString() };
+}
+
+export async function apiAutopilot(
+  deps: CxWorkspaceDeps,
+  opts: {
+    specName: string;
+    utterance?: string;
+    apply?: boolean;
+    actor?: string;
+    pack?: OntologyPack;
+  },
+) {
+  const pack = packOf(opts.pack);
+  const ontology = resolveOntologyPack(pack);
+  const rec = await loadCxWorkspace(deps, opts.specName);
+  if (!rec) {
+    return {
+      ok: false,
+      path: ["load_workspace", "fail"],
+      error: `spec not found: ${opts.specName}`,
+      at: deps.now(),
+    };
+  }
+  const result = await runGraphAutopilot(deps, opts.specName, {
+    utterance: opts.utterance,
+    apply: opts.apply === true,
+    actor: opts.actor,
+    ontology,
+    spec: rec.spec,
+  });
+  return {
+    ok: result.route.mode !== "refuse",
+    path: result.path,
+    data: result,
+    at: deps.now(),
+  };
 }

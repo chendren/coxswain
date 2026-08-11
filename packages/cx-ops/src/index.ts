@@ -45,3 +45,4 @@ export * from "./spec-name";
 export * from "./queue-line";
 export * from "./status-tone";
 export * from "./work-totals";
+export * from "./autopilot";

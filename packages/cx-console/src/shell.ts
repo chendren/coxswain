@@ -6,7 +6,7 @@ import { CONSOLE_CSS } from "./theme.js";
 
 export interface ShellOpts {
   title: string;
-  active: "fleet" | "queue" | "graph" | "intent" | "health";
+  active: "fleet" | "queue" | "graph" | "intent" | "health" | "autopilot";
   pack: string;
   bodyHtml: string;
   controlPath: string[];
@@ -40,6 +40,7 @@ export function renderShell(opts: ShellOpts): string {
     { id: "queue", label: "Queue", href: "/console/queue" },
     { id: "graph", label: "Graph", href: "/console/graph" },
     { id: "intent", label: "Intent", href: "/console/intent" },
+    { id: "autopilot", label: "Autopilot", href: "/console/autopilot" },
     { id: "health", label: "Health", href: "/console/health" },
   ];
 
@@ -79,6 +80,7 @@ export function renderShell(opts: ShellOpts): string {
     else if (k === "q") location.href = "/console/queue" + q;
     else if (k === "g") location.href = "/console/graph" + q;
     else if (k === "i") location.href = "/console/intent" + q;
+    else if (k === "a") location.href = "/console/autopilot" + q;
     else if (k === "h") location.href = "/console/health" + q;
   });
 })();

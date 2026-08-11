@@ -68,6 +68,7 @@ import {
   runCxGraphPath,
   runCxGraphNeighborhood,
   runCxIntentRoute,
+  runCxAutopilot,
   runCxSeedOperate,
   runCxDrift,
   runCxSyncExport,
@@ -1098,6 +1099,38 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     const utterance = utteranceParts.join(" ");
     throw new CliExit(
       await runCxIntentRoute(await cxCtx(command, f.pack, f), utterance, f.pack),
+    );
+  });
+
+  addGlobalOptions(
+    cx
+      .command("autopilot <name>")
+      .description(
+        "Graph Autopilot: utterance → closed intent → NBA → human-gated proposal (dry-run default)",
+      )
+      .option("--utterance <text>", "customer / operator free text")
+      .option("--apply", "persist open proposal (still human-gated; never mutates adapters)")
+      .option("--actor <who>", "operator label for audit summary")
+      .option("--context <pair...>", "NBA context key=value pairs")
+      .option("--pack <name>", "ontology pack: default|local", "local"),
+  ).action(async (name: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<
+      CxCmdOpts & {
+        utterance?: string;
+        apply?: boolean;
+        actor?: string;
+        context?: string[];
+      }
+    >();
+    throw new CliExit(
+      await runCxAutopilot(await cxCtx(command, f.pack, f), name, {
+        utterance: opts.utterance,
+        apply: opts.apply,
+        actor: opts.actor,
+        pack: f.pack,
+        context: opts.context,
+      }),
     );
   });
 
