@@ -65,6 +65,9 @@ import {
   runCxQueue,
   runCxDashboard,
   runCxGraphFind,
+  runCxGraphPath,
+  runCxGraphNeighborhood,
+  runCxIntentRoute,
   runCxSeedOperate,
   runCxDrift,
   runCxSyncExport,
@@ -1052,6 +1055,49 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   ).action(async (query: string, _o: GlobalOpts, command: Command) => {
     const f = cxFlags(command);
     throw new CliExit(await runCxGraphFind(await cxCtx(command, f.pack, f), query, f.pack));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("graph-path <fromUid> <toUid>")
+      .description("multi-hop shortest path on strong graph (Graph-Node AI 2026)")
+      .option("--pack <name>", "ontology pack: default|local", "local")
+      .option("--max-hops <n>", "max hops", "4"),
+  ).action(async (fromUid: string, toUid: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { maxHops?: string }>();
+    const maxHops = Number(opts.maxHops ?? 4);
+    throw new CliExit(
+      await runCxGraphPath(await cxCtx(command, f.pack, f), fromUid, toUid, f.pack, maxHops),
+    );
+  });
+
+  addGlobalOptions(
+    cx
+      .command("graph-neighborhood <startUid>")
+      .description("k-hop neighborhood distances from a strong node uid")
+      .option("--pack <name>", "ontology pack: default|local", "local")
+      .option("-k, --hops <n>", "k hops", "2"),
+  ).action(async (startUid: string, _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const opts = command.optsWithGlobals<CxCmdOpts & { hops?: string }>();
+    const k = Number(opts.hops ?? 2);
+    throw new CliExit(
+      await runCxGraphNeighborhood(await cxCtx(command, f.pack, f), startUid, f.pack, k),
+    );
+  });
+
+  addGlobalOptions(
+    cx
+      .command("intent-route <utterance...>")
+      .description("closed-world intent scoring over ontology exemplars (no LLM invent)")
+      .option("--pack <name>", "ontology pack: default|local", "local"),
+  ).action(async (utteranceParts: string[], _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    const utterance = utteranceParts.join(" ");
+    throw new CliExit(
+      await runCxIntentRoute(await cxCtx(command, f.pack, f), utterance, f.pack),
+    );
   });
 
   addGlobalOptions(

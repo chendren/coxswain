@@ -5,6 +5,7 @@ import type { ChatModel, Tier } from "@cox/core";
 import {
   DEFAULT_ONTOLOGY,
   LOCAL_PLATFORM_ONTOLOGY,
+  routeRetrieval,
   type CxTrafficProfile,
 } from "@cox/cx-core";
 import {
@@ -63,6 +64,9 @@ import {
   buildWorkQueue,
   renderOpsDashboardHtml,
   lookupStrongNode,
+  multiHopQuery,
+  neighborhoodQuery,
+  intentRouteQuery,
   proposalUrgencyScore,
   notifyWebhook,
   seedOperateDrill,
@@ -1694,15 +1698,86 @@ export async function runCxGraphFind(
   packRaw?: string,
 ): Promise<number> {
   const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "local");
+  const route = routeRetrieval(query);
   const result = lookupStrongNode(pack, query);
   ctx.write(`CXOS graph-find  pack=${result.pack} query="${query}" hits=${result.hits.length}`);
+  ctx.write(
+    `route: mode=${route.mode} risk=${route.risk} tools=${route.tools.join(",") || "-"}`,
+  );
+  ctx.write(`route.reason: ${route.reason}`);
   for (const h of result.hits) {
     ctx.write(`${h.uid}  kind=${h.kind}  name=${h.name}  hub=${h.hubKey}`);
   }
   if (result.hits.length === 0) {
-    ctx.write("(no matches — try a domain, journey, or intent fragment)");
+    ctx.write("(no matches - try a domain, journey, or intent fragment)");
   }
   ctx.write(`path: ${result.path.join(" → ")}`);
+  return 0;
+}
+
+/** Multi-hop strong-graph path (2026 Graph-Node AI). Zero model calls. */
+export async function runCxGraphPath(
+  ctx: CxCommandContext,
+  fromUid: string,
+  toUid: string,
+  packRaw?: string,
+  maxHops = 4,
+): Promise<number> {
+  const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "local");
+  const r = multiHopQuery(pack, fromUid, toUid, maxHops);
+  ctx.write(`CXOS graph-path  pack=${r.pack} from=${fromUid} to=${toUid}`);
+  ctx.write(`route: mode=${r.route.mode} risk=${r.route.risk}`);
+  if (r.path && r.pathDisplay) {
+    ctx.write(`pathDisplay: ${r.pathDisplay}`);
+    ctx.write(`hops: ${r.path.hops}`);
+  } else {
+    ctx.write("(no path within maxHops - check uids with graph-find)");
+    return 1;
+  }
+  ctx.write(`control: ${r.controlPath.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxGraphNeighborhood(
+  ctx: CxCommandContext,
+  startUid: string,
+  packRaw?: string,
+  k = 2,
+): Promise<number> {
+  const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "local");
+  const r = neighborhoodQuery(pack, startUid, k);
+  ctx.write(`CXOS graph-neighborhood  pack=${r.pack} start=${startUid} k=${k}`);
+  const entries = Object.entries(r.distances).sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]));
+  if (entries.length === 0) {
+    ctx.write("(empty - unknown start uid?)");
+    return 1;
+  }
+  for (const [uid, d] of entries.slice(0, 40)) {
+    ctx.write(`d=${d}  ${uid}`);
+  }
+  if (entries.length > 40) ctx.write(`… ${entries.length - 40} more`);
+  ctx.write(`control: ${r.controlPath.join(" → ")}`);
+  return 0;
+}
+
+export async function runCxIntentRoute(
+  ctx: CxCommandContext,
+  utterance: string,
+  packRaw?: string,
+): Promise<number> {
+  const pack = packOf(packRaw === "default" ? "default" : packRaw ?? "local");
+  const r = intentRouteQuery(pack, utterance, 8);
+  ctx.write(`CXOS intent-route  pack=${r.pack}`);
+  ctx.write(`utterance: ${utterance}`);
+  if (!r.top) {
+    ctx.write("(no closed-world intent above threshold)");
+    return 1;
+  }
+  ctx.write(`top: ${r.top.intentId}  score=${r.top.score}  name=${r.top.name}`);
+  for (const s of r.ranked) {
+    ctx.write(`  ${s.score.toString().padStart(3)}  ${s.intentId}  [${s.matched.join(",")}]`);
+  }
+  ctx.write(`control: ${r.controlPath.join(" → ")}`);
   return 0;
 }
 
