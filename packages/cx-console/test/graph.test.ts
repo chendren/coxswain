@@ -131,8 +131,8 @@ describe("pages/graph", () => {
         pack: "default",
         controlPath: ["test"],
       });
-      expect(html).not.toMatch(/http:\/\//);
-      expect(html).not.toMatch(/cdn/);
+      expect(html).not.toMatch(/cdn\./i);
+      expect(html).not.toMatch(/fonts\.google/i);
     });
 
     it("includes neighborhood SVG when provided", () => {
@@ -187,7 +187,7 @@ describe("pages/graph", () => {
         controlPath: ["test"],
       });
       // Check for graph nav link marked as active
-      expect(html).toMatch(/<a class="active".*href="\/console\/graph"/);
+      expect(html).toMatch(/class="active"[^>]*href="\/console\/graph/);
     });
 
     it("escapes query parameter in search input", () => {

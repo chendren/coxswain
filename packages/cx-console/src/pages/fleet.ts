@@ -1,4 +1,4 @@
-import { renderShell, esc } from "../shell";
+import { renderShell, esc } from "../shell.js";
 import type { OpsBoard } from "@cox/cx-ops";
 
 export function renderFleetPage(board: OpsBoard, pack: string): string {

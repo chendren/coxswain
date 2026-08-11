@@ -1038,13 +1038,14 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     cx
       .command("serve")
       .description("serve CX Graph Console (fleet/queue/graph/intent/health + API, offline localhost)")
-      .option("--port <n>", "port to listen on", "3000"),
+      .option("--port <n>", "port to listen on", "8787")
+      .option("--host <host>", "bind host (default: dual 127.0.0.1 + ::1)"),
   ).action(async (_o: GlobalOpts, command: Command) => {
-    const opts = command.optsWithGlobals<CxCmdOpts & { port?: string }>();
-    const port = Number(opts.port ?? 3000);
+    const opts = command.optsWithGlobals<CxCmdOpts & { port?: string; host?: string }>();
+    const port = Number(opts.port ?? 8787);
     const f = cxFlags(command);
     const ctx = await cxCtx(command, f.pack, f);
-    throw new CliExit(await runCxServe(ctx, { port }));
+    throw new CliExit(await runCxServe(ctx, { port, host: opts.host }));
   });
 
   addGlobalOptions(

@@ -44,16 +44,45 @@ export function renderShell(opts: ShellOpts): string {
   ];
 
   const navLinks = navItems
-    .map(
-      (n) =>
-        `<a class="${active === n.id ? "active" : ""}" href="${esc(n.href)}">${esc(n.label)}</a>`,
-    )
+    .map((n) => {
+      const href = `${n.href}?pack=${encodeURIComponent(opts.pack)}`;
+      return `<a class="${active === n.id ? "active" : ""}" href="${esc(href)}">${esc(n.label)}</a>`;
+    })
     .join("\n");
 
   const controlPathHtml =
     opts.controlPath.length > 0
-      ? `<div class="path-audit">control: ${formatPathAudit(opts.controlPath)}</div>`
+      ? `<div class="path-audit">control: ${esc(formatPathAudit(opts.controlPath))}</div>`
       : "";
+
+  // Valid browser JS only (no TypeScript annotations).
+  const keyboardScript = `
+<script>
+(function () {
+  var armed = false;
+  var timer = null;
+  document.addEventListener("keydown", function (e) {
+    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+    if (!armed && (e.key === "g" || e.key === "G")) {
+      armed = true;
+      clearTimeout(timer);
+      timer = setTimeout(function () { armed = false; }, 800);
+      return;
+    }
+    if (!armed) return;
+    armed = false;
+    clearTimeout(timer);
+    var pack = ${JSON.stringify(opts.pack)};
+    var q = pack ? ("?pack=" + encodeURIComponent(pack)) : "";
+    var k = e.key.toLowerCase();
+    if (k === "f") location.href = "/console/fleet" + q;
+    else if (k === "q") location.href = "/console/queue" + q;
+    else if (k === "g") location.href = "/console/graph" + q;
+    else if (k === "i") location.href = "/console/intent" + q;
+    else if (k === "h") location.href = "/console/health" + q;
+  });
+})();
+</script>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -65,54 +94,44 @@ export function renderShell(opts: ShellOpts): string {
 ${opts.extraHead ?? ""}
 </head>
 <body class="app">
-  <aside class="rail">
-    <div class="nav">
-      <a href="/console" class="${active === "fleet" ? "active" : ""}">Home</a>
+  <aside class="rail" aria-label="Primary">
+    <div class="brand-block">
+      <div class="brand">CX Graph Console</div>
+      <div class="subtitle">closed-world · offline</div>
+    </div>
+    <nav class="nav">
+      <a href="/console/fleet?pack=${esc(opts.pack)}" class="${active === "fleet" ? "active" : ""}">Fleet</a>
       ${navLinks}
+    </nav>
+    <div class="rail-foot">
+      <span class="chip chip-mode">pack ${esc(opts.pack)}</span>
+      <a class="rail-link" href="/legacy">Legacy HTML</a>
+      <a class="rail-link" href="/api/health">/api/health</a>
     </div>
   </aside>
 
-  <main>
+  <div class="stage">
     <header class="topbar">
       <div class="topbar-left">
-        <span class="brand">CX Graph Console</span>
-        <span class="subtitle">closed-world · human-gated · offline</span>
+        <h1 class="page-title">${esc(opts.title)}</h1>
+        <span class="subtitle">human-gated · plan-only AWS</span>
       </div>
-      <div style="display:flex;align-items:center;gap:16px;">
+      <div class="topbar-right">
         <span class="chip" style="color:var(--accent-cyan)">pack: ${esc(opts.pack)}</span>
-        <time class="clock" datetime="${esc(at)}">${esc(new Date().toLocaleTimeString())}</time>
+        <time class="clock" datetime="${esc(at)}">${esc(at)}</time>
       </div>
     </header>
 
-    <section class="main">
+    <section class="main" id="main">
       ${opts.bodyHtml}
     </section>
 
     <footer class="footer">
       ${controlPathHtml}
+      <span class="footer-hint">Prefer 127.0.0.1 if localhost fails (IPv6).</span>
     </footer>
-  </main>
-
-  <script>
-    // Keyboard shortcuts: g f → fleet, g q → queue, g g → graph, g i → intent
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "g" || e.key === "G") {
-        let timeout = setTimeout(() => {}, 0);
-        clearTimeout(timeout);
-        const nextKey = (ev: KeyboardEvent) => {
-          ev.preventDefault();
-          clearTimeout(timeout);
-          switch (ev.key.toLowerCase()) {
-            case "f": window.location.href = "/console/fleet"; break;
-            case "q": window.location.href = "/console/queue"; break;
-            case "g": window.location.href = "/console/graph"; break;
-            case "i": window.location.href = "/console/intent"; break;
-          }
-        };
-        document.addEventListener("keydown", nextKey, { once: true });
-      }
-    });
-  </script>
+  </div>
+  ${keyboardScript}
   ${opts.extraScript ?? ""}
 </body>
 </html>`;

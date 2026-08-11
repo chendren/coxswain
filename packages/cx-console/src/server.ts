@@ -19,14 +19,14 @@ import {
   apiNeighborhood,
   apiQueue,
   packOf,
-} from "./api";
-import { renderNeighborhoodSvg } from "./graph-svg";
-import { renderFleetPage } from "./pages/fleet";
-import { renderGraphPage } from "./pages/graph";
-import { renderHealthPage } from "./pages/health";
-import { renderIntentPage } from "./pages/intent";
-import { renderQueuePage } from "./pages/queue";
-import { esc } from "./shell";
+} from "./api.js";
+import { renderNeighborhoodSvg } from "./graph-svg.js";
+import { renderFleetPage } from "./pages/fleet.js";
+import { renderGraphPage } from "./pages/graph.js";
+import { renderHealthPage } from "./pages/health.js";
+import { renderIntentPage } from "./pages/intent.js";
+import { renderQueuePage } from "./pages/queue.js";
+import { esc } from "./shell.js";
 
 export interface ConsoleServerOpts {
   port: number;
@@ -131,7 +131,15 @@ export async function handleConsoleRequest(
       return;
     }
 
-    if (url.pathname === "/" || url.pathname === "/console" || url.pathname === "/console/fleet") {
+    if (url.pathname === "/" || url.pathname === "/console") {
+      res.writeHead(302, {
+        location: `/console/fleet?pack=${encodeURIComponent(pack)}`,
+        "cache-control": "no-store",
+      });
+      res.end();
+      return;
+    }
+    if (url.pathname === "/console/fleet") {
       const board = await buildOpsBoard(deps);
       send(res, 200, renderFleetPage(board, pack), "text/html; charset=utf-8");
       return;
@@ -219,28 +227,77 @@ export async function handleConsoleRequest(
   }
 }
 
+async function listenOn(
+  server: ReturnType<typeof createServer>,
+  port: number,
+  host: string,
+): Promise<number> {
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(port, host, () => resolve());
+  });
+  const addr = server.address();
+  return typeof addr === "object" && addr ? addr.port : port;
+}
+
+/**
+ * Bind loopback for both IPv4 and IPv6 when possible.
+ * Safari/Chrome often hit http://localhost → ::1; IPv4-only bind looks "broken".
+ */
 export async function startConsoleServer(
   opts: ConsoleServerOpts,
 ): Promise<{ close: () => Promise<void>; port: number }> {
   const deps = workspace(opts.cwd);
-  const host = opts.host ?? "127.0.0.1";
-  const server = createServer((req, res) => {
+  const handler = (req: IncomingMessage, res: ServerResponse) => {
     void handleConsoleRequest(req, res, deps);
-  });
-  await new Promise<void>((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(opts.port, host, () => resolve());
-  });
-  const addr = server.address();
-  const bound = typeof addr === "object" && addr ? addr.port : opts.port;
-  opts.write(`CX Graph Console (offline) http://${host}:${bound}/console`);
-  opts.write(`API health http://${host}:${bound}/api/health  — Ctrl+C to stop`);
-  opts.write(`path: serve → console_router → emit`);
+  };
+
+  // Explicit host wins (single bind).
+  if (opts.host) {
+    const server = createServer(handler);
+    const bound = await listenOn(server, opts.port, opts.host);
+    opts.write(`CX Graph Console (offline) http://${opts.host}:${bound}/console/fleet`);
+    opts.write(`API health http://${opts.host}:${bound}/api/health  - Ctrl+C to stop`);
+    opts.write(`path: serve → console_router → emit`);
+    return {
+      port: bound,
+      close: () => new Promise((resolve) => server.close(() => resolve())),
+    };
+  }
+
+  // Dual loopback: 127.0.0.1 + ::1 (skip ::1 if unavailable).
+  // Fixed port required so both share the same number; port 0 uses IPv4 only.
+  const servers: Array<ReturnType<typeof createServer>> = [];
+  const v4 = createServer(handler);
+  const bound = await listenOn(v4, opts.port, "127.0.0.1");
+  servers.push(v4);
+
+  if (opts.port !== 0) {
+    try {
+      const v6 = createServer(handler);
+      await listenOn(v6, bound, "::1");
+      servers.push(v6);
+    } catch {
+      opts.write(`note: IPv6 ::1 bind skipped (use http://127.0.0.1:${bound}/console/fleet)`);
+    }
+  }
+
+  opts.write(`CX Graph Console (offline)`);
+  opts.write(`  open → http://127.0.0.1:${bound}/console/fleet`);
+  opts.write(`  open → http://localhost:${bound}/console/fleet`);
+  opts.write(`  api  → http://127.0.0.1:${bound}/api/health`);
+  opts.write(`path: serve → console_router → emit  (Ctrl+C to stop)`);
+
   return {
     port: bound,
     close: () =>
-      new Promise((resolve) => {
-        server.close(() => resolve());
-      }),
+      Promise.all(
+        servers.map(
+          (s) =>
+            new Promise<void>((resolve) => {
+              s.close(() => resolve());
+            }),
+        ),
+      ).then(() => undefined),
   };
 }

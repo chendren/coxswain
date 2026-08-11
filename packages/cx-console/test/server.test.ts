@@ -31,12 +31,18 @@ describe("startConsoleServer", () => {
     const hj = (await health.json()) as { ok: boolean };
     expect(hj.ok).toBe(true);
 
+    const redir = await fetch(`http://127.0.0.1:${port}/console`, { redirect: "manual" });
+    expect([302, 301]).toContain(redir.status);
+
     const page = await fetch(`http://127.0.0.1:${port}/console/graph?pack=default`);
     expect(page.status).toBe(200);
     const html = await page.text();
     expect(html).toContain("CX Graph Console");
     expect(html).toContain("Graph explorer");
+    expect(html).toContain('class="stage"');
     expect(html).not.toMatch(/cdn\./i);
-    expect(logs.some((l) => l.includes("Graph Console"))).toBe(true);
+    expect(html).not.toContain("KeyboardEvent");
+    expect(logs.some((l) => l.includes("127.0.0.1"))).toBe(true);
   });
 });
+

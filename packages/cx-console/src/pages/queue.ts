@@ -1,4 +1,4 @@
-import { renderShell, esc } from "../shell";
+import { renderShell, esc } from "../shell.js";
 import type { WorkQueue } from "@cox/cx-ops";
 
 export function renderQueuePage(queue: WorkQueue, pack: string): string {

@@ -1,4 +1,4 @@
-import { renderShell, esc } from "../shell";
+import { renderShell, esc } from "../shell.js";
 
 export interface HealthStats {
   nodes: number;

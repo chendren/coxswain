@@ -1,4 +1,4 @@
-import { renderShell, esc } from "../shell";
+import { renderShell, esc } from "../shell.js";
 
 export function renderGraphPage(opts: {
   pack: string;

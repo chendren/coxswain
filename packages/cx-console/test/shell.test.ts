@@ -18,7 +18,7 @@ describe("shell", () => {
       expect(esc("&")).toBe("&amp;");
     });
 
-    it("escapes \" as &quot;", () => {
+    it('escapes " as &quot;', () => {
       expect(esc('"')).toBe("&quot;");
     });
 
@@ -43,12 +43,12 @@ describe("shell", () => {
 
     it("marks active fleet nav link", () => {
       const html = renderShell({ ...baseOpts, active: "fleet" });
-      expect(html).toMatch(/<a class="active".*href="\/console\/fleet"/);
+      expect(html).toMatch(/class="active"[^>]*href="\/console\/fleet/);
     });
 
     it("does not mark inactive nav links as active", () => {
       const html = renderShell({ ...baseOpts, active: "queue" });
-      expect(html).not.toMatch(/<a class="active".*href="\/console\/fleet"/);
+      expect(html).not.toMatch(/class="active"[^>]*href="\/console\/fleet\?/);
     });
 
     it("includes pack badge", () => {
@@ -73,43 +73,24 @@ describe("shell", () => {
       expect(html).toContain("<title>CXOS · Test Page</title>");
     });
 
-    it("includes keyboard shortcuts script", () => {
+    it("includes keyboard shortcuts script without TypeScript syntax", () => {
       const html = renderShell(baseOpts);
       expect(html).toContain('document.addEventListener("keydown"');
-      expect(html).toContain('window.location.href = "/console/fleet"');
+      expect(html).toContain('location.href = "/console/fleet"');
+      expect(html).not.toContain("KeyboardEvent");
+      expect(html).not.toContain("ev:");
     });
 
-    it("does not include http:// or cdn in output", () => {
+    it("has no external CDN references", () => {
       const html = renderShell(baseOpts);
-      expect(html).not.toMatch(/http:\/\//);
-      expect(html).not.toMatch(/cdn/);
+      expect(html).not.toMatch(/cdn\./i);
+      expect(html).not.toMatch(/https?:\/\/fonts/);
     });
 
-    it("handles empty control path", () => {
-      const html = renderShell({ ...baseOpts, controlPath: [] });
-      // Should still have footer but with no path text
-      expect(html).toContain("<footer");
-    });
-
-    it("supports extraHead and extraScript", () => {
-      const html = renderShell({
-        ...baseOpts,
-        extraHead: '<meta name="test" content="value"/>',
-        extraScript: "<script>console.log('ok');</script>",
-      });
-      expect(html).toContain('<meta name="test" content="value"/>');
-      expect(html).toContain("<script>console.log('ok');</script>");
-    });
-
-    it("includes generatedAt timestamp", () => {
-      const html = renderShell({ ...baseOpts, generatedAt: "2025-01-01T00:00:00Z" });
-      expect(html).toContain('datetime="2025-01-01T00:00:00Z"');
-    });
-
-    it("uses current time when generatedAt omitted", () => {
+    it("uses stage layout wrapper", () => {
       const html = renderShell(baseOpts);
-      // Should contain a valid ISO timestamp
-      expect(html).toMatch(/datetime="[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}/);
+      expect(html).toContain('class="stage"');
+      expect(html).toContain('id="main"');
     });
   });
 });

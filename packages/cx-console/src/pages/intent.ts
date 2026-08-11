@@ -1,4 +1,4 @@
-import { renderShell, esc } from "../shell";
+import { renderShell, esc } from "../shell.js";
 import type { IntentScore, RetrievalRoute } from "@cox/cx-core";
 
 export function renderIntentPage(opts: {
