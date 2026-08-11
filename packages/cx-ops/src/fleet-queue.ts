@@ -11,6 +11,7 @@ import { loadCxTasks, type CxTask } from "./tasks";
 import { listCxSpecs, type CxWorkspaceDeps } from "./workspace";
 import { urgencyLabel } from "./urgency-label";
 import { compactPath } from "./path-compact";
+import { formatAgeHours } from "./age-hours";
 
 export interface QueueProposalItem {
   specName: string;
@@ -20,6 +21,7 @@ export interface QueueProposalItem {
   targetId: string;
   summary: string;
   ageHours: number;
+  ageDisplay: string;
   next: string;
   urgencyScore: number;
   urgency: "high" | "med" | "low";
@@ -33,6 +35,7 @@ export interface QueueTaskItem {
   targetId?: string;
   sourceProposalId?: string;
   ageHours: number;
+  ageDisplay: string;
 }
 
 export interface WorkQueue {
@@ -74,6 +77,7 @@ export async function buildWorkQueue(
         targetId: p.targetId,
         summary: p.summary,
         ageHours: age,
+        ageDisplay: formatAgeHours(age),
         next: suggestedProposalNext(p.status),
         urgencyScore,
         urgency: urgencyLabel(urgencyScore),
@@ -83,6 +87,7 @@ export async function buildWorkQueue(
     for (const t of ts) {
       if (t.status !== "pending" && t.status !== "in_progress") continue;
       specsWithWork.add(specName);
+      const tAge = ageHours(t.createdAt, nowMs);
       tasks.push({
         specName,
         id: t.id,
@@ -90,7 +95,8 @@ export async function buildWorkQueue(
         title: t.title,
         targetId: t.targetId,
         sourceProposalId: t.sourceProposalId,
-        ageHours: ageHours(t.createdAt, nowMs),
+        ageHours: tAge,
+        ageDisplay: formatAgeHours(tAge),
       });
     }
   }

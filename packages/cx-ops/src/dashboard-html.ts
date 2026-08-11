@@ -40,14 +40,14 @@ export function renderOpsDashboardHtml(
       .slice(0, 40)
       .map(
         (p) =>
-          `<tr><td>${esc(p.specName)}</td><td><code>${esc(p.id)}</code></td><td>${esc(p.status)}</td><td class="urg-${esc(p.urgency)}">${esc(p.urgency)}</td><td>${p.ageHours}h</td><td>${esc(p.summary.slice(0, 80))}</td></tr>`,
+          `<tr><td>${esc(p.specName)}</td><td><code>${esc(p.id)}</code></td><td>${esc(p.status)}</td><td class="urg-${esc(p.urgency)}">${esc(p.urgency)}</td><td>${esc(p.ageDisplay)}</td><td>${esc(p.summary.slice(0, 80))}</td></tr>`,
       )
       .join("\n");
     const tasks = queue.tasks
       .slice(0, 40)
       .map(
         (t) =>
-          `<tr><td>${esc(t.specName)}</td><td><code>${esc(t.id)}</code></td><td>${esc(t.status)}</td><td>${t.ageHours}h</td><td>${esc(t.title.slice(0, 80))}</td></tr>`,
+          `<tr><td>${esc(t.specName)}</td><td><code>${esc(t.id)}</code></td><td>${esc(t.status)}</td><td>${esc(t.ageDisplay)}</td><td>${esc(t.title.slice(0, 80))}</td></tr>`,
       )
       .join("\n");
     queueHtml = `

@@ -253,7 +253,9 @@ describe("buildWorkQueue", () => {
 
     const q = await buildWorkQueue({ cxRoot, now }, nowMs);
     expect(q.proposals[0]!.ageHours).toBe(6);
+    expect(q.proposals[0]!.ageDisplay).toBe("6h");
     expect(q.tasks[0]!.ageHours).toBe(10);
+    expect(q.tasks[0]!.ageDisplay).toBe("10h");
   });
 
   it("sets suggested next from proposal status", async () => {
@@ -367,6 +369,7 @@ describe("buildWorkQueue", () => {
     const q = await buildWorkQueue({ cxRoot, now }, nowMs);
     const p = q.proposals.find((x) => x.id === "p_aged")!;
     expect(p.ageHours).toBe(30);
+    expect(p.ageDisplay).toBe("1d");
     expect(p.urgencyScore).toBe(75);
     expect(p.urgency).toBe("high");
     expect(q.pathDisplay).toBe("list_specs → load_proposals_tasks → sort → emit");

@@ -13,6 +13,7 @@ import { computeBudgetState } from "./budget";
 export { savingsPercent } from "./savings.js";
 export { formatUsd } from "./format.js";
 export { formatSavingsLine } from "./savings-line.js";
+export { utilizationPercent, utilizationLevel } from "./utilization.js";
 
 export interface CreateLedgerDeps {
   /** Absolute path to the JSONL ledger file, e.g. `<cwd>/.cox/ledger.jsonl`. */
