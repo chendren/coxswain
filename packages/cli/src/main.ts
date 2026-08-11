@@ -1037,7 +1037,7 @@ export function createProgram(io: CliIo = REAL_IO): Command {
   addGlobalOptions(
     cx
       .command("serve")
-      .description("serve hosted dashboard via node:http (offline, no auth, localhost-only)")
+      .description("serve CX Graph Console (fleet/queue/graph/intent/health + API, offline localhost)")
       .option("--port <n>", "port to listen on", "3000"),
   ).action(async (_o: GlobalOpts, command: Command) => {
     const opts = command.optsWithGlobals<CxCmdOpts & { port?: string }>();
