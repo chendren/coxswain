@@ -10,6 +10,8 @@ import type {
 import { appendEntry, readEntries } from "./jsonl";
 import { summarize } from "./summary";
 import { computeBudgetState } from "./budget";
+export { savingsPercent } from "./savings.js";
+export { formatUsd } from "./format.js";
 
 export interface CreateLedgerDeps {
   /** Absolute path to the JSONL ledger file, e.g. `<cwd>/.cox/ledger.jsonl`. */
@@ -48,7 +50,7 @@ export function createLedger(deps: CreateLedgerDeps): LedgerWithDebug {
 
   async function readAll(): Promise<LedgerEntry[]> {
     // Use mtime+size as a cheap invalidation token to avoid re-reading the
-    // file when multiple summary()/query() calls happen in the same tick
+    // file when multiple summary() / query() calls happen in the same tick
     // (e.g. budgetState does two summary() calls). Invalidated on record()
     // or when the file changes on disk.
     try {
