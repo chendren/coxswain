@@ -318,3 +318,22 @@ Telco rich multi-journey seed: `packages/cx-ops/src/telco-design-pack.ts` (demo 
 - [ADOPTION.md](./ADOPTION.md)  
 - [CXOS-COMPLETE.md](./CXOS-COMPLETE.md)  
 - [04-CONVENTIONS.md](./04-CONVENTIONS.md)  
+
+---
+
+## Offline pack tests
+
+Each vertical pack should ship `test/pack.test.ts` covering:
+
+1. At least five `journeyMap` artifacts and one `architectureDoc`
+2. `provenance.specName` matches the seed spec name
+3. Journey ids unique with non-empty stages
+
+The registry package tests `detectPack` / `scorePack` / `listPacks` offline.
+Threshold: `detectPack` returns a vertical only when score is ≥ 0.3 (usually two or more keyword hits).
+
+Run:
+
+```bash
+pnpm --filter "@cox/cx-pack-*" test
+```

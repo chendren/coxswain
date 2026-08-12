@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Offline pack tests for registry + retail/financial/healthcare/travel seeds
+  (journey count, architectureDoc, provenance, unique journey ids; healthcare
+  PHI-shape guard on seed JSON)
+- `docs/WAVE5-SUMMARY.md` for Qwen-orchestrated enhancement rounds
+
 ### Changed
 
 ### Fixed
