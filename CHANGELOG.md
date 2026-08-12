@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Graph Console L4 polish: proposal evidence drawer (path/NBA), fleet day
   band, empty-state copy, queue path fields on work queue items
 - Console proof suite: CDN-free HTML, path-audit footer, serve smoke
+- Offline Graph Console E2E smoke (`pnpm cx:console:smoke`) and CI steps for
+  console tests + HTTP claim after seed-operate
 - Offline pack tests for registry + retail/financial/healthcare/travel seeds
   (journey count, architectureDoc, provenance, unique journey ids; healthcare
   PHI-shape guard on seed JSON)

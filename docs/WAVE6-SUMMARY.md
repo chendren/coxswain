@@ -54,3 +54,16 @@ pnpm cox cx serve --port 8787
 # open http://127.0.0.1:8787/console/queue
 # or from CXOS: pnpm cx:serve -- --port 8787
 ```
+
+## Wave6.1 go-all (CI + smoke)
+
+| Item | Status |
+|------|--------|
+| CI Graph Console proofs step | `pnpm --filter @cox/cx-console test` in `.github/workflows/ci.yml` |
+| CI offline smoke | `pnpm cx:console:smoke` after golden path |
+| Script | `examples/cx-demo/console-smoke.sh` + `.mjs` |
+| Docs | `examples/cx-demo/console-smoke.md` |
+
+path[]: `load_catalog → generate_weak(qwen) → absorb(grok) → smoke_ok → emit`
+
+Verified locally: doctor → new → seed → HTTP claim → proposal claimed + task pending.
