@@ -104,12 +104,15 @@ describe("renderQueuePage operate UI", () => {
           status: "open",
           kind: "investigate",
           targetId: "local",
-          summary: "hello",
+          summary: "hello evidence summary",
           ageHours: 1,
           ageDisplay: "1h",
           next: "apply",
           urgencyScore: 50,
           urgency: "med",
+          path: ["seed", "route", "emit"],
+          pathDisplay: "seed → route → emit",
+          nbaAction: "investigate_queue",
         },
       ],
       tasks: [],
@@ -123,5 +126,8 @@ describe("renderQueuePage operate UI", () => {
     expect(html).toContain("claimed prop_1");
     expect(html).toContain('class="path-audit"');
     expect(html).toContain("cox cx claim demo prop_1");
+    expect(html).toContain('class="evidence"');
+    expect(html).toContain("seed → route → emit");
+    expect(html).toContain("NBA action: investigate_queue");
   });
 });

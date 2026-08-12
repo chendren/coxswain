@@ -296,6 +296,39 @@ td.actions { white-space: nowrap; }
   border-radius: 8px;
   color: var(--muted);
 }
+.empty strong { color: var(--text); display: block; margin-bottom: 0.35rem; }
+.empty-actions { margin-top: 0.5rem; font-size: 0.85rem; }
+.empty.muted { opacity: 0.9; }
+.chip-cyan { color: var(--accent-cyan); border-color: rgba(61, 231, 255, 0.35); }
+.evidence { max-width: 28rem; }
+.evidence summary {
+  cursor: pointer;
+  list-style: disclosure-closed;
+  color: var(--text);
+}
+.evidence[open] summary { color: var(--accent-cyan); margin-bottom: 0.35rem; }
+.evidence-body {
+  margin: 0.4rem 0;
+  padding: 0.6rem 0.75rem;
+  background: rgba(7, 11, 20, 0.6);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  color: var(--muted);
+  max-height: 12rem;
+  overflow: auto;
+}
+.evidence-path { font-size: 0.75rem; margin: 0.25rem 0 0; }
+.evidence-path .label { color: var(--muted); margin-right: 0.35rem; }
+.card-band { border-color: rgba(61, 231, 255, 0.35); }
+.card .meta { display: block; font-size: 0.7rem; color: var(--muted); margin-top: 0.2rem; }
+.fleet-band-green .card-band { box-shadow: 0 0 0 1px rgba(61, 214, 140, 0.25); }
+.fleet-band-yellow .card-band { box-shadow: 0 0 0 1px rgba(245, 165, 36, 0.3); }
+.fleet-band-red .card-band { box-shadow: 0 0 0 1px rgba(255, 107, 107, 0.35); }
+.row-band-red td:first-child { box-shadow: inset 3px 0 0 var(--accent-danger); }
+.row-band-yellow td:first-child { box-shadow: inset 3px 0 0 var(--accent-warn); }
+.row-band-green td:first-child { box-shadow: inset 3px 0 0 var(--accent-ok); }
 
 /* ── Graph SVG styles ─────────────────────────────────────────────────────── */
 .graph-svg {

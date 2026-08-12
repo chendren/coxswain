@@ -78,6 +78,8 @@ const sampleQueue: WorkQueue = {
       next: "claim",
       urgencyScore: 82,
       urgency: "high",
+      path: ["seed", "emit"],
+      pathDisplay: "seed → emit",
     },
   ],
   tasks: [

@@ -25,6 +25,11 @@ export interface QueueProposalItem {
   next: string;
   urgencyScore: number;
   urgency: "high" | "med" | "low";
+  /** Graph / control path from proposal (evidence for console drawer). */
+  path: string[];
+  pathDisplay: string;
+  nbaAction?: string;
+  nbaRuleId?: string;
 }
 
 export interface QueueTaskItem {
@@ -69,6 +74,7 @@ export async function buildWorkQueue(
       specsWithWork.add(specName);
       const age = ageHours(p.createdAt, nowMs);
       const urgencyScore = proposalUrgencyScore(p.kind, age);
+      const pPath = Array.isArray(p.path) ? p.path : [];
       proposals.push({
         specName,
         id: p.id,
@@ -81,6 +87,10 @@ export async function buildWorkQueue(
         next: suggestedProposalNext(p.status),
         urgencyScore,
         urgency: urgencyLabel(urgencyScore),
+        path: pPath,
+        pathDisplay: compactPath(pPath),
+        nbaAction: p.nbaAction,
+        nbaRuleId: p.nbaRuleId,
       });
     }
     const ts = await loadCxTasks(deps, specName);

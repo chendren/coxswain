@@ -1,5 +1,21 @@
 import { renderShell, esc } from "../shell.js";
 import type { WorkQueue } from "@cox/cx-ops";
+import { statusTone } from "@cox/cx-ops";
+
+function toneChip(status: string): string {
+  const tone = statusTone(status);
+  const cls =
+    tone === "active"
+      ? "chip-cyan"
+      : tone === "done"
+        ? "chip-green"
+        : tone === "danger"
+          ? "chip-red"
+          : tone === "muted"
+            ? "chip-gray"
+            : "chip-gray";
+  return `<span class="chip ${cls} tone-${tone}">${esc(status)}</span>`;
+}
 
 export function renderQueuePage(
   queue: WorkQueue,
@@ -14,7 +30,15 @@ export function renderQueuePage(
 
   const emptyProposals =
     queue.proposals.length === 0
-      ? `<div class="empty">Queue is empty. Run <code>cox cx seed-operate &lt;name&gt;</code> or Autopilot with apply, then refresh.</div>`
+      ? `<div class="empty" role="status">
+          <strong>No open work.</strong>
+          Fleet queue is empty. Seed a drill or open Autopilot.
+          <div class="empty-actions">
+            <code>cox cx seed-operate &lt;name&gt;</code>
+            · <a href="/console/autopilot?pack=${esc(pack)}">Autopilot</a>
+            · <a href="/console/fleet?pack=${esc(pack)}">Fleet</a>
+          </div>
+        </div>`
       : "";
 
   const proposalRows = queue.proposals
@@ -51,14 +75,34 @@ export function renderQueuePage(
           : p.status === "claimed"
             ? `cox cx proposal ${p.specName} ${p.id} resolved`
             : p.next;
+      const pathLine =
+        p.pathDisplay ||
+        (p.path?.length ? p.path.join(" → ") : "(no path recorded)");
+      const evidence = [
+        p.summary ? `Summary: ${p.summary}` : "",
+        p.nbaRuleId ? `NBA rule: ${p.nbaRuleId}` : "",
+        p.nbaAction ? `NBA action: ${p.nbaAction}` : "",
+        `Target: ${p.targetId}`,
+        `Kind: ${p.kind}`,
+        `Path: ${pathLine}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
       return `
-      <tr>
+      <tr class="queue-row">
         <td><a href="/console/graph?pack=${esc(pack)}&q=${esc(p.specName)}">${esc(p.specName)}</a></td>
         <td><code>${esc(p.id)}</code></td>
-        <td><span class="chip chip-gray">${esc(p.status)}</span></td>
+        <td>${toneChip(p.status)}</td>
         <td><span class="chip ${urgClass} urg-${p.urgency}">${esc(p.urgency.toUpperCase())}</span></td>
         <td>${esc(p.ageDisplay)}</td>
-        <td>${esc(p.summary)}</td>
+        <td>
+          <details class="evidence">
+            <summary>${esc(p.summary.length > 72 ? p.summary.slice(0, 72) + "…" : p.summary)}</summary>
+            <pre class="evidence-body">${esc(evidence)}</pre>
+            <p class="evidence-path"><span class="label">control path</span> <code>${esc(pathLine)}</code></p>
+          </details>
+        </td>
         <td><code>${esc(cli)}</code></td>
         <td class="actions">${claimForm}${dismissForm}</td>
       </tr>`;
@@ -92,7 +136,9 @@ export function renderQueuePage(
         </thead>
         <tbody>${taskRows}</tbody>
       </table>`
-    : "";
+    : queue.proposals.length > 0
+      ? `<div class="empty muted">No open tasks. Claim a proposal to create a human-gated task.</div>`
+      : "";
 
   return renderShell({
     title: "Queue",
@@ -101,7 +147,7 @@ export function renderQueuePage(
     controlPath: queue.path ?? ["build_queue", "emit"],
     bodyHtml: `
       <h1>Work Queue</h1>
-      <p class="lede">${totalsLine}. Human-gated: Claim creates a task; Dismiss closes without adapter mutation.</p>
+      <p class="lede">${totalsLine}. Human-gated: Claim creates a task; Dismiss closes without adapter mutation. Expand a summary for path evidence.</p>
       ${flashHtml}
       ${emptyProposals}
 
@@ -114,7 +160,7 @@ export function renderQueuePage(
             <th>status</th>
             <th>urgency</th>
             <th>age</th>
-            <th>summary</th>
+            <th>summary / evidence</th>
             <th>next CLI</th>
             <th>act</th>
           </tr>

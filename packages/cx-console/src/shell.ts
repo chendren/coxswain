@@ -63,7 +63,9 @@ export function renderShell(opts: ShellOpts): string {
   var armed = false;
   var timer = null;
   document.addEventListener("keydown", function (e) {
-    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) return;
+    var t = e.target && e.target.tagName;
+    // Keep typing in fields; allow g-chords when focus is on buttons/details
+    if (t === "INPUT" || t === "TEXTAREA" || t === "SELECT") return;
     if (!armed && (e.key === "g" || e.key === "G")) {
       armed = true;
       clearTimeout(timer);

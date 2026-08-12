@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Graph Console queue human-gate: Claim / Dismiss via POST
   `/console/queue/action` and `/api/proposal/action` (applyProposal /
   transitionProposal; actor from form or `CX_ACTOR`)
+- Graph Console L4 polish: proposal evidence drawer (path/NBA), fleet day
+  band, empty-state copy, queue path fields on work queue items
 - Console proof suite: CDN-free HTML, path-audit footer, serve smoke
 - Offline pack tests for registry + retail/financial/healthcare/travel seeds
   (journey count, architectureDoc, provenance, unique journey ids; healthcare

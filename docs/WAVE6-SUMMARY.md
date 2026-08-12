@@ -18,12 +18,23 @@ L5 package-split refused.
 | L1 operate UI | **done** | `apiProposalAction` claim=`applyProposal`, dismiss=`transitionProposal`; POST `/console/queue/action`; JSON `/api/proposal/action` |
 | L2 proofs | **done** | CDN audit, path-audit, serve smoke (port 0) |
 | L3 CXOS surface | **done** | `cx:serve`, FLEET-COMMANDS Graph Console section, README |
-| L4 polish | partial | empty queue copy, next CLI column, banner flash |
+| L4 polish | **done** | evidence `<details>` drawer (path/NBA), empty fleet/queue UX copy, fleet day band via `healthBand`, statusTone chips |
+
+## L4 (follow-on)
+
+| Item | Detail |
+|------|--------|
+| Evidence drawer | Expand proposal summary → path, NBA rule/action, target |
+| Queue empty | UX copy + seed-operate / Autopilot links |
+| Fleet empty | init / quickstart copy from CX-CONSOLE-UX |
+| Day band | `fleetHealthScore` → `healthBand` on fleet cards |
+| Queue path fields | `QueueProposalItem.path` / `pathDisplay` from proposal |
 
 ## Verify
 
 ```
-pnpm --filter @cox/cx-console test   # 48 passed
+pnpm --filter @cox/cx-console test   # 53 passed (L4)
+pnpm --filter @cox/cx-ops test       # 141 passed
 pnpm --filter @cox/cx-console typecheck
 ```
 
