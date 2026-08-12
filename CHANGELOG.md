@@ -9,10 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Graph Console queue human-gate: Claim / Dismiss via POST
+  `/console/queue/action` and `/api/proposal/action` (applyProposal /
+  transitionProposal; actor from form or `CX_ACTOR`)
+- Console proof suite: CDN-free HTML, path-audit footer, serve smoke
 - Offline pack tests for registry + retail/financial/healthcare/travel seeds
   (journey count, architectureDoc, provenance, unique journey ids; healthcare
   PHI-shape guard on seed JSON)
-- `docs/WAVE5-SUMMARY.md` for Qwen-orchestrated enhancement rounds
+- `docs/WAVE5-SUMMARY.md` / `docs/WAVE6-SUMMARY.md` enhancement waves
 
 ### Changed
 

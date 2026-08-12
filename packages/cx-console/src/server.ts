@@ -18,8 +18,10 @@ import {
   apiAutopilot,
   apiIntent,
   apiNeighborhood,
+  apiProposalAction,
   apiQueue,
   packOf,
+  type ProposalAction,
 } from "./api.js";
 import { renderNeighborhoodSvg } from "./graph-svg.js";
 import { renderAutopilotPage } from "./pages/autopilot.js";
@@ -51,6 +53,46 @@ function send(res: ServerResponse, code: number, body: string, type: string): vo
 
 function sendJson(res: ServerResponse, code: number, obj: unknown): void {
   send(res, code, JSON.stringify(obj), "application/json; charset=utf-8");
+}
+
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
+async function parseActionParams(
+  req: IncomingMessage,
+  url: URL,
+): Promise<{
+  action: string;
+  spec: string;
+  id: string;
+  actor: string;
+  pack: string;
+}> {
+  const method = (req.method ?? "GET").toUpperCase();
+  if (method === "POST") {
+    const raw = await readBody(req);
+    const body = new URLSearchParams(raw);
+    return {
+      action: body.get("action") ?? url.searchParams.get("action") ?? "",
+      spec: body.get("spec") ?? url.searchParams.get("spec") ?? "",
+      id: body.get("id") ?? url.searchParams.get("id") ?? "",
+      actor: body.get("actor") ?? url.searchParams.get("actor") ?? "",
+      pack: body.get("pack") ?? url.searchParams.get("pack") ?? "local",
+    };
+  }
+  return {
+    action: url.searchParams.get("action") ?? "",
+    spec: url.searchParams.get("spec") ?? "",
+    id: url.searchParams.get("id") ?? "",
+    actor: url.searchParams.get("actor") ?? "",
+    pack: url.searchParams.get("pack") ?? "local",
+  };
 }
 
 function hitsHtml(
@@ -93,6 +135,57 @@ export async function handleConsoleRequest(
     }
     if (url.pathname === "/api/queue") {
       sendJson(res, 200, await apiQueue(deps));
+      return;
+    }
+    if (url.pathname === "/api/proposal/action") {
+      const p = await parseActionParams(req, url);
+      const action = p.action as ProposalAction;
+      if (action !== "claim" && action !== "dismiss") {
+        sendJson(res, 400, {
+          ok: false,
+          path: ["api_proposal_action", "fail"],
+          error: "action must be claim|dismiss",
+          at: deps.now(),
+        });
+        return;
+      }
+      const result = await apiProposalAction(deps, {
+        specName: p.spec,
+        id: p.id,
+        action,
+        actor: p.actor || undefined,
+      });
+      sendJson(res, result.ok ? 200 : 400, result);
+      return;
+    }
+    if (url.pathname === "/console/queue/action") {
+      const p = await parseActionParams(req, url);
+      const packQ = packOf(p.pack);
+      const action = p.action as ProposalAction;
+      if (action !== "claim" && action !== "dismiss") {
+        res.writeHead(302, {
+          location: `/console/queue?pack=${encodeURIComponent(packQ)}&msg=${encodeURIComponent("invalid action")}`,
+          "cache-control": "no-store",
+        });
+        res.end();
+        return;
+      }
+      const result = await apiProposalAction(deps, {
+        specName: p.spec,
+        id: p.id,
+        action,
+        actor: p.actor || undefined,
+      });
+      const msg = result.ok
+        ? action === "claim"
+          ? `claimed ${p.id} → task ${(result.data as { taskId?: string })?.taskId ?? ""}`.trim()
+          : `dismissed ${p.id}`
+        : `error: ${result.error ?? "failed"}`;
+      res.writeHead(302, {
+        location: `/console/queue?pack=${encodeURIComponent(packQ)}&msg=${encodeURIComponent(msg)}`,
+        "cache-control": "no-store",
+      });
+      res.end();
       return;
     }
     if (url.pathname === "/api/graph/find") {
@@ -174,7 +267,8 @@ export async function handleConsoleRequest(
     }
     if (url.pathname === "/console/queue") {
       const q = await buildWorkQueue(deps);
-      send(res, 200, renderQueuePage(q, pack), "text/html; charset=utf-8");
+      const flash = url.searchParams.get("msg") ?? undefined;
+      send(res, 200, renderQueuePage(q, pack, flash ?? undefined), "text/html; charset=utf-8");
       return;
     }
     if (url.pathname === "/console/graph") {

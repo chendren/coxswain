@@ -271,7 +271,31 @@ tr:last-child td { border-bottom: none; }
   color: var(--muted);
 }
 .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+.btn-primary {
+  background: rgba(61, 231, 255, 0.15);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+.btn-primary:hover { background: rgba(61, 231, 255, 0.28); }
 a.btn { text-decoration: none; }
+.inline-act { display: inline-flex; gap: 0.35rem; margin: 0 0.2rem 0 0; }
+td.actions { white-space: nowrap; }
+.banner {
+  margin: 0.75rem 0 1rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(61, 231, 255, 0.08);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.empty {
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+}
 
 /* ── Graph SVG styles ─────────────────────────────────────────────────────── */
 .graph-svg {

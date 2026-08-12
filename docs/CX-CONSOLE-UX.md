@@ -102,13 +102,17 @@ Package: `@cox/cx-console`
 | Surface | Path |
 |---------|------|
 | Fleet | `/console/fleet` |
-| Queue | `/console/queue` |
+| Queue | `/console/queue` (Claim / Dismiss human-gated forms) |
+| Queue action | `POST /console/queue/action` → claim\|dismiss |
 | Graph explorer + SVG | `/console/graph` |
 | Intent router | `/console/intent` |
+| Autopilot | `/console/autopilot` |
 | Health / stats | `/console/health` |
-| JSON API | `/api/*` |
+| JSON API | `/api/*` including `/api/proposal/action` |
 | Legacy HTML | `/legacy` |
 
 Start: `pnpm cox cx serve --port 8787` then open `http://127.0.0.1:8787/console`
+
+Wave6: queue human-gate + offline proof suite (`docs/WAVE6-SUMMARY.md`).
 
 Build method: UX design → SPECs U1–U6 → local `qwen3-coder-next:q8_0` (shell/theme/pages/api/svg) → Grok recovery (types, server router, CLI wire).

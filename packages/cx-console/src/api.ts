@@ -1,8 +1,11 @@
 import {
+  applyProposal,
   buildOpsBoard,
   buildWorkQueue,
   loadCxWorkspace,
+  loadProposals,
   runGraphAutopilot,
+  transitionProposal,
   type CxWorkspaceDeps,
 } from "@cox/cx-ops";
 import {
@@ -106,4 +109,96 @@ export async function apiAutopilot(
     data: result,
     at: deps.now(),
   };
+}
+
+export type ProposalAction = "claim" | "dismiss";
+
+/**
+ * Human-gated queue action. Claim = applyProposal (task + claimed).
+ * Dismiss = transitionProposal dismissed. Never mutates AWS/adapters.
+ */
+export async function apiProposalAction(
+  deps: CxWorkspaceDeps,
+  opts: {
+    specName: string;
+    id: string;
+    action: ProposalAction;
+    actor?: string;
+  },
+) {
+  const pathBase = ["load_proposals", "human_gate", opts.action, "emit"];
+  const actor =
+    opts.actor?.trim() ||
+    process.env.CX_ACTOR?.trim() ||
+    "console-local";
+  const specName = opts.specName.trim();
+  const id = opts.id.trim();
+  if (!specName || !id) {
+    return {
+      ok: false,
+      path: ["human_gate", "fail"],
+      error: "missing spec or id",
+      at: deps.now(),
+    };
+  }
+  const all = await loadProposals(deps, specName);
+  const prop = all.find((p) => p.id === id);
+  if (!prop) {
+    return {
+      ok: false,
+      path: pathBase,
+      error: `proposal not found: ${id}`,
+      at: deps.now(),
+    };
+  }
+  try {
+    if (opts.action === "claim") {
+      const applied = await applyProposal(deps, specName, prop, { actor });
+      return {
+        ok: true,
+        path: [...pathBase, ...applied.path],
+        data: {
+          action: "claim" as const,
+          proposalId: id,
+          specName,
+          taskId: applied.task.id,
+          status: "claimed",
+          remediationPath: applied.remediationPath,
+          actor,
+        },
+        at: deps.now(),
+      };
+    }
+    if (opts.action === "dismiss") {
+      const next = await transitionProposal(deps, specName, id, "dismissed", {
+        actor,
+      });
+      return {
+        ok: true,
+        path: pathBase,
+        data: {
+          action: "dismiss" as const,
+          proposalId: id,
+          specName,
+          status: next?.status ?? "dismissed",
+          actor,
+        },
+        at: deps.now(),
+      };
+    }
+    return {
+      ok: false,
+      path: ["human_gate", "fail"],
+      error: `unknown action: ${String(opts.action)}`,
+      at: deps.now(),
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      path: ["human_gate", "fail"],
+      error: msg,
+      at: deps.now(),
+    };
+  }
 }
