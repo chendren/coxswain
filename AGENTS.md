@@ -35,6 +35,6 @@ This repo is built by **parallel workstreams**; you are probably one of them.
 ## Map
 `packages/` core (frozen) · providers · router · ledger · agent · tools ·
 spec · steering · hooks · tui · cli · cx-core · cx-artifacts · cx-local ·
-cx-aws · cx-ops — dependency graph and dataflow in `docs/01-ARCHITECTURE.md`
+cx-aws · cx-ops · cx-world (Tell/wordmap) — dependency graph in `docs/01-ARCHITECTURE.md`
 and `docs/CXOS-COMPLETE.md`. Fixtures: `fixtures/events-sample.jsonl`,
 `examples/demo-project/`, `examples/cx-demo/`.

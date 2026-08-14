@@ -72,6 +72,9 @@ importers:
       '@cox/cx-ops':
         specifier: workspace:*
         version: link:../cx-ops
+      '@cox/cx-world':
+        specifier: workspace:*
+        version: link:../cx-world
       '@cox/hooks':
         specifier: workspace:*
         version: link:../hooks
@@ -183,6 +186,9 @@ importers:
       '@cox/cx-ops':
         specifier: workspace:*
         version: link:../cx-ops
+      '@cox/cx-world':
+        specifier: workspace:*
+        version: link:../cx-world
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -353,6 +359,37 @@ importers:
       '@cox/cx-core':
         specifier: workspace:*
         version: link:../cx-core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+
+  packages/cx-world:
+    dependencies:
+      '@cox/core':
+        specifier: workspace:*
+        version: link:../core
+      '@cox/cx-core':
+        specifier: workspace:*
+        version: link:../cx-core
+      '@cox/cx-ops':
+        specifier: workspace:*
+        version: link:../cx-ops
+      '@cox/cx-pack-financial':
+        specifier: workspace:*
+        version: link:../cx-pack-financial
+      '@cox/cx-pack-healthcare':
+        specifier: workspace:*
+        version: link:../cx-pack-healthcare
+      '@cox/cx-pack-registry':
+        specifier: workspace:*
+        version: link:../cx-pack-registry
+      '@cox/cx-pack-retail':
+        specifier: workspace:*
+        version: link:../cx-pack-retail
+      '@cox/cx-pack-travel':
+        specifier: workspace:*
+        version: link:../cx-pack-travel
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

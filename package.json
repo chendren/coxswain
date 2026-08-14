@@ -20,6 +20,8 @@
     "ci": "pnpm build && pnpm typecheck && pnpm test",
     "cx:golden:ci": "bash examples/cx-demo/golden-path.sh",
     "cx:console:smoke": "bash examples/cx-demo/console-smoke.sh",
+    "cx:world": "tsx packages/cli/src/main.ts cx world",
+    "cx:app": "tsx packages/cli/src/main.ts cx app",
     "clean": "pnpm -r clean && rm -rf dist",
     "lint": "eslint packages --ext .ts",
     "lint:fix": "eslint packages --ext .ts --fix",

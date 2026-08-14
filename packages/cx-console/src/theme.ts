@@ -329,6 +329,11 @@ td.actions { white-space: nowrap; }
 .row-band-red td:first-child { box-shadow: inset 3px 0 0 var(--accent-danger); }
 .row-band-yellow td:first-child { box-shadow: inset 3px 0 0 var(--accent-warn); }
 .row-band-green td:first-child { box-shadow: inset 3px 0 0 var(--accent-ok); }
+ul.heard { margin: 0.5rem 0 1rem; padding-left: 1.2rem; }
+ul.heard .muted { color: var(--muted); font-size: 0.85rem; }
+.handoff { margin-left: 1rem; color: var(--muted); font-size: 0.8rem; }
+.handoff summary { cursor: pointer; }
+.muted { color: var(--muted); }
 
 /* ── Graph SVG styles ─────────────────────────────────────────────────────── */
 .graph-svg {

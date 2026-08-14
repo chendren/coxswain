@@ -47,6 +47,20 @@ idea → pack detect → program → build (artifacts → local → aws plan)
 
 ---
 
+## World (mind → CX app)
+
+A domain expert should never need our vocabulary. Four verbs: **Tell · See · Today · Teach** (Teach is next).
+
+```bash
+pnpm cox cx world northwind \
+  "National retail: returns and refunds, loyalty, store pickup, order support, retention"
+pnpm cox cx app northwind --port 8787
+# open http://127.0.0.1:8787/app?spec=northwind
+# Today: say what is happening → I'll take this
+```
+
+Offline. Closed world. No invented ids. Graph Console stays at `/console` for operators.
+
 ## 4-command offline quickstart
 
 Requires **Node ≥ 20** and **pnpm**. No API keys required for this path.

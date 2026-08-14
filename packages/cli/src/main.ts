@@ -19,6 +19,7 @@ import { runLedgerReport } from "./commands/ledger";
 import { runModelsReport } from "./commands/models";
 import { runDoctor } from "./commands/doctor";
 import { runCxServe } from "./commands/serve";
+import { runCxApp, runCxWorld } from "./commands/world";
 import {
   runCxApprove,
   runCxBuild,
@@ -1047,6 +1048,29 @@ export function createProgram(io: CliIo = REAL_IO): Command {
     const f = cxFlags(command);
     const ctx = await cxCtx(command, f.pack, f);
     throw new CliExit(await runCxServe(ctx, { port, host: opts.host }));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("world <name> [idea...]")
+      .description("Tell: turn domain words into a closed world (offline, no invent)"),
+  ).action(async (name: string, idea: string[], _o: GlobalOpts, command: Command) => {
+    const f = cxFlags(command);
+    throw new CliExit(await runCxWorld(await cxCtx(command, f.pack, f), name, idea));
+  });
+
+  addGlobalOptions(
+    cx
+      .command("app [name]")
+      .description("See: serve the domain-skinned World app (localhost)")
+      .option("--port <n>", "port to listen on", "8787")
+      .option("--host <host>", "bind host (default: dual 127.0.0.1 + ::1)"),
+  ).action(async (name: string | undefined, _o: GlobalOpts, command: Command) => {
+    const opts = command.optsWithGlobals<CxCmdOpts & { port?: string; host?: string }>();
+    const port = Number(opts.port ?? 8787);
+    const f = cxFlags(command);
+    const ctx = await cxCtx(command, f.pack, f);
+    throw new CliExit(await runCxApp(ctx, name, { port, host: opts.host }));
   });
 
   addGlobalOptions(

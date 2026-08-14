@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- World (Wave7): `cox cx world` offline Tell (pack + closed wordmap, no invent)
+  and `cox cx app` domain-skinned `/app` + Today (I'll take this)
 - Graph Console queue human-gate: Claim / Dismiss via POST
   `/console/queue/action` and `/api/proposal/action` (applyProposal /
   transitionProposal; actor from form or `CX_ACTOR`)

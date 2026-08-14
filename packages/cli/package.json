@@ -31,7 +31,8 @@
     "@cox/steering": "workspace:*",
     "@cox/hooks": "workspace:*",
     "commander": "^12.0.0",
-    "@cox/cx-console": "workspace:*"
+    "@cox/cx-console": "workspace:*",
+    "@cox/cx-world": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0"

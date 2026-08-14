@@ -30,6 +30,11 @@ import { renderGraphPage } from "./pages/graph.js";
 import { renderHealthPage } from "./pages/health.js";
 import { renderIntentPage } from "./pages/intent.js";
 import { renderQueuePage } from "./pages/queue.js";
+import { renderAppHome } from "./pages/app-home.js";
+import { renderAppToday } from "./pages/app-today.js";
+import { renderAppJourneys } from "./pages/app-journeys.js";
+import { renderAppKnow } from "./pages/app-know.js";
+import { loadWorld } from "@cox/cx-world";
 import { esc } from "./shell.js";
 
 export interface ConsoleServerOpts {
@@ -37,6 +42,8 @@ export interface ConsoleServerOpts {
   cwd: string;
   write: (s: string) => void;
   host?: string;
+  /** Default World / program name for /app */
+  worldSpec?: string;
 }
 
 function workspace(cwd: string): CxWorkspaceDeps {
@@ -119,10 +126,13 @@ export async function handleConsoleRequest(
   req: IncomingMessage,
   res: ServerResponse,
   deps: CxWorkspaceDeps,
+  worldSpecDefault?: string,
 ): Promise<void> {
   const host = req.headers.host ?? "127.0.0.1";
   const url = new URL(req.url ?? "/", `http://${host}`);
   const pack = packOf(url.searchParams.get("pack") ?? "local");
+  const worldSpec =
+    url.searchParams.get("spec")?.trim() || worldSpecDefault?.trim() || "";
 
   try {
     if (url.pathname === "/api/health" || url.pathname === "/healthz" || url.pathname === "/health") {
@@ -365,6 +375,78 @@ export async function handleConsoleRequest(
       );
       return;
     }
+    if (url.pathname === "/app" || url.pathname === "/app/") {
+      if (!worldSpec) {
+        send(res, 200, renderAppHome({ specName: "world", pack, world: null }), "text/html; charset=utf-8");
+        return;
+      }
+      const world = await loadWorld(deps, worldSpec);
+      send(res, 200, renderAppHome({ specName: worldSpec, pack, world }), "text/html; charset=utf-8");
+      return;
+    }
+    if (url.pathname === "/app/journeys") {
+      const spec = worldSpec || "world";
+      const world = worldSpec ? await loadWorld(deps, worldSpec) : null;
+      send(res, 200, renderAppJourneys({ specName: spec, pack, world }), "text/html; charset=utf-8");
+      return;
+    }
+    if (url.pathname === "/app/know") {
+      const spec = worldSpec || "world";
+      const world = worldSpec ? await loadWorld(deps, worldSpec) : null;
+      send(res, 200, renderAppKnow({ specName: spec, pack, world }), "text/html; charset=utf-8");
+      return;
+    }
+    if (url.pathname === "/app/today/take") {
+      const p = await parseActionParams(req, url);
+      const spec = p.spec || worldSpec;
+      const result = await apiProposalAction(deps, {
+        specName: spec,
+        id: p.id,
+        action: "claim",
+        actor: p.actor || "world-local",
+      });
+      const msg = result.ok ? "You have this. Nothing was changed in production." : `Could not take it: ${result.error ?? "failed"}`;
+      res.writeHead(302, {
+        location: `/app/today?spec=${encodeURIComponent(spec)}&pack=${encodeURIComponent(pack)}&msg=${encodeURIComponent(msg)}`,
+        "cache-control": "no-store",
+      });
+      res.end();
+      return;
+    }
+    if (url.pathname === "/app/today") {
+      const spec = worldSpec || "world";
+      const world = worldSpec ? await loadWorld(deps, spec) : null;
+      const utterance = url.searchParams.get("u") ?? "";
+      const flash = url.searchParams.get("msg") ?? undefined;
+      let result = null as Awaited<ReturnType<typeof apiAutopilot>>["data"] | null | undefined;
+      let error: string | undefined;
+      if (spec && utterance) {
+        const api = await apiAutopilot(deps, {
+          specName: spec,
+          utterance,
+          apply: true,
+          pack,
+          actor: "world-local",
+        });
+        if (!api.ok && api.error) error = api.error;
+        result = api.data;
+      }
+      send(
+        res,
+        200,
+        renderAppToday({
+          specName: spec,
+          pack,
+          world,
+          utterance,
+          result: result ?? null,
+          error,
+          flash,
+        }),
+        "text/html; charset=utf-8",
+      );
+      return;
+    }
     if (url.pathname === "/legacy" || url.pathname === "/dashboard") {
       const board = await buildOpsBoard(deps);
       const queue = await buildWorkQueue(deps);
@@ -401,7 +483,7 @@ export async function startConsoleServer(
 ): Promise<{ close: () => Promise<void>; port: number }> {
   const deps = workspace(opts.cwd);
   const handler = (req: IncomingMessage, res: ServerResponse) => {
-    void handleConsoleRequest(req, res, deps);
+    void handleConsoleRequest(req, res, deps, opts.worldSpec);
   };
 
   // Explicit host wins (single bind).
